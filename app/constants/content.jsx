@@ -20,7 +20,7 @@ export const loanProducts = [
         description:""
     },
     {
-        image:"/stack.png",
+        image:"/expenses.png",
         name:"LPO financing",
         description:""
     },

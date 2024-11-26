@@ -1,4 +1,4 @@
-import Nav from '@/app/components/nav'
+import Nav from '@/app/widgets/nav'
 import About from '@/app/sections/about'
 import LoanProducts from '@/app/sections/loan_products'
 import Image from 'next/image'
