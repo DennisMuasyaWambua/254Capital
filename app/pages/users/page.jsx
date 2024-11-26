@@ -3,6 +3,7 @@ import About from '@/app/sections/about'
 import LoanProducts from '@/app/sections/loan_products'
 import Image from 'next/image'
 import React from 'react'
+import ContactForm from '@/app/sections/contact_form'
 
 const Users = () => {
   return (
@@ -21,6 +22,7 @@ const Users = () => {
         </div>
         <About/>
         <LoanProducts/>
+        <ContactForm/>
     </div>
   )
 }
