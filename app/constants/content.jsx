@@ -45,3 +45,42 @@ export const loanProducts = [
         description:"Financing provided to SMEs that are in the supply chain."
     },
 ]
+
+export const loansInterestRates = [
+    {
+        loanType:"Logbook Loans",
+        interestRate:"",
+    },
+    {
+        loanType:"Salary Check-off Loans",
+        interestRate:"",
+    },
+    {
+        loanType:"Top up loans",
+        interestRate:"",
+    },
+    {
+        loanType:"Bridging loans",
+        interestRate:"",
+    },
+    {
+        loanType:"LPO financing",
+        interestRate:"",
+    },
+    {
+        loanType:"Sacco lending",
+        interestRate:"",
+    },
+    {
+        loanType:"Bid Bonds",
+        interestRate:"",
+    },
+    {
+        loanType:"Invoice dicounting",
+        interestRate:"",
+    },
+    {
+        loanType:"Supply Chain Financing",
+        interestRate:"",
+    },
+]

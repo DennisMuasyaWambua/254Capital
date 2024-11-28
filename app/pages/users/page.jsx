@@ -4,6 +4,7 @@ import LoanProducts from '@/app/sections/loan_products'
 import Image from 'next/image'
 import React from 'react'
 import ContactForm from '@/app/sections/contact_form'
+import ApplyForLoan from '@/app/sections/apply_for_loan'
 
 const Users = () => {
   return (
@@ -23,6 +24,7 @@ const Users = () => {
         <About/>
         <LoanProducts/>
         <ContactForm/>
+        <ApplyForLoan/>
     </div>
   )
 }
