@@ -42,7 +42,7 @@ export default function ContactForm() {
         },
         body: JSON.stringify({
           ...formData,
-          recipient: "timothyagevi@gmail.com", // The email recipient
+          recipient: "muasyathegreat4@gmail.com", // The email recipient
         }),
       });
 
