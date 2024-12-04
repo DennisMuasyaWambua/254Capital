@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import emailjs from "emailjs-com";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,30 +28,33 @@ export default function ContactForm() {
     setIsSubmitting(true);
 
     try {
-      const SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
-      const TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
-      const PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
+      // Use the Formspree endpoint from environment variables
+      const FORM_ENDPOINT = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT;
 
-      if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) {
-        throw new Error("Environment variables for EmailJS are not set.");
+      if (!FORM_ENDPOINT) {
+        throw new Error("Formspree endpoint is not set in the environment variables.");
       }
 
-      await emailjs.send(
-        SERVICE_ID,
-        TEMPLATE_ID,
-        {
-          from_name: formData.name,
-          from_email: formData.email,
-          message: formData.message,
+      const response = await fetch(FORM_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        PUBLIC_KEY
-      );
+        body: JSON.stringify({
+          ...formData,
+          recipient: "timothyagevi@gmail.com", // The email recipient
+        }),
+      });
 
-      setResponseMessage("Your message has been sent successfully!");
-      setFormData({ name: "", email: "", message: "" });
+      if (response.ok) {
+        setResponseMessage("Your message has been sent successfully!");
+        setFormData({ name: "", email: "", message: "" });
+      } else {
+        setResponseMessage("Failed to send the message. Please try again.");
+      }
     } catch (error) {
-      setResponseMessage("Failed to send the message. Please try again.");
-      console.error("EmailJS Error:", error);
+      setResponseMessage("An error occurred. Please try again later.");
+      console.error("Formspree Error:", error);
     } finally {
       setIsSubmitting(false);
     }
