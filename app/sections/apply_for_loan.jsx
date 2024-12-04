@@ -29,10 +29,12 @@ const ApplyForLoan = () => {
     setIsSubmitting(true);
 
     try {
-      const FORM_ENDPOINT = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT;
+      const FORM_ENDPOINT = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT_APPLY_LOAN;
 
       if (!FORM_ENDPOINT) {
-        throw new Error("Formspree endpoint is not set in the environment variables.");
+        throw new Error(
+          "Formspree endpoint for apply loan is not set in the environment variables."
+        );
       }
 
       const response = await fetch(FORM_ENDPOINT, {
