@@ -80,41 +80,30 @@ export default function ContactForm() {
 
             {/* Right side - Form */}
             <div className="p-6">
-
               <h2 className="text-xl md:text-2xl font-semibold text-teal-600 mb-4 md:mb-6">
-
                 Contact us
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <Input
                     type="text"
-                    name="name"
                     placeholder="Name"
                     className="w-full"
-                    value={formData.name}
-                    onChange={handleInputChange}
                     required
                   />
                 </div>
                 <div>
                   <Input
                     type="email"
-                    name="email"
                     placeholder="Email"
                     className="w-full"
-                    value={formData.email}
-                    onChange={handleInputChange}
                     required
                   />
                 </div>
                 <div>
                   <Textarea
-                    name="message"
                     placeholder="Message"
                     className="w-full min-h-[120px]"
-                    value={formData.message}
-                    onChange={handleInputChange}
                     required
                   />
                 </div>
@@ -126,12 +115,6 @@ export default function ContactForm() {
                   {isSubmitting ? "Sending..." : "Send"}
                 </Button>
 
-                {/* Response Message */}
-                {responseMessage && (
-                  <p className="text-center mt-4 text-teal-600">
-                    {responseMessage}
-                  </p>
-                )}
 
                 {/* Social Media Icons */}
                 <div className="flex justify-center gap-4 mt-6">
