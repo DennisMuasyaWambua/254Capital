@@ -18,8 +18,8 @@ const Users = () => {
         quality={100}
         style={{objectFit:'cover',zIndex:-1, opacity:0.8}}/>
         {/* Welcome message */}
-        <div className='flex flex-col justify-center items-center min-h-screen'>
-            <div className="w-[893px] h-[117px] text-center text-white text-5xl font-bold font-['Poppins']">Your wealth journey starts with us</div>
+        <div className='flex flex-col justify-center items-center min-h-screen px-4'>
+            <div className="w-full max-w-xl text-center text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-['Poppins']">Your wealth journey starts with us</div>
         </div>
         <About/>
         <LoanProducts/>
