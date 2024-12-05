@@ -74,7 +74,7 @@ const ApplyForLoan = () => {
     {/* Left - Image Section */}
     <div className="flex-shrink-0">
       <Image
-        src="/africanGenz.jpeg"
+        src="/Money.png"
         alt="Group of people looking at a laptop"
         width={400}
         height={400}
