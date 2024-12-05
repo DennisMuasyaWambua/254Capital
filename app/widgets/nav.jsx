@@ -3,25 +3,28 @@ import React from 'react'
 
 const Nav = () => {
   return (
-    <>
-        <div className="flex justify-between items-center h-full">
-            <Image
-            className="ml-40 mt-4"
-            src={"/254capital-logo.png"}
-            quality={100}
-            width={200}
-            height={100}
-            alt="254Capital"
-            />
-            <nav className="mr-20 mt-2 flex justify-end">
-                <a href="#" className="w-[121px] h-[53px] text-center text-[#00888c]/80 text-xl font-bold font-['Poppins']" aria-current="page">Home</a>
-                <a href="#" className="w-[121px] h-[53px] text-center text-[#00888c]/80 text-xl font-bold font-['Poppins']">About us</a>
-                <a href="#" className="w-[121px] h-[53px] text-center text-[#00888c]/80 text-xl font-bold font-['Poppins']">Products</a>
-                <a href="#" className="w-[121px] h-[53px] text-center text-[#00888c]/80 text-xl font-bold font-['Poppins']">Blog</a>
-                <a href="#" className="w-[121px] h-[53px] text-center text-[#00888c]/80 text-xl font-bold font-['Poppins']">Contact us</a>
-            </nav>
-        </div>
-    </>
+    <header className="flex flex-wrap justify-between items-center px-4 py-4 md:px-10 md:py-6">
+    {/* Logo Section */}
+    <div className="flex-shrink-0">
+      <Image
+        className="ml-0 md:ml-10 mt-0 md:mt-2"
+        src={"/254capital-logo.png"}
+        quality={100}
+        width={150} // Reduced size for better responsiveness
+        height={75}
+        alt="254Capital"
+      />
+    </div>
+
+    {/* Navigation Links */}
+    <nav className="flex flex-wrap justify-center md:justify-end items-center space-x-4 md:space-x-6">
+      <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">Home</a>
+      <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">About us</a>
+      <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">Products</a>
+      <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">Blog</a>
+      <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">Contact us</a>
+    </nav>
+  </header>
   )
 }
 

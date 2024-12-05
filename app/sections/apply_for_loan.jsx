@@ -16,6 +16,7 @@ const ApplyForLoan = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [responseMessage, setResponseMessage] = useState("");
 
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevState) => ({
@@ -124,13 +125,17 @@ const ApplyForLoan = () => {
           Apply For a Loan Now
         </h1>
         <form onSubmit={handleSubmit} style={formStyle}>
+
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleChange}
             placeholder="Name"
+
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-teal-500"
             style={inputStyle}
+
             required
           />
           <input
@@ -139,7 +144,10 @@ const ApplyForLoan = () => {
             value={formData.idNumber}
             onChange={handleChange}
             placeholder="ID number"
+
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-teal-500"
             style={inputStyle}
+
             required
           />
           <input
@@ -147,15 +155,20 @@ const ApplyForLoan = () => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            placeholder="Email"
+            placeholder="Email
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-teal-500"
+
             style={inputStyle}
+
             required
           />
           <select
             name="loanType"
             value={formData.loanType}
             onChange={handleChange}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-teal-500"
             style={selectStyle}
+
             required
           >
             <option value="">Select loan type</option>
@@ -170,13 +183,17 @@ const ApplyForLoan = () => {
             value={formData.amount}
             onChange={handleChange}
             placeholder="Amount"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-teal-500"
             style={inputStyle}
+
             required
           />
           <select
             name="securityType"
             value={formData.securityType}
             onChange={handleChange}
+
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-teal-500"
             style={selectStyle}
             required
           >
@@ -186,13 +203,19 @@ const ApplyForLoan = () => {
             <option value="salary">Salary Assignment</option>
             <option value="property">Property</option>
           </select>
-          <button type="submit" style={buttonStyle} disabled={isSubmitting}>
+
+          <button type="submit"
+            className="w-full p-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+           style={buttonStyle} disabled={isSubmitting}
+                                 
+>
             {isSubmitting ? "Submitting..." : "Apply Now"}
           </button>
         </form>
         {responseMessage && (
           <p style={{ marginTop: "20px", color: "#008080" }}>{responseMessage}</p>
         )}
+
       </div>
     </div>
   );
