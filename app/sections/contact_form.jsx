@@ -8,19 +8,19 @@ import { Facebook, Instagram, MessageCircle, Twitter } from 'lucide-react'
 import Image from "next/image"
 
 export default function ContactForm() {
-  const handleSubmit = ()=>{}
+  const handleSubmit = () => {}
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto px-4 py-8">
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Left side - Image */}
-            <div className="relative h-[300px] md:h-auto">
+            <div className="relative h-64 md:h-auto">
               <Image
                 src="/manufacturing.jpg"
                 alt="Car Assembly Line"
-                className="object-cover"
+                className="object-cover rounded-t-lg md:rounded-none md:rounded-l-lg"
                 fill
                 priority
               />
@@ -28,7 +28,9 @@ export default function ContactForm() {
 
             {/* Right side - Form */}
             <div className="p-6">
-              <h2 className="text-2xl font-semibold text-teal-600 mb-6">Contact us</h2>
+              <h2 className="text-xl md:text-2xl font-semibold text-teal-600 mb-4 md:mb-6">
+                Contact us
+              </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <Input
@@ -53,8 +55,8 @@ export default function ContactForm() {
                     required
                   />
                 </div>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full bg-teal-600 hover:bg-teal-700"
                 >
                   Send
