@@ -5,6 +5,7 @@ import Image from 'next/image'
 import React from 'react'
 import ContactForm from '@/app/sections/contact_form'
 import ApplyForLoan from '@/app/sections/apply_for_loan'
+import AboutUs from '@/app/sections/aboutus'
 
 const Users = () => {
   return (
@@ -24,10 +25,12 @@ const Users = () => {
           Your wealth journey starts with us
         </div>
       </div>
+      
       <About />
       <LoanProducts />
       <ContactForm />
       <ApplyForLoan />
+      <AboutUs/>
     </div>
   )
 }

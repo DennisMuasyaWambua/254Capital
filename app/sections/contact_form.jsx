@@ -140,7 +140,7 @@ export default function ContactForm() {
                     <MessageCircle className="h-6 w-6" />
                   </a>
                   <p>
-                    email us at: info@254capital.com
+                    email us at: info@254-capital.com
                   </p>
                  
                 </div>

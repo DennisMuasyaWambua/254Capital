@@ -123,10 +123,15 @@ const ApplyForLoan = () => {
           required
         >
           <option value="">Select loan type</option>
-          <option value="personal">Personal Loan</option>
-          <option value="business">Business Loan</option>
-          <option value="mortgage">Mortgage Loan</option>
-          <option value="education">Education Loan</option>
+          <option value="topup">Topup Loan</option>
+          <option value="Saccolendingloan">Sacco lending Loan</option>
+          <option value="supplychainfinancing">Supply chain financing Loan</option>
+          <option value="salarycheckoffloans">salary check off Loans</option>
+          <option value="lpofinancing">LPO financing Loans</option>
+          <option value="invoicediscounting">Invoice discounting loans</option>
+          <option value="logbookloans">logbook loans</option>
+          <option value="bridgingloans">Bridging loans</option>
+          <option value="bidbondloans">Bid bonds loans</option>
         </select>
         <input
           type="number"
@@ -163,3 +168,4 @@ const ApplyForLoan = () => {
 };
 
 export default ApplyForLoan;
+// loans@254-capital.com

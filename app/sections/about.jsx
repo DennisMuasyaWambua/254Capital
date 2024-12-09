@@ -3,7 +3,7 @@ import React from 'react'
 
 const About = () => {
   return (
-    <div className="relative flex flex-col md:flex-row items-center bg-white px-4 py-8 md:px-20 md:py-16">
+    <div className="relative flex flex-col md:flex-row items-center bg-white px-4 py-5 md:px-20 md:py-16">
       {/* Image Section */}
       <div className="w-full md:w-1/2 flex justify-center">
         <Image 
