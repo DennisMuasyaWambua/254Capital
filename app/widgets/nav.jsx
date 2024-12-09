@@ -21,7 +21,6 @@ const Nav = () => {
         <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">Home</a>
         <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">About us</a>
         <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">Products</a>
-        <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">Blog</a>
         <a href="#" className="text-sm md:text-base text-[#00888c]/80 font-bold font-['Poppins'] hover:text-[#00888c]">Contact us</a>
       </nav>
     </header>
