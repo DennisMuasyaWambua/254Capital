@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 
 export default function AboutUs() {
   return (
-    <div className="min-h-screen bg-background">
+    <div id="aboutus" className="min-h-screen bg-background">
      
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold text-center mb-8 text-[#00888c]">About Us</h1>

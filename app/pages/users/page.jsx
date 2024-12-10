@@ -9,8 +9,8 @@ import AboutUs from '@/app/sections/aboutus'
 
 const Users = () => {
   return (
-    <div>
-      <Nav />
+    <div id="home">
+      <Nav/>
       <Image
         src={'/genZ.jpeg'}
         fill

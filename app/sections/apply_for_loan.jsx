@@ -70,7 +70,7 @@ const ApplyForLoan = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row max-w-4xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+    <div id="applyforloan" className="flex flex-col md:flex-row max-w-4xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
     {/* Left - Image Section */}
     <div className="flex-shrink-0">
       <Image
@@ -161,6 +161,9 @@ const ApplyForLoan = () => {
         >
           Apply Now
         </button>
+        <p>
+            need a custom loan? email us at: loans@254-capital.com
+        </p>
       </form>
     </div>
   </div>

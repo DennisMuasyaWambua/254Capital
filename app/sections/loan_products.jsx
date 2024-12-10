@@ -6,7 +6,7 @@ const LoanProducts = () => {
   return (
     <>
       {/* Title Section */}
-      <div className="mx-auto text-center text-[#00888c] text-2xl md:text-4xl font-semibold font-['Poppins'] px-4">
+      <div id="loanproducts" className="mx-auto text-center text-[#00888c] text-2xl md:text-4xl font-semibold font-['Poppins'] px-4">
         Our Loan Products
       </div>
 
