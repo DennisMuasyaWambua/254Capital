@@ -29,7 +29,7 @@ const ApplyForLoan = () => {
     setIsSubmitting(true);
 
     try {
-      const FORM_ENDPOINT = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT_APPLY_LOAN;
+      const FORM_ENDPOINT = process.env.APPLY_FOR_LOAN_URL;
 
       if (!FORM_ENDPOINT) {
         throw new Error(

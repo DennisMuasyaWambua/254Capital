@@ -30,7 +30,7 @@ export default function ContactForm() {
 
     try {
       // Use the Formspree endpoint from environment variables
-      const FORM_ENDPOINT = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT;
+      const FORM_ENDPOINT = process.env.CONTACT_US_URL;
 
       if (!FORM_ENDPOINT) {
         throw new Error("Formspree endpoint is not set in the environment variables.");
