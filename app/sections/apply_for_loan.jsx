@@ -43,8 +43,7 @@ const ApplyForLoan = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...formData,
-          recipient: "muasyathegreat4@gmail.com", // Updated recipient email
+          ...formData, // Updated recipient email
         }),
       });
 

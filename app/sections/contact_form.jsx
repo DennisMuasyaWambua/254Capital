@@ -42,8 +42,7 @@ export default function ContactForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...formData,
-          recipient: "muasyathegreat4@gmail.com", // The email recipient
+          ...formData, // The email recipient
         }),
       });
 
