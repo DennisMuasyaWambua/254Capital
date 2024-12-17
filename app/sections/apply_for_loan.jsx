@@ -2,6 +2,9 @@
 
 import Image from "next/image";
 import React, { useState } from "react";
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Upload } from 'lucide-react'
 
 const ApplyForLoan = () => {
   const [formData, setFormData] = useState({
@@ -11,7 +14,16 @@ const ApplyForLoan = () => {
     loanType: "",
     amount: "",
     securityType: "",
+    attachment:[],
   });
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files)
+    setFormData(prev => ({
+      ...prev,
+      attachment: files
+    }))
+  }
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [responseMessage, setResponseMessage] = useState("");
@@ -36,6 +48,22 @@ const ApplyForLoan = () => {
           "Formspree endpoint for apply loan is not set in the environment variables."
         );
       }
+      // Create a FormData object to properly handle file uploads
+      const formDataToSend = new FormData();
+      
+      // Append all text fields
+      Object.keys(formData).forEach(key => {
+        if (key !== 'attachment') {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
+
+      // Append files
+      if (formData.attachment && formData.attachment.length > 0) {
+        formData.attachment.forEach((file, index) => {
+          formDataToSend.append(`attachment`, file);
+        });
+      }
 
       const response = await fetch(FORM_ENDPOINT, {
         method: "POST",
@@ -43,7 +71,7 @@ const ApplyForLoan = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...formData, // Updated recipient email
+          ...formDataToSend, // Updated recipient email
         }),
       });
 
@@ -56,6 +84,7 @@ const ApplyForLoan = () => {
           loanType: "",
           amount: "",
           securityType: "",
+          attachment:[],
         });
       } else {
         setResponseMessage("Failed to submit your loan application. Please try again.");
@@ -154,6 +183,30 @@ const ApplyForLoan = () => {
           <option value="salary">Salary Assignment</option>
           <option value="property">Property</option>
         </select>
+
+        <div className="space-y-2">
+          <Label htmlFor="document">Supporting Document</Label>
+          <div className="grid w-full max-w-sm items-center gap-1.5">
+            <Label 
+              htmlFor="document" 
+              className="flex items-center gap-2 h-10 px-3 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground cursor-pointer rounded-md"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Upload Document</span>
+            </Label>
+            <Input 
+              id="document"
+              name="attachment"
+              onChange = {handleFileChange}
+              type="file" 
+              className="hidden"
+              accept=".pdf,.doc,.docx"
+            />
+            <p className="text-sm text-muted-foreground">
+              Accepted formats: PDF, DOC, DOCX (Max 5MB)
+            </p>
+          </div>
+        </div>
         <button
           type="submit"
           className="w-full p-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
