@@ -6,6 +6,8 @@ import React from 'react'
 import ContactForm from '@/app/sections/contact_form'
 import ApplyForLoan from '@/app/sections/apply_for_loan'
 import AboutUs from '@/app/sections/aboutus'
+import LoanCalculator from '@/app/sections/loan_calculator'
+import FAQSection from '@/app/sections/frequently_asked_questions'
 
 const Users = () => {
   return (
@@ -30,6 +32,8 @@ const Users = () => {
       <LoanProducts />
       <ContactForm />
       <ApplyForLoan />
+      <LoanCalculator/>
+      <FAQSection/>
       <AboutUs/>
     </div>
   )
