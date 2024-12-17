@@ -29,7 +29,7 @@ const ApplyForLoan = () => {
     setIsSubmitting(true);
 
     try {
-      const FORM_ENDPOINT = "http://51.20.79.89:8000/mail/loan-applications/";
+      const FORM_ENDPOINT = "http://13.48.141.185:8000/mail/loan-applications/";
 
       if (!FORM_ENDPOINT) {
         throw new Error(
