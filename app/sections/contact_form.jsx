@@ -41,7 +41,7 @@ export default function ContactForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        mode: 'cors',
+      
         body: JSON.stringify({
           ...formData, // The email recipient
         }),
