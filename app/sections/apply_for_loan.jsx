@@ -41,7 +41,7 @@ const ApplyForLoan = () => {
     setIsSubmitting(true);
 
     try {
-      const FORM_ENDPOINT = "http://13.48.141.185:8000/mail/loan-applications/";
+      const FORM_ENDPOINT = "https://api.254-capital.com/mail/loan-applications/";
 
       if (!FORM_ENDPOINT) {
         throw new Error(

@@ -30,7 +30,7 @@ export default function ContactForm() {
 
     try {
       // Use the Formspree endpoint from environment variables
-      const FORM_ENDPOINT = "http://13.48.141.185:8000/mail/contact/";
+      const FORM_ENDPOINT = "https://api.254-capital.com/mail/contact/";
 
       if (!FORM_ENDPOINT) {
         throw new Error("Formspree endpoint is not set in the environment variables.");
