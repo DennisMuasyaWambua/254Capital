@@ -38,7 +38,7 @@ export default function ContactForm() {
 
       const response = await fetch(FORM_ENDPOINT, {
         method: "POST",
-        mode:"no-cors",
+       
         headers: {
           "Content-Type": "application/json",
         },
