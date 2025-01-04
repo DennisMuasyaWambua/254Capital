@@ -41,7 +41,7 @@ const ApplyForLoan = () => {
     setIsSubmitting(true);
 
     try {
-      const FORM_ENDPOINT = "https://api.254-capital.com/mail/loan-applications/";
+      const FORM_ENDPOINT = "https://254capitalemailserver-production.up.railway.app/mail/loan-applications/";
 
       if (!FORM_ENDPOINT) {
         throw new Error(
