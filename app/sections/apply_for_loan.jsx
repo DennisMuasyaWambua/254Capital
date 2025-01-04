@@ -39,44 +39,37 @@ const ApplyForLoan = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-
+  
     try {
       const FORM_ENDPOINT = "https://254capitalemailserver-production.up.railway.app/mail/loan-applications/";
-
+  
       if (!FORM_ENDPOINT) {
-        throw new Error(
-          "Formspree endpoint for apply loan is not set in the environment variables."
-        );
+        throw new Error("Form endpoint is not set.");
       }
+  
       // Create a FormData object to properly handle file uploads
       const formDataToSend = new FormData();
-      
-      // Append all text fields
+  
+      // Append all text fields to FormData
       Object.keys(formData).forEach(key => {
         if (key !== 'attachment') {
           formDataToSend.append(key, formData[key]);
         }
       });
-
-      // Append files
+  
+      // Append files (attachments)
       if (formData.attachment && formData.attachment.length > 0) {
-        formData.attachment.forEach((file, index) => {
-          formDataToSend.append(`attachment`, file);
+        formData.attachment.forEach((file) => {
+          formDataToSend.append("attachment", file);
         });
       }
-
+  
+      // Send the request with FormData
       const response = await fetch(FORM_ENDPOINT, {
         method: "POST",
-       
-        headers: {
-          "Content-Type": "application/json",
-          
-        },
-        body: JSON.stringify({
-          ...formDataToSend, // Updated recipient email
-        }),
+        body: formDataToSend, // No need to set Content-Type, browser will do it
       });
-
+  
       if (response.ok) {
         setResponseMessage("Your loan application has been submitted successfully!");
         setFormData({
@@ -86,18 +79,19 @@ const ApplyForLoan = () => {
           loanType: "",
           amount: "",
           securityType: "",
-          attachment:[],
+          attachment: [],
         });
       } else {
         setResponseMessage("Failed to submit your loan application. Please try again.");
       }
     } catch (error) {
       setResponseMessage("An error occurred. Please try again later.");
-      console.error("Formspree Error:", error);
+      console.error("Error:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
+  
 
   return (
     <div id="applyforloan" className="flex flex-col md:flex-row max-w-4xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
