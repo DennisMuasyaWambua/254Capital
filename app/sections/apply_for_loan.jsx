@@ -70,7 +70,7 @@ const ApplyForLoan = () => {
        
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          
         },
         body: JSON.stringify({
           ...formDataToSend, // Updated recipient email
