@@ -9,11 +9,11 @@ import { Upload } from 'lucide-react'
 const ApplyForLoan = () => {
   const [formData, setFormData] = useState({
     name: "",
-    idNumber: "",
+    id_number: "",
     email: "",
-    loanType: "",
+    loan_type: "",
     amount: "",
-    securityType: "",
+    security_type: "",
   });
   
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -75,11 +75,11 @@ const ApplyForLoan = () => {
       // Reset form
       setFormData({
         name: "",
-        idNumber: "",
+        id_number: "",
         email: "",
-        loanType: "",
+        loan_type: "",
         amount: "",
-        securityType: "",
+        security_type: "",
       });
       setSelectedFiles([]);
       
@@ -136,8 +136,8 @@ const ApplyForLoan = () => {
           />
           <input
             type="text"
-            name="idNumber"
-            value={formData.idNumber}
+            name="id_number"
+            value={formData.id_number}
             onChange={handleChange}
             placeholder="ID number"
             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-teal-500"
@@ -153,8 +153,8 @@ const ApplyForLoan = () => {
             required
           />
           <select
-            name="loanType"
-            value={formData.loanType}
+            name="loan_type"
+            value={formData.loan_type}
             onChange={handleChange}
             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-teal-500"
             required
@@ -180,8 +180,8 @@ const ApplyForLoan = () => {
             required
           />
           <select
-            name="securityType"
-            value={formData.securityType}
+            name="security_type"
+            value={formData.security_type}
             onChange={handleChange}
             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-teal-500"
             required
