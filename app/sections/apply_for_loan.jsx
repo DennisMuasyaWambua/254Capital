@@ -39,7 +39,7 @@ const ApplyForLoan = () => {
     setResponseMessage("");
 
     try {
-      const FORM_ENDPOINT = "http://api.254-capital.com/mail/loan-applications/";
+      const FORM_ENDPOINT = "http://254capitalemailserver-production.up.railway.app/mail/loan-applications/";
 
       if (!FORM_ENDPOINT) {
         throw new Error("Form endpoint is not set.");
