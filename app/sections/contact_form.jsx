@@ -138,8 +138,15 @@ export default function ContactForm() {
                 {/* Social Media Icons */}
                 <div className="flex justify-center gap-4 mt-6">
                   
-                  <a href="#" className="text-green-500 hover:text-green-600">
-                    <MessageCircle className="h-6 w-6" />
+                  <a href="https://wa.me/+254742064270" className="text-green-500 hover:text-green-600">
+                    
+                    <Image
+                      height={50}
+                      width={50}
+                      src="/whatsapp.png"
+                      alt="whats app"
+                      priority
+                    />
                   </a>
                   <p>
                     email us at: info@254-capital.com
