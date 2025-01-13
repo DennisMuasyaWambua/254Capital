@@ -138,7 +138,8 @@ export default function ContactForm() {
                 {/* Social Media Icons */}
                 <div className="flex justify-center gap-4 mt-6">
                   
-                  <a href="https://wa.me/+254742064270" className="text-green-500 hover:text-green-600">
+                  <a href="https://wa.me/+254742064270" className="fixed bottom-4 right-4 p-3 bg-blue-500 text-white rounded-full">
+                  
                     
                     <Image
                       height={50}
