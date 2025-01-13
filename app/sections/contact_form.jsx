@@ -138,9 +138,22 @@ export default function ContactForm() {
                 {/* Social Media Icons */}
                 <div className="flex justify-center gap-4 mt-6">
                   
-                  <a href="https://wa.me/+254742064270" className="fixed bottom-4 right-4 p-3 bg-blue-500 text-white rounded-full">
+                  <a href="https://wa.me/+254742064270" className="fixed bottom-4 right-4 p-3  text-white rounded-full">
                   
-                    
+                    <span className=" block
+  absolute  w-full bg-white  bottom-4  right-[70px]  border-0 w-[120%]
+  px-[10px]
+  py-[5px]
+  text-black
+  text-sm
+  font-bold
+  tracking-tight
+  select-none
+  break-all
+  leading-4
+  truncate
+  align-middle
+  shadow-none">Talk to us</span>
                     <Image
                       height={50}
                       width={50}
