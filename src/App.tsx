@@ -31,6 +31,9 @@ import NewApplication from "./pages/dashboard/NewApplication";
 import Team from "./pages/dashboard/Team";
 import Settings from "./pages/dashboard/Settings";
 
+// Salary Check-Off System
+import { SalaryCheckOffApp } from "./pages/salary-checkoff/SalaryCheckOffApp";
+
 // No placeholder components needed
 
 const queryClient = new QueryClient();
@@ -56,6 +59,9 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* Salary Check-Off System */}
+            <Route path="/salary-checkoff/*" element={<SalaryCheckOffApp />} />
             
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>

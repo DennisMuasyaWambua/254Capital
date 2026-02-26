@@ -1,5 +1,3 @@
-
-import React from 'react';
 import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
 
@@ -117,7 +115,10 @@ const Services = () => {
             </div>
             
             {/* Card 5 - Salary Check Off loan */}
-            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 ease-out">
+            <Link
+              to="/salary-checkoff"
+              className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 ease-out block cursor-pointer hover:border-[#48A7A7]/30"
+            >
               <div className="mb-4">
                 <span className="inline-block px-3 py-1 bg-[#48A7A7]/10 text-[#48A7A7] rounded-full text-sm font-medium">For Employees</span>
               </div>
@@ -131,13 +132,13 @@ const Services = () => {
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Salary Check Off loan</h3>
               <p className="text-gray-600 mb-4">Access affordable credit directly through your employer with automatic salary deductions for convenient repayment.</p>
               <p className="text-sm text-gray-500 italic mb-4">Competitive rates for employed professionals.</p>
-              <Link to="/contacts" className="text-[#48A7A7] font-medium flex items-center hover:underline">
-                Learn more
+              <div className="text-[#48A7A7] font-medium flex items-center hover:underline">
+                Apply Now
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
-              </Link>
-            </div>
+              </div>
+            </Link>
             
             {/* Card 6 - Personal Unsecured loan */}
             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 ease-out">
