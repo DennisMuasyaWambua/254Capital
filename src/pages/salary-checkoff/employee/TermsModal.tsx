@@ -96,7 +96,24 @@ export function TermsModal({ isOpen, onClose, onAccept }: TermsModalProps) {
 
         <section>
           <h4 className="font-semibold text-slate-900 mb-2">
-            1. Interest Rate Disclosure
+            1. Eligibility Requirements
+          </h4>
+          <p>
+            This salary check-off loan facility is{' '}
+            <strong>available only to confirmed staff</strong> members. Employees
+            on probation or temporary contracts are not eligible to apply for
+            this loan product.
+          </p>
+          <p className="mt-2">
+            You must have completed your probation period and received written
+            confirmation of permanent employment from your employer to qualify
+            for this facility.
+          </p>
+        </section>
+
+        <section>
+          <h4 className="font-semibold text-slate-900 mb-2">
+            2. Interest Rate Disclosure
           </h4>
           <p>
             254 Capital charges a <strong>flat interest rate of 5%</strong> on
@@ -114,7 +131,7 @@ export function TermsModal({ isOpen, onClose, onAccept }: TermsModalProps) {
 
         <section>
           <h4 className="font-semibold text-slate-900 mb-2">
-            2. Payroll Deduction Authorization
+            3. Payroll Deduction Authorization
           </h4>
           <p>
             By accepting these terms, you{' '}
@@ -131,7 +148,7 @@ export function TermsModal({ isOpen, onClose, onAccept }: TermsModalProps) {
 
         <section>
           <h4 className="font-semibold text-slate-900 mb-2">
-            3. Deduction Date Rules
+            4. Deduction Date Rules
           </h4>
           <p>
             Monthly deductions are processed on the{' '}
@@ -158,19 +175,21 @@ export function TermsModal({ isOpen, onClose, onAccept }: TermsModalProps) {
 
         <section>
           <h4 className="font-semibold text-slate-900 mb-2">
-            4. Early Exit / Employment Termination
+            5. Early Exit / Employment Termination
           </h4>
           <p>
-            In the event that your employment is terminated for any reason
-            before the loan is fully repaid, the{' '}
+            This facility is{' '}
+            <strong>eligible to confirmed staff only</strong>. In the event
+            that your employment is terminated for any reason before the loan
+            is fully repaid, the{' '}
             <strong>
               outstanding loan balance becomes immediately due and payable
             </strong>
             . Your employer is authorized to deduct the full outstanding balance
-            from your terminal benefits (gratuity, leave pay, pension, etc.).
+            from your terminal dues.
           </p>
           <p className="mt-2">
-            If terminal benefits are insufficient to cover the outstanding
+            If terminal dues are insufficient to cover the outstanding
             balance, you remain personally liable for the remaining amount and
             must arrange alternative repayment with 254 Capital within 30 days
             of termination.
@@ -179,7 +198,7 @@ export function TermsModal({ isOpen, onClose, onAccept }: TermsModalProps) {
 
         <section>
           <h4 className="font-semibold text-slate-900 mb-2">
-            5. Document Handling & Privacy Policy
+            6. Document Handling & Privacy Policy
           </h4>
           <p>
             All documents submitted (National ID, payslips, etc.) will be stored
@@ -193,11 +212,20 @@ export function TermsModal({ isOpen, onClose, onAccept }: TermsModalProps) {
             Kenyan financial regulations. You have the right to request access
             to your personal data at any time.
           </p>
+          <p className="mt-2">
+            <strong>Data Protection Compliance:</strong> 254 Capital is fully
+            compliant with the{' '}
+            <strong>Data Protection Act, 2019 (Act No. 24 of 2019)</strong> of
+            the Republic of Kenya. Your personal data is processed lawfully,
+            fairly, and transparently in accordance with the Act. You have
+            rights to access, rectify, and request deletion of your personal
+            data as provided under the Act.
+          </p>
         </section>
 
         <section>
           <h4 className="font-semibold text-slate-900 mb-2">
-            6. Employment Verification Consent
+            7. Employment Verification Consent
           </h4>
           <p>
             You hereby consent to 254 Capital contacting your employer's HR
@@ -209,7 +237,7 @@ export function TermsModal({ isOpen, onClose, onAccept }: TermsModalProps) {
 
         <section>
           <h4 className="font-semibold text-slate-900 mb-2">
-            7. Default & Late Payment
+            8. Default & Late Payment
           </h4>
           <p>
             Failure to maintain employment without notifying 254 Capital, or any
@@ -221,7 +249,7 @@ export function TermsModal({ isOpen, onClose, onAccept }: TermsModalProps) {
 
         <section>
           <h4 className="font-semibold text-slate-900 mb-2">
-            8. Governing Law
+            9. Governing Law
           </h4>
           <p>
             These terms are governed by the laws of the Republic of Kenya. Any

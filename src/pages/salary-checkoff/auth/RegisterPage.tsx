@@ -15,6 +15,7 @@ export function RegisterPage({
 }: RegisterPageProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [employmentType, setEmploymentType] = useState('permanent');
   const steps = [
   {
     id: 1,
@@ -78,11 +79,23 @@ export function RegisterPage({
                   <Input label="Full Name" placeholder="John Kamau" />
                   <Input label="National ID" placeholder="12345678" />
                   <Input
-                  label="Email Address"
+                  label="Personal Email Address"
                   type="email"
-                  placeholder="john@example.com" />
+                  placeholder="john@example.com"
+                  helperText="Your personal email" />
+
+                  <Input
+                  label="Work Email Address"
+                  type="email"
+                  placeholder="john.kamau@company.co.ke"
+                  helperText="Your company/work email" />
 
                   <Input label="Phone Number" placeholder="0712 345 678" />
+                  <Input
+                  label="Residential Location"
+                  placeholder="e.g. Nairobi, Westlands"
+                  helperText="Your current residential area" />
+
                   <Input
                   label="Password"
                   type="password"
@@ -143,9 +156,27 @@ export function RegisterPage({
                     value: 'contract',
                     label: 'Contract'
                   }]
-                  } />
+                  }
+                  onChange={(e) => setEmploymentType(e.target.value)} />
 
+                  {employmentType === 'contract' &&
+                  <Input
+                    label="Contract End Date"
+                    type="date"
+                    helperText="Required for contract employees"
+                    className="col-span-1" />
+                  }
                 </div>
+                {employmentType === 'contract' &&
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-800">
+                      <strong>Note:</strong> This loan facility is primarily
+                      available to confirmed staff. Contract employees may be
+                      subject to additional verification and the loan tenure
+                      must not exceed your contract end date.
+                    </p>
+                  </div>
+                }
               </div>
             }
 
