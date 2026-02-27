@@ -46,17 +46,17 @@ export interface RegisterEmployeeResponse {
 }
 
 export interface HRLoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
 export interface AdminLoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
 export interface Admin2FARequest {
-  user_id: string;
+  temp_token: string;
   totp_code: string;
 }
 
@@ -133,17 +133,17 @@ export const authService = {
   },
 
   /**
-   * HR login with username and password
+   * HR login with email and password
    */
   hrLogin: async (
-    username: string,
+    email: string,
     password: string
   ): Promise<VerifyOTPResponse> => {
     const response = await apiRequest<VerifyOTPResponse>(
       API_ENDPOINTS.AUTH.HR_LOGIN,
       {
         method: 'POST',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       }
     );
 
@@ -157,14 +157,14 @@ export const authService = {
    * Admin login (step 1)
    */
   adminLogin: async (
-    username: string,
+    email: string,
     password: string
-  ): Promise<{ user_id: string; message: string }> => {
-    return apiRequest<{ user_id: string; message: string }>(
+  ): Promise<{ temp_token: string; message: string }> => {
+    return apiRequest<{ temp_token: string; message: string }>(
       API_ENDPOINTS.AUTH.ADMIN_LOGIN,
       {
         method: 'POST',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       }
     );
   },
@@ -173,7 +173,7 @@ export const authService = {
    * Admin verify 2FA (step 2)
    */
   adminVerify2FA: async (
-    userId: string,
+    tempToken: string,
     totpCode: string
   ): Promise<VerifyOTPResponse> => {
     const response = await apiRequest<VerifyOTPResponse>(
@@ -181,7 +181,7 @@ export const authService = {
       {
         method: 'POST',
         body: JSON.stringify({
-          user_id: userId,
+          temp_token: tempToken,
           totp_code: totpCode,
         }),
       }
@@ -199,6 +199,16 @@ export const authService = {
   getProfile: async (): Promise<UserProfile> => {
     return apiRequest<UserProfile>(API_ENDPOINTS.AUTH.PROFILE, {
       method: 'GET',
+    });
+  },
+
+  /**
+   * Update user profile
+   */
+  updateProfile: async (data: Partial<UserProfile>): Promise<UserProfile> => {
+    return apiRequest<UserProfile>(API_ENDPOINTS.AUTH.PROFILE, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   },
 

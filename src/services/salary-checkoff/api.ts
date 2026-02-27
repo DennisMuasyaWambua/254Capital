@@ -38,6 +38,7 @@ export const API_ENDPOINTS = {
   // Employer endpoints
   EMPLOYERS: {
     LIST: `${API_BASE_URL}/api/v1/employers/`,
+    CREATE: `${API_BASE_URL}/api/v1/employers/create/`,
     DETAIL: (id: string) => `${API_BASE_URL}/api/v1/employers/${id}/`,
   },
 
@@ -46,27 +47,45 @@ export const API_ENDPOINTS = {
     UPLOAD: `${API_BASE_URL}/api/v1/documents/upload/`,
     LIST: `${API_BASE_URL}/api/v1/documents/`,
     DETAIL: (id: string) => `${API_BASE_URL}/api/v1/documents/${id}/`,
-    VERIFY: (id: string) => `${API_BASE_URL}/api/v1/documents/${id}/verify/`,
+    APPLICATION_DOCUMENTS: (applicationId: string) =>
+      `${API_BASE_URL}/api/v1/documents/application/${applicationId}/`,
   },
 
   // Notification endpoints
   NOTIFICATIONS: {
     LIST: `${API_BASE_URL}/api/v1/notifications/`,
-    MARK_READ: (id: string) => `${API_BASE_URL}/api/v1/notifications/${id}/mark-read/`,
+    UNREAD_COUNT: `${API_BASE_URL}/api/v1/notifications/unread-count/`,
+    MARK_READ: (id: string) => `${API_BASE_URL}/api/v1/notifications/${id}/read/`,
     MARK_ALL_READ: `${API_BASE_URL}/api/v1/notifications/mark-all-read/`,
+
+    // Message thread endpoints
+    THREADS: `${API_BASE_URL}/api/v1/notifications/threads/`,
+    THREAD_MESSAGES: (threadId: string) =>
+      `${API_BASE_URL}/api/v1/notifications/threads/${threadId}/messages/`,
   },
 
   // Reconciliation endpoints
   RECONCILIATION: {
-    LIST: `${API_BASE_URL}/api/v1/reconciliation/`,
-    DETAIL: (id: string) => `${API_BASE_URL}/api/v1/reconciliation/${id}/`,
-    UPLOAD: `${API_BASE_URL}/api/v1/reconciliation/upload/`,
+    // Remittance endpoints
+    REMITTANCES: `${API_BASE_URL}/api/v1/reconciliation/remittances/`,
+    REMITTANCE_CREATE: `${API_BASE_URL}/api/v1/reconciliation/remittances/create/`,
+    REMITTANCE_DETAIL: (id: string) => `${API_BASE_URL}/api/v1/reconciliation/remittances/${id}/`,
+    REMITTANCE_CONFIRM: (id: string) => `${API_BASE_URL}/api/v1/reconciliation/remittances/${id}/confirm/`,
+
+    // Reconciliation endpoints
+    RECONCILE_RUN: `${API_BASE_URL}/api/v1/reconciliation/reconcile/`,
+    RECORDS: `${API_BASE_URL}/api/v1/reconciliation/records/`,
+    RECORD_UPDATE: (id: string) => `${API_BASE_URL}/api/v1/reconciliation/records/${id}/`,
   },
 
   // Export endpoints
   EXPORTS: {
-    SCHEDULE: `${API_BASE_URL}/api/v1/exports/schedule/`,
-    DEDUCTION_LIST: `${API_BASE_URL}/api/v1/exports/deduction-list/`,
+    DEDUCTIONS: `${API_BASE_URL}/api/v1/exports/deductions/`,
+    REPAYMENT_PDF: (applicationId: string) =>
+      `${API_BASE_URL}/api/v1/exports/repayment-pdf/${applicationId}/`,
+    LOAN_BOOK_REPORT: `${API_BASE_URL}/api/v1/exports/reports/loan-book/`,
+    EMPLOYER_SUMMARY: `${API_BASE_URL}/api/v1/exports/reports/employer-summary/`,
+    COLLECTION_SHEET: `${API_BASE_URL}/api/v1/exports/reports/collection-sheet/`,
   },
 };
 

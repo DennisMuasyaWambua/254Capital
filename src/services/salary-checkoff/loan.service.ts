@@ -18,11 +18,16 @@ export interface LoanApplication {
     name: string;
   };
   principal_amount: string;
+  interest_rate: string;
   repayment_months: number;
   purpose: string;
   total_repayment: string;
   monthly_deduction: string;
   status: string;
+  terms_accepted: boolean;
+  terms_accepted_at?: string;
+  disbursement_method?: 'bank' | 'mpesa';
+  disbursement_reference?: string;
   created_at: string;
   updated_at: string;
   disbursement_date?: string;
@@ -51,6 +56,7 @@ export interface CreateLoanRequest {
   principal_amount: number;
   repayment_months: number;
   purpose: string;
+  terms_accepted: boolean;
 }
 
 export interface LoanCalculatorRequest {
