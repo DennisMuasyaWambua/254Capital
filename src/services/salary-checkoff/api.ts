@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
     TOKEN_REFRESH: `${API_BASE_URL}/api/v1/auth/token/refresh/`,
     HR_LOGIN: `${API_BASE_URL}/api/v1/auth/hr/login/`,
     ADMIN_LOGIN: `${API_BASE_URL}/api/v1/auth/admin/login/`,
+    VERIFY_LOGIN_OTP: `${API_BASE_URL}/api/v1/auth/verify-login-otp/`,
     ADMIN_VERIFY_2FA: `${API_BASE_URL}/api/v1/auth/admin/verify-2fa/`,
     PROFILE: `${API_BASE_URL}/api/v1/auth/profile/`,
   },

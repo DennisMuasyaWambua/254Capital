@@ -10,11 +10,14 @@ import {
   Mail,
   Shield } from
 'lucide-react';
+import { authService } from '@/services/salary-checkoff/auth.service';
+import { ApiError } from '@/services/salary-checkoff/api';
+
 interface LoginPageProps {
   onLogin: (role: 'employee' | 'hr' | 'admin') => void;
   onRegisterClick: () => void;
 }
-type AuthStep = 'phone' | 'otp';
+type AuthStep = 'phone' | 'otp' | 'staff-otp';
 type LoginMode = 'employee' | 'staff';
 export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
   const [loginMode, setLoginMode] = useState<LoginMode>('employee');
@@ -25,10 +28,14 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [phoneError, setPhoneError] = useState('');
+  const [otpError, setOtpError] = useState('');
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   // Staff login state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [staffError, setStaffError] = useState('');
+  const [tempToken, setTempToken] = useState('');
+  const [maskedPhone, setMaskedPhone] = useState('');
   // Countdown timer for OTP resend
   useEffect(() => {
     if (countdown <= 0) return;
@@ -40,19 +47,35 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
     if (digits.length < 6) return p;
     return digits.slice(0, 2) + '*'.repeat(digits.length - 5) + digits.slice(-3);
   };
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 9) {
       setPhoneError('Please enter a valid Kenyan mobile number');
       return;
     }
+
+    // Normalize phone number to format +254...
+    let normalizedPhone = digits;
+    if (digits.startsWith('0')) {
+      normalizedPhone = '+254' + digits.substring(1);
+    } else if (!digits.startsWith('+')) {
+      normalizedPhone = '+254' + digits;
+    }
+
     setPhoneError('');
     setIsLoading(true);
-    setTimeout(() => {
+
+    try {
+      const response = await authService.sendOTP(normalizedPhone);
       setIsLoading(false);
       setOtpStep('otp');
-      setCountdown(60);
-    }, 1500);
+      setCountdown(response.expires_in || 300);
+      setMaskedPhone(response.masked_phone);
+    } catch (error) {
+      setIsLoading(false);
+      const apiError = error as ApiError;
+      setPhoneError(apiError.message || 'Failed to send OTP. Please try again.');
+    }
   };
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -68,27 +91,122 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
       otpRefs.current[index - 1]?.focus();
     }
   };
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     const code = otp.join('');
     if (code.length < 6) return;
+
+    // Normalize phone number
+    const digits = phone.replace(/\D/g, '');
+    let normalizedPhone = digits;
+    if (digits.startsWith('0')) {
+      normalizedPhone = '+254' + digits.substring(1);
+    } else if (!digits.startsWith('+')) {
+      normalizedPhone = '+254' + digits;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    setOtpError('');
+
+    try {
+      const response = await authService.verifyOTP(normalizedPhone, code);
+
+      if (response.is_new_user) {
+        // New user - redirect to registration with phone number
+        setIsLoading(false);
+        // You might want to pass the phone number to the registration page
+        onRegisterClick();
+      } else {
+        // Existing user - login successful
+        setIsLoading(false);
+        onLogin('employee');
+      }
+    } catch (error) {
       setIsLoading(false);
-      onLogin('employee');
-    }, 1500);
+      const apiError = error as ApiError;
+      setOtpError(apiError.message || 'Invalid OTP. Please try again.');
+    }
   };
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     setOtp(['', '', '', '', '', '']);
-    setCountdown(60);
-    otpRefs.current[0]?.focus();
+    setOtpError('');
+
+    // Normalize phone number
+    const digits = phone.replace(/\D/g, '');
+    let normalizedPhone = digits;
+    if (digits.startsWith('0')) {
+      normalizedPhone = '+254' + digits.substring(1);
+    } else if (!digits.startsWith('+')) {
+      normalizedPhone = '+254' + digits;
+    }
+
+    try {
+      const response = await authService.sendOTP(normalizedPhone);
+      setCountdown(response.expires_in || 300);
+      setMaskedPhone(response.masked_phone);
+      otpRefs.current[0]?.focus();
+    } catch (error) {
+      const apiError = error as ApiError;
+      setOtpError(apiError.message || 'Failed to resend OTP. Please try again.');
+    }
   };
-  const handleStaffLogin = (e: React.FormEvent) => {
+  const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    setStaffError('');
+
+    try {
+      // Try HR login first
+      const response = await authService.hrLogin(email, password);
       setIsLoading(false);
-      onLogin('hr');
-    }, 1500);
+
+      if (response.requires_otp) {
+        // Store temp token and show OTP step
+        setTempToken(response.temp_token);
+        setMaskedPhone(response.masked_phone);
+        setOtpStep('staff-otp');
+        setCountdown(response.expires_in || 300);
+        setOtp(['', '', '', '', '', '']);
+      }
+    } catch (error) {
+      // If HR login fails, try admin login
+      try {
+        const response = await authService.adminLogin(email, password);
+        setIsLoading(false);
+
+        if (response.requires_otp) {
+          setTempToken(response.temp_token);
+          setMaskedPhone(response.masked_phone);
+          setOtpStep('staff-otp');
+          setCountdown(response.expires_in || 300);
+          setOtp(['', '', '', '', '', '']);
+        }
+      } catch (adminError) {
+        setIsLoading(false);
+        const apiError = adminError as ApiError;
+        setStaffError(apiError.message || 'Invalid email or password.');
+      }
+    }
+  };
+
+  const handleVerifyStaffOtp = async () => {
+    const code = otp.join('');
+    if (code.length < 6) return;
+
+    setIsLoading(true);
+    setOtpError('');
+
+    try {
+      const response = await authService.verifyLoginOTP(tempToken, code);
+      setIsLoading(false);
+
+      // Login successful - determine role from response
+      const role = response.user.role === 'admin' ? 'admin' : 'hr';
+      onLogin(role);
+    } catch (error) {
+      setIsLoading(false);
+      const apiError = error as ApiError;
+      setOtpError(apiError.message || 'Invalid OTP. Please try again.');
+    }
   };
   const otpComplete = otp.every((d) => d !== '');
   return (
@@ -217,7 +335,10 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
             <div className="space-y-6 animate-slide-in-right">
                   <div>
                     <button
-                  onClick={() => setOtpStep('phone')}
+                  onClick={() => {
+                    setOtpStep('phone');
+                    setOtpError('');
+                  }}
                   className="text-sm text-[#008080] hover:text-[#006666] mb-4 flex items-center">
 
                       ← Change number
@@ -228,7 +349,7 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
                     <p className="mt-2 text-slate-600">
                       We sent a 6-digit code to{' '}
                       <span className="font-semibold text-slate-900">
-                        {maskPhone(phone)}
+                        {maskedPhone || maskPhone(phone)}
                       </span>
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
@@ -249,13 +370,19 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
                   className={`
-                          otp-input w-12 h-14 text-center text-xl font-bold rounded-lg border-2 
+                          otp-input w-12 h-14 text-center text-xl font-bold rounded-lg border-2
                           transition-all duration-200 focus:outline-none
                           ${digit ? 'border-[#008080] bg-[#E0F2F2] text-[#008080] scale-105' : 'border-slate-300 bg-white text-slate-900'}
                         `} />
 
                 )}
                   </div>
+
+                  {otpError && (
+                    <div className="text-sm text-red-600 text-center">
+                      {otpError}
+                    </div>
+                  )}
 
                   <Button
                 className="w-full"
@@ -293,46 +420,154 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
 
           {/* Staff Login (HR / Admin) */}
           {loginMode === 'staff' &&
-          <div className="space-y-6 animate-fade-in">
-              <div>
-                <h2 className="text-3xl font-bold text-slate-900">
-                  Staff Login
-                </h2>
-                <p className="mt-2 text-slate-600">
-                  HR Managers and Admins sign in with credentials.
-                </p>
-              </div>
+          <>
+              {otpStep !== 'staff-otp' ? (
+                <div className="space-y-6 animate-fade-in">
+                  <div>
+                    <h2 className="text-3xl font-bold text-slate-900">
+                      Staff Login
+                    </h2>
+                    <p className="mt-2 text-slate-600">
+                      HR Managers and Admins sign in with credentials.
+                    </p>
+                  </div>
 
-              <form onSubmit={handleStaffLogin} className="space-y-5">
-                <Input
-                label="Email address"
-                type="email"
-                placeholder="hr@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                leftIcon={<Mail className="h-5 w-5" />}
-                required />
+                  <form onSubmit={handleStaffLogin} className="space-y-5">
+                    <Input
+                    label="Email address"
+                    type="email"
+                    placeholder="hr@company.com"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setStaffError('');
+                    }}
+                    leftIcon={<Mail className="h-5 w-5" />}
+                    required />
 
-                <Input
-                label="Password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                leftIcon={<Lock className="h-5 w-5" />}
-                required />
+                    <Input
+                    label="Password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setStaffError('');
+                    }}
+                    leftIcon={<Lock className="h-5 w-5" />}
+                    error={staffError}
+                    required />
 
-                <Button
-                type="submit"
-                className="w-full"
-                size="lg"
-                isLoading={isLoading}
-                rightIcon={<ArrowRight className="h-5 w-5" />}>
+                    <Button
+                    type="submit"
+                    className="w-full"
+                    size="lg"
+                    isLoading={isLoading}
+                    rightIcon={<ArrowRight className="h-5 w-5" />}>
 
-                  Sign In
-                </Button>
-              </form>
-            </div>
+                      Sign In
+                    </Button>
+                  </form>
+                </div>
+              ) : (
+                <div className="space-y-6 animate-slide-in-right">
+                  <div>
+                    <button
+                      onClick={() => {
+                        setOtpStep('phone');
+                        setOtpError('');
+                        setLoginMode('staff');
+                      }}
+                      className="text-sm text-[#008080] hover:text-[#006666] mb-4 flex items-center"
+                    >
+                      ← Back to login
+                    </button>
+                    <h2 className="text-3xl font-bold text-slate-900">
+                      Enter OTP
+                    </h2>
+                    <p className="mt-2 text-slate-600">
+                      We sent a 6-digit code to{' '}
+                      <span className="font-semibold text-slate-900">
+                        {maskedPhone}
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Valid for 5 minutes
+                    </p>
+                  </div>
+
+                  {/* OTP Input Boxes */}
+                  <div className="flex gap-3 justify-center">
+                    {otp.map((digit, i) => (
+                      <input
+                        key={i}
+                        ref={(el) => (otpRefs.current[i] = el)}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(i, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                        className={`
+                          otp-input w-12 h-14 text-center text-xl font-bold rounded-lg border-2
+                          transition-all duration-200 focus:outline-none
+                          ${digit ? 'border-[#008080] bg-[#E0F2F2] text-[#008080] scale-105' : 'border-slate-300 bg-white text-slate-900'}
+                        `}
+                      />
+                    ))}
+                  </div>
+
+                  {otpError && (
+                    <div className="text-sm text-red-600 text-center">
+                      {otpError}
+                    </div>
+                  )}
+
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    isLoading={isLoading}
+                    disabled={!otpComplete}
+                    onClick={handleVerifyStaffOtp}
+                    rightIcon={<CheckCircle2 className="h-5 w-5" />}
+                  >
+                    Verify & Sign In
+                  </Button>
+
+                  {/* Resend */}
+                  <div className="text-center">
+                    {countdown > 0 ? (
+                      <p className="text-sm text-slate-500">
+                        Resend code in{' '}
+                        <span className="font-semibold text-slate-700">
+                          {countdown}s
+                        </span>
+                      </p>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          setOtp(['', '', '', '', '', '']);
+                          setOtpError('');
+                          try {
+                            const response = email.includes('admin')
+                              ? await authService.adminLogin(email, password)
+                              : await authService.hrLogin(email, password);
+                            setCountdown(response.expires_in || 300);
+                            otpRefs.current[0]?.focus();
+                          } catch (error) {
+                            const apiError = error as ApiError;
+                            setOtpError(apiError.message || 'Failed to resend OTP.');
+                          }
+                        }}
+                        className="text-sm font-medium text-[#008080] hover:text-[#006666] flex items-center mx-auto gap-1"
+                      >
+                        <RefreshCw className="h-4 w-4" /> Resend OTP
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           }
 
           {/* Demo Access */}

@@ -9,8 +9,9 @@ export interface SendOTPRequest {
 }
 
 export interface SendOTPResponse {
-  message: string;
-  otp_sent: boolean;
+  detail: string;
+  masked_phone: string;
+  expires_in: number;
 }
 
 export interface VerifyOTPRequest {
@@ -19,13 +20,20 @@ export interface VerifyOTPRequest {
 }
 
 export interface VerifyOTPResponse {
-  access: string;
-  refresh: string;
-  user: {
+  detail: string;
+  is_new_user: boolean;
+  phone_verified?: boolean;
+  phone_number?: string;
+  tokens?: {
+    access: string;
+    refresh: string;
+  };
+  user?: {
     id: string;
     phone_number: string;
     first_name: string;
     last_name: string;
+    email: string;
     role: string;
   };
 }
@@ -41,8 +49,19 @@ export interface RegisterEmployeeRequest {
 }
 
 export interface RegisterEmployeeResponse {
-  message: string;
-  user_id: string;
+  detail: string;
+  tokens: {
+    access: string;
+    refresh: string;
+  };
+  user: {
+    id: string;
+    phone_number: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    role: string;
+  };
 }
 
 export interface HRLoginRequest {
@@ -50,9 +69,46 @@ export interface HRLoginRequest {
   password: string;
 }
 
+export interface HRLoginResponse {
+  detail: string;
+  requires_otp: boolean;
+  temp_token: string;
+  masked_phone: string;
+  expires_in: number;
+}
+
 export interface AdminLoginRequest {
   email: string;
   password: string;
+}
+
+export interface AdminLoginResponse {
+  detail: string;
+  requires_otp: boolean;
+  temp_token: string;
+  masked_phone: string;
+  expires_in: number;
+}
+
+export interface VerifyLoginOTPRequest {
+  temp_token: string;
+  otp: string;
+}
+
+export interface VerifyLoginOTPResponse {
+  detail: string;
+  tokens: {
+    access: string;
+    refresh: string;
+  };
+  user: {
+    id: string;
+    phone_number: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    role: string;
+  };
 }
 
 export interface Admin2FARequest {
@@ -109,13 +165,15 @@ export const authService = {
         method: 'POST',
         body: JSON.stringify({
           phone_number: phoneNumber,
-          otp_code: otpCode,
+          otp: otpCode,
         }),
       }
     );
 
-    // Store tokens
-    tokenManager.setTokens(response.access, response.refresh);
+    // Store tokens if user exists
+    if (!response.is_new_user && response.tokens) {
+      tokenManager.setTokens(response.tokens.access, response.tokens.refresh);
+    }
 
     return response;
   },
@@ -126,41 +184,44 @@ export const authService = {
   registerEmployee: async (
     data: RegisterEmployeeRequest
   ): Promise<RegisterEmployeeResponse> => {
-    return apiRequest<RegisterEmployeeResponse>(API_ENDPOINTS.AUTH.REGISTER, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await apiRequest<RegisterEmployeeResponse>(
+      API_ENDPOINTS.AUTH.REGISTER,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+
+    // Store tokens after successful registration
+    tokenManager.setTokens(response.tokens.access, response.tokens.refresh);
+
+    return response;
   },
 
   /**
-   * HR login with email and password
+   * HR login with email and password (step 1 - sends OTP)
    */
   hrLogin: async (
     email: string,
     password: string
-  ): Promise<VerifyOTPResponse> => {
-    const response = await apiRequest<VerifyOTPResponse>(
+  ): Promise<HRLoginResponse> => {
+    return apiRequest<HRLoginResponse>(
       API_ENDPOINTS.AUTH.HR_LOGIN,
       {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }
     );
-
-    // Store tokens
-    tokenManager.setTokens(response.access, response.refresh);
-
-    return response;
   },
 
   /**
-   * Admin login (step 1)
+   * Admin login (step 1 - sends OTP)
    */
   adminLogin: async (
     email: string,
     password: string
-  ): Promise<{ temp_token: string; message: string }> => {
-    return apiRequest<{ temp_token: string; message: string }>(
+  ): Promise<AdminLoginResponse> => {
+    return apiRequest<AdminLoginResponse>(
       API_ENDPOINTS.AUTH.ADMIN_LOGIN,
       {
         method: 'POST',
@@ -170,13 +231,37 @@ export const authService = {
   },
 
   /**
-   * Admin verify 2FA (step 2)
+   * Verify login OTP for HR/Admin (step 2)
+   */
+  verifyLoginOTP: async (
+    tempToken: string,
+    otp: string
+  ): Promise<VerifyLoginOTPResponse> => {
+    const response = await apiRequest<VerifyLoginOTPResponse>(
+      API_ENDPOINTS.AUTH.VERIFY_LOGIN_OTP,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          temp_token: tempToken,
+          otp,
+        }),
+      }
+    );
+
+    // Store tokens
+    tokenManager.setTokens(response.tokens.access, response.tokens.refresh);
+
+    return response;
+  },
+
+  /**
+   * Admin verify 2FA (step 2) - DEPRECATED
    */
   adminVerify2FA: async (
     tempToken: string,
     totpCode: string
-  ): Promise<VerifyOTPResponse> => {
-    const response = await apiRequest<VerifyOTPResponse>(
+  ): Promise<VerifyLoginOTPResponse> => {
+    const response = await apiRequest<VerifyLoginOTPResponse>(
       API_ENDPOINTS.AUTH.ADMIN_VERIFY_2FA,
       {
         method: 'POST',
@@ -188,7 +273,7 @@ export const authService = {
     );
 
     // Store tokens
-    tokenManager.setTokens(response.access, response.refresh);
+    tokenManager.setTokens(response.tokens.access, response.tokens.refresh);
 
     return response;
   },
