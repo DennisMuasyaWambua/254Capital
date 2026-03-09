@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { StatCard } from '@/components/salary-checkoff/ui/StatCard';
 import { Table } from '@/components/salary-checkoff/ui/Table';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Button } from '@/components/salary-checkoff/ui/Button';
+import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
 import {
   Briefcase,
   Users,
   DollarSign,
   AlertTriangle,
   ArrowRight,
-  Calendar } from
+  Calendar,
+  Loader2 } from
 'lucide-react';
 import {
   getFirstDeductionDate,
@@ -21,39 +23,65 @@ interface AdminDashboardProps {
   onNavigate: (page: string) => void;
 }
 export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
-  const recentApplications = [
-  {
-    id: 'LN-2026-005',
-    employer: 'Safaricom PLC',
-    employee: 'Grace Muthoni',
-    amount: 'KES 80,000',
-    disbursedDate: new Date(2026, 0, 10),
-    status: 'disbursed'
-  },
-  {
-    id: 'LN-2026-004',
-    employer: 'Kenya Power',
-    employee: 'Peter Ochieng',
-    amount: 'KES 120,000',
-    disbursedDate: new Date(2026, 0, 18),
-    status: 'disbursed'
-  },
-  {
-    id: 'LN-2026-003',
-    employer: 'KCB Bank',
-    employee: 'John Kamau',
-    amount: 'KES 50,000',
-    disbursedDate: new Date(2026, 0, 5),
-    status: 'disbursed'
-  },
-  {
-    id: 'LN-2026-002',
-    employer: 'Equity Bank',
-    employee: 'Mary Wanjiku',
-    amount: 'KES 200,000',
-    disbursedDate: null,
-    status: 'under-review'
-  }];
+  const [isLoading, setIsLoading] = useState(true);
+  const [recentApplications, setRecentApplications] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalEmployers: 0,
+    activeLoans: 0,
+    totalDisbursed: 0,
+    defaultRate: 0,
+  });
+
+  useEffect(() => {
+    loadAdminDashboardData();
+  }, []);
+
+  const loadAdminDashboardData = async () => {
+    try {
+      setIsLoading(true);
+
+      // Fetch applications from admin queue
+      const queueResponse = await loanService.adminListQueue({});
+
+      // Format recent applications
+      const formattedApplications = queueResponse.results.slice(0, 4).map(app => {
+        const disbursedDate = app.disbursement_date
+          ? new Date(app.disbursement_date)
+          : null;
+
+        return {
+          id: app.application_number,
+          employer: app.employer.name,
+          employee: `${app.employee.first_name} ${app.employee.last_name}`,
+          amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
+          disbursedDate: disbursedDate,
+          status: app.status,
+        };
+      });
+
+      setRecentApplications(formattedApplications);
+
+      // Calculate stats (simplified - would need specific endpoints for accurate data)
+      const activeLoans = queueResponse.results.filter(
+        app => app.status === 'disbursed'
+      ).length;
+
+      const totalDisbursed = queueResponse.results
+        .filter(app => app.status === 'disbursed')
+        .reduce((sum, app) => sum + parseFloat(app.principal_amount), 0);
+
+      setStats({
+        totalEmployers: 0, // Would need employer endpoint
+        activeLoans: activeLoans || queueResponse.count,
+        totalDisbursed,
+        defaultRate: 0, // Would need specific calculation
+      });
+    } catch (error) {
+      console.error('Error loading admin dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const columns = [
   {
@@ -118,6 +146,14 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
   }];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -136,43 +172,27 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           label="Total Employers"
-          value="12"
+          value={stats.totalEmployers > 0 ? stats.totalEmployers.toString() : "N/A"}
           icon={<Briefcase className="h-6 w-6 text-blue-600" />}
-          color="blue"
-          trend={{
-            value: 2,
-            isPositive: true
-          }} />
+          color="blue" />
 
         <StatCard
           label="Active Loans"
-          value="450"
+          value={stats.activeLoans.toString()}
           icon={<Users className="h-6 w-6 text-emerald-600" />}
-          color="teal"
-          trend={{
-            value: 15,
-            isPositive: true
-          }} />
+          color="teal" />
 
         <StatCard
           label="Total Disbursed"
-          value="KES 67.5M"
+          value={`KES ${(stats.totalDisbursed / 1000000).toFixed(2)}M`}
           icon={<DollarSign className="h-6 w-6 text-purple-600" />}
-          color="purple"
-          trend={{
-            value: 8.5,
-            isPositive: true
-          }} />
+          color="purple" />
 
         <StatCard
           label="Default Rate"
-          value="2.3%"
+          value={stats.defaultRate > 0 ? `${stats.defaultRate.toFixed(1)}%` : "0%"}
           icon={<AlertTriangle className="h-6 w-6 text-red-600" />}
-          color="amber"
-          trend={{
-            value: 0.1,
-            isPositive: false
-          }} />
+          color="amber" />
 
       </div>
 

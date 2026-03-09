@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
+import { loanService, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
 import {
   ArrowLeft,
   Check,
   X,
   FileText,
   Download,
-  UserCheck } from
+  UserCheck,
+  Loader2,
+  AlertCircle } from
 'lucide-react';
 interface ApplicationReviewProps {
   onBack: () => void;
@@ -18,20 +21,138 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
   const [comment, setComment] = useState('');
-  const employee = {
-    name: 'Grace Muthoni',
-    id: 'EMP-045',
-    department: 'Marketing',
-    salary: 180000,
-    employmentDate: '12 Mar 2022',
-    type: 'Permanent'
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [application, setApplication] = useState<LoanApplicationDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadApplication();
+  }, []);
+
+  const loadApplication = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch pending applications
+      const pendingResponse = await loanService.hrListPending();
+
+      if (pendingResponse.results.length === 0) {
+        setError('No pending applications found.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Get the first pending application's details
+      const firstPending = pendingResponse.results[0];
+      const applicationDetail = await loanService.getApplication(firstPending.id);
+
+      setApplication(applicationDetail);
+    } catch (err: any) {
+      console.error('Error loading application:', err);
+      setError(err.message || 'Failed to load application');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleApprove = async () => {
+    if (!application) return;
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      await loanService.hrReview(application.id, {
+        action: 'approve',
+        comment: comment || 'Application approved',
+      });
+
+      setIsApproveModalOpen(false);
+      onBack();
+    } catch (err: any) {
+      console.error('Error approving application:', err);
+      setError(err.message || 'Failed to approve application');
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!application) return;
+
+    if (!comment.trim()) {
+      setError('Please provide a reason for declining');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      await loanService.hrReview(application.id, {
+        action: 'decline',
+        comment: comment,
+      });
+
+      setIsDeclineModalOpen(false);
+      onBack();
+    } catch (err: any) {
+      console.error('Error declining application:', err);
+      setError(err.message || 'Failed to decline application');
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+      </div>
+    );
+  }
+
+  if (error && !application) {
+    return (
+      <div className="space-y-6 max-w-6xl mx-auto">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          leftIcon={<ArrowLeft className="h-4 w-4" />}>
+          Back
+        </Button>
+        <div className="flex items-center justify-center p-12">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <p className="text-slate-600">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!application) {
+    return null;
+  }
+
+  const employee = {
+    name: `${application.employee.first_name} ${application.employee.last_name}`,
+    id: application.employee.id,
+    department: 'N/A', // Not available in API
+    salary: application.employee_profile?.monthly_salary
+      ? parseFloat(application.employee_profile.monthly_salary)
+      : 0,
+    employmentDate: 'N/A', // Not available in API
+    type: 'Permanent' // Not available in API
+  };
+
   const loan = {
-    amount: 80000,
-    period: 6,
-    monthly: 14000,
-    purpose: 'Medical emergency for family member',
-    date: '16 Jan 2026'
+    amount: parseFloat(application.principal_amount),
+    period: application.repayment_months,
+    monthly: parseFloat(application.monthly_deduction),
+    purpose: application.purpose || 'Not specified',
+    date: new Date(application.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
   };
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -46,9 +167,9 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
             Back
           </Button>
           <h1 className="text-2xl font-bold text-slate-900">
-            Review Application #LN-2026-005
+            Review Application #{application.application_number}
           </h1>
-          <Badge variant="pending">Pending Review</Badge>
+          <Badge variant="pending">{application.status.replace('_', ' ').toUpperCase()}</Badge>
         </div>
         <div className="flex space-x-3">
           <Button
@@ -253,10 +374,8 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
               Cancel
             </Button>
             <Button
-            onClick={() => {
-              setIsApproveModalOpen(false);
-              onBack();
-            }}>
+            onClick={handleApprove}
+            isLoading={isSubmitting}>
 
               Confirm Approval
             </Button>
@@ -292,10 +411,8 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
             </Button>
             <Button
             variant="danger"
-            onClick={() => {
-              setIsDeclineModalOpen(false);
-              onBack();
-            }}>
+            onClick={handleDecline}
+            isLoading={isSubmitting}>
 
               Decline Application
             </Button>
@@ -306,6 +423,12 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
           Please provide a reason for declining this application. This will be
           shared with the employee.
         </p>
+        {error && (
+          <div className="flex items-start space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
         <textarea
           className="w-full h-32 rounded-lg border border-slate-300 p-3 focus:ring-[#00BCD4] focus:border-[#00BCD4]"
           placeholder="Enter reason for decline..."

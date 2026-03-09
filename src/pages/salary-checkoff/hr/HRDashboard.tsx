@@ -1,50 +1,94 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { StatCard } from '@/components/salary-checkoff/ui/StatCard';
 import { Table } from '@/components/salary-checkoff/ui/Table';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Button } from '@/components/salary-checkoff/ui/Button';
+import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
 import {
   Users,
   FileText,
   CheckCircle,
   DollarSign,
-  Calendar } from
+  Calendar,
+  Loader2 } from
 'lucide-react';
 import { getDeductionTag } from '@/utils/salary-checkoff/deductionDate';
 interface HRDashboardProps {
   onNavigate: (page: string) => void;
 }
 export function HRDashboard({ onNavigate }: HRDashboardProps) {
-  // Mock disbursement dates to demonstrate the deduction tag logic
-  const pendingApplications = [
-  {
-    id: 'LN-2026-005',
-    employee: 'Grace Muthoni',
-    empId: 'EMP-045',
-    amount: 'KES 80,000',
-    date: 'Today',
-    department: 'Marketing',
-    disbursementDate: new Date(2026, 0, 10) // Jan 10 — ≤ 15th → same month
-  },
-  {
-    id: 'LN-2026-004',
-    employee: 'Peter Ochieng',
-    empId: 'EMP-023',
-    amount: 'KES 120,000',
-    date: 'Yesterday',
-    department: 'IT',
-    disbursementDate: new Date(2026, 0, 18) // Jan 18 — > 15th → next month
-  },
-  {
-    id: 'LN-2026-003',
-    employee: 'Sarah Kimani',
-    empId: 'EMP-089',
-    amount: 'KES 50,000',
-    date: '14 Jan',
-    department: 'HR',
-    disbursementDate: new Date(2026, 0, 14) // Jan 14 — ≤ 15th → same month
-  }];
+  const [isLoading, setIsLoading] = useState(true);
+  const [pendingApplications, setPendingApplications] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    pending: 0,
+    approvedThisMonth: 0,
+    activeLoans: 0,
+    monthlyRemittance: 0,
+  });
+
+  useEffect(() => {
+    loadHRDashboardData();
+  }, []);
+
+  const loadHRDashboardData = async () => {
+    try {
+      setIsLoading(true);
+
+      // Fetch pending applications
+      const pendingResponse = await loanService.hrListPending();
+
+      // Format pending applications
+      const formattedPending = pendingResponse.results.map(app => {
+        const disbursementDate = app.disbursement_date
+          ? new Date(app.disbursement_date)
+          : new Date(app.created_at);
+
+        return {
+          id: app.application_number,
+          employee: `${app.employee.first_name} ${app.employee.last_name}`,
+          empId: app.employee.id,
+          amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
+          date: new Date(app.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }),
+          department: 'N/A', // Not available in API response
+          disbursementDate: disbursementDate,
+          fullApplication: app,
+        };
+      });
+
+      setPendingApplications(formattedPending);
+
+      // Fetch all applications to calculate stats
+      const allResponse = await loanService.hrListAll({});
+
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const approvedThisMonth = allResponse.results.filter(
+        app => app.status === 'hr_approved' && new Date(app.updated_at) >= firstDayOfMonth
+      ).length;
+
+      const activeLoans = allResponse.results.filter(
+        app => app.status === 'disbursed' || app.status === 'approved'
+      ).length;
+
+      // Calculate monthly remittance (sum of all active monthly deductions)
+      const monthlyRemittance = allResponse.results
+        .filter(app => app.status === 'disbursed')
+        .reduce((sum, app) => sum + parseFloat(app.monthly_deduction), 0);
+
+      setStats({
+        pending: pendingResponse.count || 0,
+        approvedThisMonth,
+        activeLoans,
+        monthlyRemittance,
+      });
+    } catch (error) {
+      console.error('Error loading HR dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const columns = [
   {
@@ -95,6 +139,14 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
 
   }];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -111,39 +163,27 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           label="Pending Applications"
-          value="8"
+          value={stats.pending.toString()}
           icon={<FileText className="h-6 w-6 text-amber-600" />}
-          color="amber"
-          trend={{
-            value: 12,
-            isPositive: true
-          }} />
+          color="amber" />
 
         <StatCard
           label="Approved This Month"
-          value="23"
+          value={stats.approvedThisMonth.toString()}
           icon={<CheckCircle className="h-6 w-6 text-emerald-600" />}
-          color="teal"
-          trend={{
-            value: 5,
-            isPositive: true
-          }} />
+          color="teal" />
 
         <StatCard
           label="Active Loans"
-          value="156"
+          value={stats.activeLoans.toString()}
           icon={<Users className="h-6 w-6 text-blue-600" />}
           color="blue" />
 
         <StatCard
           label="Monthly Remittance"
-          value="KES 2.45M"
+          value={`KES ${(stats.monthlyRemittance / 1000000).toFixed(2)}M`}
           icon={<DollarSign className="h-6 w-6 text-purple-600" />}
-          color="purple"
-          trend={{
-            value: 2.1,
-            isPositive: true
-          }} />
+          color="purple" />
 
       </div>
 

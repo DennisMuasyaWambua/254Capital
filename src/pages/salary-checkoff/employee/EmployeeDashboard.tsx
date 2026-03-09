@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { StatCard } from '@/components/salary-checkoff/ui/StatCard';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Table } from '@/components/salary-checkoff/ui/Table';
+import { authService } from '@/services/salary-checkoff/auth.service';
+import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
 import {
   Wallet,
   Calendar,
@@ -12,31 +14,91 @@ import {
   ArrowRight,
   Download,
   Plus,
-  Check } from
+  Check,
+  Loader2 } from
 'lucide-react';
 interface EmployeeDashboardProps {
   onNavigate: (page: string) => void;
 }
 export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
-  const recentApplications = [
-  {
-    id: 'LN-2026-001',
-    amount: 'KES 150,000',
-    date: '15 Jan 2026',
-    status: 'approved'
-  },
-  {
-    id: 'LN-2025-089',
-    amount: 'KES 50,000',
-    date: '10 Nov 2025',
-    status: 'disbursed'
-  },
-  {
-    id: 'LN-2025-042',
-    amount: 'KES 200,000',
-    date: '22 Jun 2025',
-    status: 'disbursed'
-  }];
+  const [isLoading, setIsLoading] = useState(true);
+  const [userName, setUserName] = useState('');
+  const [recentApplications, setRecentApplications] = useState<any[]>([]);
+  const [activeLoan, setActiveLoan] = useState<LoanApplication | null>(null);
+  const [stats, setStats] = useState({
+    activeLoanAmount: 0,
+    monthlyDeduction: 0,
+    remainingBalance: 0,
+    nextDeduction: '',
+  });
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setIsLoading(true);
+
+      // Fetch user profile
+      const profile = await authService.getProfile();
+      setUserName(profile.first_name);
+
+      // Fetch loan applications
+      const applicationsResponse = await loanService.listApplications({ page: 1 });
+
+      // Get recent applications (last 3)
+      const formattedApplications = applicationsResponse.results.slice(0, 3).map(app => ({
+        id: app.application_number,
+        amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
+        date: new Date(app.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }),
+        status: app.status,
+      }));
+      setRecentApplications(formattedApplications);
+
+      // Find active/disbursed loan for stats
+      const activeLoans = applicationsResponse.results.filter(
+        app => app.status === 'disbursed' || app.status === 'approved'
+      );
+
+      if (activeLoans.length > 0) {
+        const loan = activeLoans[0];
+        setActiveLoan(loan);
+
+        // Calculate remaining balance (simplified - would need repayment data from API)
+        const totalRepayment = parseFloat(loan.total_repayment);
+        const monthlyDeduction = parseFloat(loan.monthly_deduction);
+
+        // Estimate months elapsed (simplified calculation)
+        const disbursementDate = new Date(loan.disbursement_date || loan.created_at);
+        const today = new Date();
+        const monthsElapsed = Math.max(0,
+          (today.getFullYear() - disbursementDate.getFullYear()) * 12 +
+          (today.getMonth() - disbursementDate.getMonth())
+        );
+        const paidAmount = monthlyDeduction * monthsElapsed;
+        const remainingBalance = Math.max(0, totalRepayment - paidAmount);
+
+        // Calculate next deduction date (25th of current or next month)
+        const nextDeduction = new Date();
+        if (today.getDate() >= 25) {
+          nextDeduction.setMonth(nextDeduction.getMonth() + 1);
+        }
+        nextDeduction.setDate(25);
+
+        setStats({
+          activeLoanAmount: parseFloat(loan.principal_amount),
+          monthlyDeduction: monthlyDeduction,
+          remainingBalance: remainingBalance,
+          nextDeduction: nextDeduction.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }),
+        });
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const columns = [
   {
@@ -66,13 +128,21 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
 
   }];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Welcome back, John! 👋
+            Welcome back, {userName || 'User'}! 👋
           </h1>
           <p className="text-slate-500">
             Here's what's happening with your loans today.
@@ -99,89 +169,91 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
         <StatCard
           label="Active Loan Amount"
-          value="KES 150,000"
+          value={stats.activeLoanAmount > 0 ? `KES ${stats.activeLoanAmount.toLocaleString()}` : 'No Active Loan'}
           icon={<Wallet className="h-6 w-6 text-[#00838F]" />}
           color="teal" />
 
         <StatCard
           label="Monthly Deduction"
-          value="KES 13,125"
+          value={stats.monthlyDeduction > 0 ? `KES ${Math.round(stats.monthlyDeduction).toLocaleString()}` : 'N/A'}
           icon={<Calendar className="h-6 w-6 text-blue-700" />}
           color="blue" />
 
         <StatCard
           label="Remaining Balance"
-          value="KES 78,750"
+          value={stats.remainingBalance > 0 ? `KES ${Math.round(stats.remainingBalance).toLocaleString()}` : 'N/A'}
           icon={<PiggyBank className="h-6 w-6 text-purple-700" />}
           color="purple" />
 
         <StatCard
           label="Next Deduction"
-          value="25th Feb"
+          value={stats.nextDeduction || 'N/A'}
           icon={<Clock className="h-6 w-6 text-amber-700" />}
           color="amber" />
 
       </div>
 
       {/* Application Tracker */}
-      <Card title="Current Application Status" className="overflow-visible">
-        <div className="relative py-8 px-4">
-          <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 hidden md:block" />
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-8 relative">
-            {[
-            {
-              label: 'Submitted',
-              status: 'completed',
-              date: '15 Jan'
-            },
-            {
-              label: 'HR Review',
-              status: 'completed',
-              date: '16 Jan'
-            },
-            {
-              label: '254 Review',
-              status: 'completed',
-              date: '17 Jan'
-            },
-            {
-              label: 'Approved',
-              status: 'current',
-              date: 'Today'
-            },
-            {
-              label: 'Disbursed',
-              status: 'upcoming',
-              date: 'Pending'
-            }].
-            map((step, index) =>
-            <div
-              key={index}
-              className="flex flex-col items-center relative z-10">
+      {activeLoan && (
+        <Card title="Current Application Status" className="overflow-visible">
+          <div className="relative py-8 px-4">
+            <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 hidden md:block" />
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-8 relative">
+              {[
+              {
+                label: 'Submitted',
+                status: activeLoan.status === 'submitted' ? 'current' : ['hr_pending', 'hr_approved', 'admin_pending', 'approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
+                date: new Date(activeLoan.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
+              },
+              {
+                label: 'HR Review',
+                status: activeLoan.status === 'hr_pending' ? 'current' : ['hr_approved', 'admin_pending', 'approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
+                date: activeLoan.status === 'submitted' ? 'Pending' : 'In Review'
+              },
+              {
+                label: '254 Review',
+                status: activeLoan.status === 'admin_pending' ? 'current' : ['approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
+                date: activeLoan.status === 'admin_pending' ? 'In Review' : activeLoan.status === 'hr_pending' || activeLoan.status === 'submitted' ? 'Pending' : 'Reviewed'
+              },
+              {
+                label: 'Approved',
+                status: activeLoan.status === 'approved' ? 'current' : activeLoan.status === 'disbursed' ? 'completed' : 'upcoming',
+                date: activeLoan.status === 'approved' || activeLoan.status === 'disbursed' ? 'Approved' : 'Pending'
+              },
+              {
+                label: 'Disbursed',
+                status: activeLoan.status === 'disbursed' ? 'completed' : 'upcoming',
+                date: activeLoan.status === 'disbursed' && activeLoan.disbursement_date ? new Date(activeLoan.disbursement_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) : 'Pending'
+              }].
+              map((step, index) =>
+              <div
+                key={index}
+                className="flex flex-col items-center relative z-10">
 
-                <div
-                className={`
-                  w-10 h-10 rounded-full flex items-center justify-center border-4 mb-3 transition-all duration-300
-                  ${step.status === 'completed' ? 'bg-[#008080] border-[#E0F2F2] text-white animate-check-in' : step.status === 'current' ? 'bg-white border-[#008080] text-[#008080]' : 'bg-white border-slate-200 text-slate-300'}
-                `}>
+                  <div
+                  className={`
+                    w-10 h-10 rounded-full flex items-center justify-center border-4 mb-3 transition-all duration-300
+                    ${step.status === 'completed' ? 'bg-[#008080] border-[#E0F2F2] text-white animate-check-in' : step.status === 'current' ? 'bg-white border-[#008080] text-[#008080]' : 'bg-white border-slate-200 text-slate-300'}
+                  `}>
 
-                  {step.status === 'completed' ?
-                <Check className="h-5 w-5" /> :
+                    {step.status === 'completed' ?
+                  <Check className="h-5 w-5" /> :
 
-                <span className="font-bold">{index + 1}</span>
-                }
+                  <span className="font-bold">{index + 1}</span>
+                  }
+                  </div>
+                  <h4
+                  className={`font-medium text-sm ${step.status === 'upcoming' ? 'text-slate-400' : 'text-slate-900'}`}>
+
+                    {step.label}
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1">{step.date}</p>
                 </div>
-                <h4
-                className={`font-medium text-sm ${step.status === 'upcoming' ? 'text-slate-400' : 'text-slate-900'}`}>
-
-                  {step.label}
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">{step.date}</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* Recent Applications Table */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,43 +1,147 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Table } from '@/components/salary-checkoff/ui/Table';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Button } from '@/components/salary-checkoff/ui/Button';
-import { Download, Calendar, Info } from 'lucide-react';
+import { Download, Calendar, Info, Loader2 } from 'lucide-react';
+import { loanService, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
 import {
   getFirstDeductionDate,
   formatDeductionDate } from
 '@/utils/salary-checkoff/deductionDate';
+
 export function RepaymentSchedule() {
-  // Mock: loan disbursed on Jan 10 (≤ 15th → first deduction same month, Jan 25)
-  const disbursementDate = new Date(2026, 0, 10); // Jan 10 2026
-  const firstDeductionDate = getFirstDeductionDate(disbursementDate);
-  const isSameMonth = disbursementDate.getDate() <= 15;
-  const loanDetails = {
-    amount: 150000,
-    interest: 7500,
-    total: 157500,
-    monthly: 13125,
-    disbursedDate: formatDeductionDate(disbursementDate),
-    firstDeduction: formatDeductionDate(firstDeductionDate)
+  const [isLoading, setIsLoading] = useState(true);
+  const [loanApplication, setLoanApplication] = useState<LoanApplicationDetail | null>(null);
+  const [disbursementDate, setDisbursementDate] = useState<Date | null>(null);
+  const [firstDeductionDate, setFirstDeductionDate] = useState<Date | null>(null);
+  const [isSameMonth, setIsSameMonth] = useState(false);
+  const [loanDetails, setLoanDetails] = useState({
+    amount: 0,
+    interest: 0,
+    total: 0,
+    monthly: 0,
+    disbursedDate: '',
+    firstDeduction: ''
+  });
+  const [scheduleData, setScheduleData] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadRepaymentSchedule();
+  }, []);
+
+  const loadRepaymentSchedule = async () => {
+    try {
+      setIsLoading(true);
+
+      // Fetch loan applications to find the active/disbursed loan
+      const applicationsResponse = await loanService.listApplications({ page: 1 });
+
+      // Find the most recent disbursed loan
+      const disbursedLoans = applicationsResponse.results.filter(
+        app => app.status === 'disbursed'
+      );
+
+      if (disbursedLoans.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Get detailed application with repayment schedule
+      const loanDetail = await loanService.getApplication(disbursedLoans[0].id);
+      setLoanApplication(loanDetail);
+
+      // Calculate loan details
+      const disbDate = new Date(loanDetail.disbursement_date || loanDetail.created_at);
+      setDisbursementDate(disbDate);
+
+      const firstDedDate = getFirstDeductionDate(disbDate);
+      setFirstDeductionDate(firstDedDate);
+      setIsSameMonth(disbDate.getDate() <= 15);
+
+      const principalAmount = parseFloat(loanDetail.principal_amount);
+      const totalRepayment = parseFloat(loanDetail.total_repayment);
+      const monthlyDeduction = parseFloat(loanDetail.monthly_deduction);
+      const interestAmount = totalRepayment - principalAmount;
+
+      setLoanDetails({
+        amount: principalAmount,
+        interest: interestAmount,
+        total: totalRepayment,
+        monthly: monthlyDeduction,
+        disbursedDate: formatDeductionDate(disbDate),
+        firstDeduction: formatDeductionDate(firstDedDate)
+      });
+
+      // Use the repayment schedule from API if available
+      if (loanDetail.repayment_schedule && loanDetail.repayment_schedule.length > 0) {
+        const formattedSchedule = loanDetail.repayment_schedule.map((installment, index) => {
+          const dueDate = new Date(installment.due_date);
+          const today = new Date();
+
+          let status = 'upcoming';
+          if (installment.paid) {
+            status = 'paid';
+          } else if (dueDate < today) {
+            status = 'overdue';
+          } else if (dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear()) {
+            status = 'current';
+          }
+
+          // Calculate remaining balance
+          const balance = totalRepayment - (monthlyDeduction * (installment.installment_number));
+
+          return {
+            month: installment.installment_number,
+            dueDate: dueDate.toLocaleDateString('en-KE', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
+            }),
+            amount: parseFloat(installment.amount),
+            principal: Math.round(principalAmount / loanDetail.repayment_months),
+            interest: Math.round(interestAmount / loanDetail.repayment_months),
+            status,
+            balance: Math.max(0, balance),
+            isFirst: installment.installment_number === 1
+          };
+        });
+        setScheduleData(formattedSchedule);
+      } else {
+        // Fallback: Generate schedule if not available from API
+        generateSchedule(firstDedDate, loanDetail.repayment_months, principalAmount, interestAmount, totalRepayment, monthlyDeduction);
+      }
+    } catch (error) {
+      console.error('Error loading repayment schedule:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
-  // Generate schedule from first deduction date
-  const totalMonths = 12;
-  const scheduleData = Array.from(
-    {
-      length: totalMonths
-    },
-    (_, i) => {
+
+  const generateSchedule = (
+    firstDedDate: Date,
+    totalMonths: number,
+    principalAmount: number,
+    interestAmount: number,
+    totalRepayment: number,
+    monthlyDeduction: number
+  ) => {
+    const schedule = Array.from({ length: totalMonths }, (_, i) => {
       const dueDate = new Date(
-        firstDeductionDate.getFullYear(),
-        firstDeductionDate.getMonth() + i,
+        firstDedDate.getFullYear(),
+        firstDedDate.getMonth() + i,
         25
       );
-      const balance = Math.max(
-        0,
-        loanDetails.total - loanDetails.monthly * (i + 1)
-      );
-      const status = i < 2 ? 'paid' : i === 2 ? 'current' : 'upcoming';
+      const balance = Math.max(0, totalRepayment - monthlyDeduction * (i + 1));
+
+      const today = new Date();
+      let status = 'upcoming';
+      if (dueDate < today) {
+        status = i < 2 ? 'paid' : 'overdue';
+      } else if (dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear()) {
+        status = 'current';
+      }
+
       return {
         month: i + 1,
         dueDate: dueDate.toLocaleDateString('en-KE', {
@@ -45,15 +149,32 @@ export function RepaymentSchedule() {
           month: 'short',
           year: 'numeric'
         }),
-        amount: loanDetails.monthly,
-        principal: Math.round(loanDetails.amount / totalMonths),
-        interest: Math.round(loanDetails.interest / totalMonths),
+        amount: monthlyDeduction,
+        principal: Math.round(principalAmount / totalMonths),
+        interest: Math.round(interestAmount / totalMonths),
         status,
         balance,
         isFirst: i === 0
       };
-    }
-  );
+    });
+    setScheduleData(schedule);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+      </div>
+    );
+  }
+
+  if (!loanApplication) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-slate-600">No active loan found. Apply for a loan to view your repayment schedule.</p>
+      </div>
+    );
+  }
   const columns = [
   {
     header: '#',

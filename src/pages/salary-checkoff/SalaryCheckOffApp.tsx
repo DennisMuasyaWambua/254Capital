@@ -88,10 +88,22 @@ export function SalaryCheckOffApp() {
             );
           case 'pending-applications':
             return (
-              <div className="p-6">Pending Applications List (Placeholder)</div>
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <h2 className="text-xl font-semibold text-slate-900 mb-2">Pending Applications</h2>
+                  <p className="text-slate-600">This feature is coming soon. Please use the dashboard to review applications.</p>
+                </div>
+              </div>
             );
           case 'payroll':
-            return <div className="p-6">Payroll & Deductions (Placeholder)</div>;
+            return (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <h2 className="text-xl font-semibold text-slate-900 mb-2">Payroll & Deductions</h2>
+                  <p className="text-slate-600">This feature is coming soon.</p>
+                </div>
+              </div>
+            );
           default:
             return <HRDashboard onNavigate={handleNavigate} />;
         }
@@ -100,10 +112,22 @@ export function SalaryCheckOffApp() {
           case 'dashboard':
             return <AdminDashboard onNavigate={handleNavigate} />;
           case 'employers':
-            return <div className="p-6">Employer Management (Placeholder)</div>;
+            return (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <h2 className="text-xl font-semibold text-slate-900 mb-2">Employer Management</h2>
+                  <p className="text-slate-600">This feature is coming soon.</p>
+                </div>
+              </div>
+            );
           case 'disbursements':
             return (
-              <div className="p-6">Disbursement Tracking (Placeholder)</div>
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <h2 className="text-xl font-semibold text-slate-900 mb-2">Disbursement Tracking</h2>
+                  <p className="text-slate-600">This feature is coming soon.</p>
+                </div>
+              </div>
             );
           default:
             return <AdminDashboard onNavigate={handleNavigate} />;

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { ProgressSteps } from '@/components/salary-checkoff/ui/ProgressSteps';
 import { FileUpload } from '@/components/salary-checkoff/ui/FileUpload';
 import { TermsModal } from './TermsModal';
+import { loanService, LoanCalculatorResponse } from '@/services/salary-checkoff/loan.service';
 import {
   getFirstDeductionDate,
   formatDeductionDate } from
@@ -28,22 +29,60 @@ export function LoanApplication({
   const [step, setStep] = useState(1);
   const [amount, setAmount] = useState<number>(50000);
   const [period, setPeriod] = useState<number>(6);
+  const [purpose, setPurpose] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsTimestamp, setTermsTimestamp] = useState<string | null>(null);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
-  // Calculations
-  const interestRate = 0.05;
-  const totalInterest = amount * interestRate;
-  const totalRepayment = amount + totalInterest;
-  const monthlyDeduction = period > 0 ? totalRepayment / period : 0;
+  const [calculationResult, setCalculationResult] = useState<LoanCalculatorResponse | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Debounced calculation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      calculateLoan();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [amount, period]);
+
+  const calculateLoan = async () => {
+    if (amount < 1000 || period < 1) {
+      return;
+    }
+
+    try {
+      setIsCalculating(true);
+      setError(null);
+
+      const result = await loanService.calculateLoan({
+        principal: amount,
+        months: period,
+        calculation_type: 'flat',
+      });
+
+      setCalculationResult(result);
+    } catch (err: any) {
+      console.error('Error calculating loan:', err);
+      setError(err.message || 'Failed to calculate loan');
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  // Fallback calculations if API fails
+  const interestRate = calculationResult ? parseFloat(calculationResult.interest_rate) : 0.05;
+  const totalInterest = calculationResult ? parseFloat(calculationResult.interest_amount) : amount * 0.05;
+  const totalRepayment = calculationResult ? parseFloat(calculationResult.total_repayment) : amount + totalInterest;
+  const monthlyDeduction = calculationResult ? parseFloat(calculationResult.monthly_deduction) : period > 0 ? totalRepayment / period : 0;
   // Deduction date logic — assume disbursement today for projection
   const today = new Date();
   const firstDeductionDate = getFirstDeductionDate(today);
   const isSameMonth = today.getDate() <= 15;
   const firstDeductionLabel = formatDeductionDate(firstDeductionDate);
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 2 && !termsAccepted) {
       setIsTermsOpen(true);
       return;
@@ -51,11 +90,24 @@ export function LoanApplication({
     if (step < 3) {
       setStep((prev) => prev + 1);
     } else {
-      setIsLoading(true);
-      setTimeout(() => {
-        setIsLoading(false);
+      // Submit loan application via API
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        await loanService.createApplication({
+          principal_amount: amount,
+          repayment_months: period,
+          purpose: purpose || 'Personal loan',
+          terms_accepted: termsAccepted,
+        });
+
         onSubmitSuccess();
-      }, 2000);
+      } catch (err: any) {
+        console.error('Error submitting loan application:', err);
+        setError(err.message || 'Failed to submit loan application. Please try again.');
+        setIsLoading(false);
+      }
     }
   };
   const handleBack = () => {
@@ -125,7 +177,9 @@ export function LoanApplication({
                   </label>
                   <textarea
                   className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-[#00BCD4] focus:ring-1 focus:ring-[#00BCD4] h-24 resize-none"
-                  placeholder="e.g. School fees, Medical emergency..." />
+                  placeholder="e.g. School fees, Medical emergency..."
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)} />
 
                 </div>
               </div>
@@ -256,6 +310,20 @@ export function LoanApplication({
                     {new Date(termsTimestamp).toLocaleString('en-KE')}
                   </div>
               }
+
+                {error && (
+                  <div className="flex items-start space-x-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800">
+                        Error
+                      </p>
+                      <p className="text-xs text-red-700 mt-1">
+                        {error}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-start space-x-3">
                   <input
