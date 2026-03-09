@@ -146,6 +146,9 @@ export const authService = {
    * Send OTP to phone number
    */
   sendOTP: async (phoneNumber: string): Promise<SendOTPResponse> => {
+    // Clear any existing invalid tokens before sending OTP
+    tokenManager.clearTokens();
+
     return apiRequest<SendOTPResponse>(API_ENDPOINTS.AUTH.SEND_OTP, {
       method: 'POST',
       body: JSON.stringify({ phone_number: phoneNumber }),
@@ -205,6 +208,9 @@ export const authService = {
     email: string,
     password: string
   ): Promise<HRLoginResponse> => {
+    // Clear any existing invalid tokens before login
+    tokenManager.clearTokens();
+
     return apiRequest<HRLoginResponse>(
       API_ENDPOINTS.AUTH.HR_LOGIN,
       {
@@ -221,6 +227,9 @@ export const authService = {
     email: string,
     password: string
   ): Promise<AdminLoginResponse> => {
+    // Clear any existing invalid tokens before login
+    tokenManager.clearTokens();
+
     return apiRequest<AdminLoginResponse>(
       API_ENDPOINTS.AUTH.ADMIN_LOGIN,
       {

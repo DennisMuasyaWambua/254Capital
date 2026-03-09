@@ -1,0 +1,151 @@
+{
+  "timestamp": "2026-03-09T09:31:00.678Z",
+  "summary": {
+    "total": 19,
+    "passed": 13,
+    "failed": 3,
+    "skipped": 3
+  },
+  "tests": [
+    {
+      "category": "Frontend Accessibility",
+      "name": "Home Page",
+      "status": 200,
+      "timestamp": "2026-03-09T09:31:00.717Z",
+      "contentLength": 1451
+    },
+    {
+      "category": "Frontend Accessibility",
+      "name": "Login Page",
+      "status": 200,
+      "timestamp": "2026-03-09T09:31:00.722Z",
+      "contentLength": 1451
+    },
+    {
+      "category": "Frontend Accessibility",
+      "name": "Signup Page",
+      "status": 200,
+      "timestamp": "2026-03-09T09:31:00.726Z",
+      "contentLength": 1451
+    },
+    {
+      "category": "Frontend Accessibility",
+      "name": "About Us Page",
+      "status": 200,
+      "timestamp": "2026-03-09T09:31:00.734Z",
+      "contentLength": 1451
+    },
+    {
+      "category": "Frontend Accessibility",
+      "name": "Services Page",
+      "status": 200,
+      "timestamp": "2026-03-09T09:31:00.738Z",
+      "contentLength": 1451
+    },
+    {
+      "category": "Frontend Accessibility",
+      "name": "Investor Relations Page",
+      "status": 200,
+      "timestamp": "2026-03-09T09:31:00.744Z",
+      "contentLength": 1451
+    },
+    {
+      "category": "Frontend Accessibility",
+      "name": "FAQs Page",
+      "status": 200,
+      "timestamp": "2026-03-09T09:31:00.747Z",
+      "contentLength": 1451
+    },
+    {
+      "category": "Frontend Accessibility",
+      "name": "Contacts Page",
+      "status": 200,
+      "timestamp": "2026-03-09T09:31:00.749Z",
+      "contentLength": 1451
+    },
+    {
+      "category": "Frontend Accessibility",
+      "name": "Salary Check-Off Login",
+      "status": 200,
+      "timestamp": "2026-03-09T09:31:00.754Z",
+      "contentLength": 1451
+    },
+    {
+      "category": "Main App Backend APIs",
+      "name": "Dashboard Metrics API",
+      "status": "failed",
+      "timestamp": "2026-03-09T09:31:01.760Z",
+      "message": "Backend API server not running",
+      "error": "Cannot connect to http://localhost:5000/api"
+    },
+    {
+      "category": "Main App Backend APIs",
+      "name": "Dashboard Activities API",
+      "timestamp": "2026-03-09T09:31:01.761Z",
+      "message": "connect ECONNREFUSED 127.0.0.1:5000"
+    },
+    {
+      "category": "Main App Backend APIs",
+      "name": "Company Profile API",
+      "timestamp": "2026-03-09T09:31:01.762Z",
+      "message": "connect ECONNREFUSED 127.0.0.1:5000"
+    },
+    {
+      "category": "Salary Check-Off Auth",
+      "name": "Admin Login Step 1 (Password)",
+      "status": "passed",
+      "timestamp": "2026-03-09T09:31:03.964Z",
+      "message": "OTP sent to 072***299. Expires in 300s",
+      "data": {
+        "temp_token_length": 303,
+        "masked_phone": "072***299",
+        "expires_in": 300
+      }
+    },
+    {
+      "category": "Salary Check-Off Auth",
+      "name": "Admin Login Step 2 (OTP Verification)",
+      "status": "skipped",
+      "timestamp": "2026-03-09T09:31:03.964Z",
+      "message": "OTP verification requires manual input from phone",
+      "note": "Check phone for OTP code and use the API endpoint: POST /auth/verify-login-otp/"
+    },
+    {
+      "category": "Salary Check-Off API Endpoints",
+      "name": "Loan Applications List",
+      "status": 401,
+      "timestamp": "2026-03-09T09:31:05.196Z",
+      "message": "Authentication required (expected)"
+    },
+    {
+      "category": "Salary Check-Off API Endpoints",
+      "name": "Employers List",
+      "status": 401,
+      "timestamp": "2026-03-09T09:31:05.349Z",
+      "message": "Authentication required (expected)"
+    },
+    {
+      "category": "Salary Check-Off API Endpoints",
+      "name": "Notifications List",
+      "status": 401,
+      "timestamp": "2026-03-09T09:31:05.600Z",
+      "message": "Authentication required (expected)"
+    },
+    {
+      "category": "Local Database Analysis",
+      "name": "Loan Applications DB",
+      "status": "skipped",
+      "timestamp": "2026-03-09T09:31:06.601Z",
+      "message": "LocalStorage analysis requires browser context",
+      "note": "Check browser console for localStorage data: 254_capital_applications"
+    },
+    {
+      "category": "Local Database Analysis",
+      "name": "User Accounts DB",
+      "status": "skipped",
+      "timestamp": "2026-03-09T09:31:06.601Z",
+      "message": "LocalStorage analysis requires browser context",
+      "note": "Check browser console for localStorage data: 254_capital_users"
+    }
+  ]
+}
