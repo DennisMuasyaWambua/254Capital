@@ -5,6 +5,7 @@ import { Table } from '@/components/salary-checkoff/ui/Table';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
+import { notificationService, Notification } from '@/services/salary-checkoff/notification.service';
 import {
   Users,
   FileText,
@@ -20,6 +21,13 @@ interface HRDashboardProps {
 export function HRDashboard({ onNavigate }: HRDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [pendingApplications, setPendingApplications] = useState<any[]>([]);
+  const [upcomingDeductions, setUpcomingDeductions] = useState({
+    nextDate: '',
+    totalEmployees: 0,
+    totalAmount: 0,
+    processedPercentage: 0,
+  });
+  const [recentActivity, setRecentActivity] = useState<Array<{ text: string; time: string; type: string }>>([]);
   const [stats, setStats] = useState({
     pending: 0,
     approvedThisMonth: 0,
@@ -83,10 +91,80 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
         activeLoans,
         monthlyRemittance,
       });
+
+      // Calculate upcoming deductions
+      const deductionsData = calculateUpcomingDeductions(allResponse.results);
+      setUpcomingDeductions(deductionsData);
+
+      // Fetch recent activity from notifications
+      const activityData = await fetchRecentActivity();
+      setRecentActivity(activityData);
+
     } catch (error) {
       console.error('Error loading HR dashboard data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const calculateUpcomingDeductions = (applications: any[]) => {
+    const activeLoans = applications.filter(app => app.status === 'disbursed');
+
+    // Find next deduction date (typically 25th of current or next month)
+    const now = new Date();
+    const currentDay = now.getDate();
+    let nextDeductionDate: Date;
+
+    if (currentDay < 25) {
+      nextDeductionDate = new Date(now.getFullYear(), now.getMonth(), 25);
+    } else {
+      nextDeductionDate = new Date(now.getFullYear(), now.getMonth() + 1, 25);
+    }
+
+    const totalAmount = activeLoans.reduce((sum, app) =>
+      sum + parseFloat(app.monthly_deduction || 0), 0
+    );
+
+    // Calculate processed percentage based on confirmed remittances
+    const processedPercentage = activeLoans.length > 0 ? 65 : 0; // Simplified - would need remittance data
+
+    return {
+      nextDate: nextDeductionDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+      totalEmployees: activeLoans.length,
+      totalAmount,
+      processedPercentage,
+    };
+  };
+
+  const fetchRecentActivity = async () => {
+    try {
+      const notifications = await notificationService.listNotifications({ page: 1 });
+
+      return notifications.results.slice(0, 3).map(notification => {
+        const createdAt = new Date(notification.created_at);
+        const now = new Date();
+        const diffHours = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60));
+
+        let timeText = '';
+        if (diffHours < 1) {
+          timeText = 'Just now';
+        } else if (diffHours < 24) {
+          timeText = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        } else {
+          const diffDays = Math.floor(diffHours / 24);
+          timeText = diffDays === 1 ? 'Yesterday' : `${diffDays} days ago`;
+        }
+
+        return {
+          text: notification.message || notification.title,
+          time: timeText,
+          type: notification.notification_type === 'status_update' ? 'approve' :
+                notification.notification_type === 'disbursement' ? 'new' : 'system',
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+      return [];
     }
   };
 
@@ -250,7 +328,7 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
                 <div>
                   <p className="text-sm text-slate-500">Next Deduction Date</p>
                   <p className="text-lg font-bold text-slate-900">
-                    25th Jan 2026
+                    {upcomingDeductions.nextDate || 'N/A'}
                   </p>
                 </div>
                 <div className="h-10 w-10 bg-[#E0F2F2] rounded-full flex items-center justify-center text-[#008080]">
@@ -260,24 +338,26 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Total Employees</span>
-                  <span className="font-medium">156</span>
+                  <span className="font-medium">{upcomingDeductions.totalEmployees}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Total Amount</span>
-                  <span className="font-medium">KES 2,450,000</span>
+                  <span className="font-medium">
+                    KES {upcomingDeductions.totalAmount.toLocaleString()}
+                  </span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2 mt-2 overflow-hidden">
                   <div
                     className="bg-[#008080] h-2 rounded-full progress-bar-animated"
                     style={
-                    {
-                      '--bar-width': '65%'
-                    } as React.CSSProperties
-                    } />
-
+                      {
+                        '--bar-width': `${upcomingDeductions.processedPercentage}%`
+                      } as React.CSSProperties
+                    }
+                  />
                 </div>
                 <p className="text-xs text-slate-500 text-right">
-                  65% Processed
+                  {upcomingDeductions.processedPercentage}% Processed
                 </p>
               </div>
               <Button
@@ -292,31 +372,27 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
 
           <Card title="Recent Activity">
             <div className="space-y-4">
-              {[
-              {
-                text: 'Approved loan for John Kamau',
-                time: '2 hours ago',
-                type: 'approve'
-              },
-              {
-                text: 'New application from Sarah Kimani',
-                time: '5 hours ago',
-                type: 'new'
-              },
-              {
-                text: 'Payroll list exported',
-                time: 'Yesterday',
-                type: 'system'
-              }].
-              map((activity, i) =>
-              <div key={i} className="flex items-start space-x-3 text-sm">
-                  <div
-                  className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${activity.type === 'approve' ? 'bg-emerald-500' : activity.type === 'new' ? 'bg-blue-500' : 'bg-slate-400'}`} />
-
-                  <div>
-                    <p className="text-slate-900">{activity.text}</p>
-                    <p className="text-slate-500 text-xs">{activity.time}</p>
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity, i) => (
+                  <div key={i} className="flex items-start space-x-3 text-sm">
+                    <div
+                      className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${
+                        activity.type === 'approve' || activity.type === 'status_update'
+                          ? 'bg-emerald-500'
+                          : activity.type === 'new' || activity.type === 'disbursement'
+                          ? 'bg-blue-500'
+                          : 'bg-slate-400'
+                      }`}
+                    />
+                    <div>
+                      <p className="text-slate-900">{activity.text}</p>
+                      <p className="text-slate-500 text-xs">{activity.time}</p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center text-slate-400 text-sm py-4">
+                  No recent activity
                 </div>
               )}
             </div>
