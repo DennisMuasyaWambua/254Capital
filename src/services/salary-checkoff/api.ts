@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
     APPLICATIONS: `${API_BASE_URL}/api/v1/loans/applications/`,
     APPLICATION_DETAIL: (id: string) => `${API_BASE_URL}/api/v1/loans/applications/${id}/`,
     CALCULATOR: `${API_BASE_URL}/api/v1/loans/calculator/`,
+    SEARCH: `${API_BASE_URL}/api/v1/loans/search/`,
 
     // HR endpoints
     HR_PENDING: `${API_BASE_URL}/api/v1/loans/hr/pending/`,
@@ -87,6 +88,26 @@ export const API_ENDPOINTS = {
     LOAN_BOOK_REPORT: `${API_BASE_URL}/api/v1/exports/reports/loan-book/`,
     EMPLOYER_SUMMARY: `${API_BASE_URL}/api/v1/exports/reports/employer-summary/`,
     COLLECTION_SHEET: `${API_BASE_URL}/api/v1/exports/reports/collection-sheet/`,
+  },
+
+  // Client management endpoints
+  CLIENTS: {
+    LIST: `${API_BASE_URL}/api/v1/clients/`,
+    MANUAL_CREATE: `${API_BASE_URL}/api/v1/clients/manual/`,
+    BULK_UPLOAD: `${API_BASE_URL}/api/v1/clients/bulk-upload/`,
+    VALIDATE_BULK: `${API_BASE_URL}/api/v1/clients/validate/`,
+    UPLOAD_TEMPLATE: `${API_BASE_URL}/api/v1/clients/upload-template/`,
+    PENDING_LIST: `${API_BASE_URL}/api/v1/clients/pending/`,
+    CLIENT_DETAIL: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/`,
+    APPROVE_CLIENT: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/approve/`,
+    REJECT_CLIENT: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/reject/`,
+    BULK_APPROVE: `${API_BASE_URL}/api/v1/clients/bulk-approve/`,
+  },
+
+  // Payment management endpoints
+  PAYMENTS: {
+    RECORD: `${API_BASE_URL}/api/v1/payments/record/`,
+    CALCULATE_DISCOUNT: `${API_BASE_URL}/api/v1/payments/calculate-discount/`,
   },
 };
 

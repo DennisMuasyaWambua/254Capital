@@ -11,3 +11,5 @@ export * from './document.service';
 export * from './notification.service';
 export * from './reconciliation.service';
 export * from './export.service';
+export * from './client.service';
+export * from './payment.service';

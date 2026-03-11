@@ -12,7 +12,12 @@ import {
   Settings,
   LogOut,
   Menu,
-  X } from
+  X,
+  UserPlus,
+  CheckSquare,
+  DollarSign,
+  GitCompare,
+  Building } from
 'lucide-react';
 interface SidebarProps {
   role: 'employee' | 'hr' | 'admin';
@@ -87,6 +92,31 @@ export function Sidebar({
     id: 'dashboard',
     label: 'Dashboard',
     icon: LayoutDashboard
+  },
+  {
+    id: 'existing-clients',
+    label: 'Existing Clients',
+    icon: UserPlus
+  },
+  {
+    id: 'pending-approvals',
+    label: 'Pending Approvals',
+    icon: CheckSquare
+  },
+  {
+    id: 'record-payment',
+    label: 'Record Payment',
+    icon: DollarSign
+  },
+  {
+    id: 'monthly-reconciliation',
+    label: 'Monthly Reconciliation',
+    icon: GitCompare
+  },
+  {
+    id: 'onboard-employer',
+    label: 'Onboard Employer',
+    icon: Building
   },
   {
     id: 'applications',

@@ -9,6 +9,11 @@ import { RepaymentSchedule } from './employee/RepaymentSchedule';
 import { HRDashboard } from './hr/HRDashboard';
 import { ApplicationReview } from './hr/ApplicationReview';
 import { AdminDashboard } from './admin/AdminDashboard';
+import { ExistingClients } from './admin/ExistingClients';
+import { PendingApprovals } from './admin/PendingApprovals';
+import { RecordPayment } from './admin/RecordPayment';
+import { MonthlyReconciliation } from './admin/MonthlyReconciliation';
+import { OnboardEmployer } from './admin/OnboardEmployer';
 
 type Role = 'employee' | 'hr' | 'admin' | null;
 type Page =
@@ -24,7 +29,12 @@ type Page =
   | 'applications'
   | 'employers'
   | 'disbursements'
-  | 'reconciliation';
+  | 'reconciliation'
+  | 'existing-clients'
+  | 'pending-approvals'
+  | 'record-payment'
+  | 'monthly-reconciliation'
+  | 'onboard-employer';
 
 export function SalaryCheckOffApp() {
   const [role, setRole] = useState<Role>(null);
@@ -111,6 +121,16 @@ export function SalaryCheckOffApp() {
         switch (currentPage) {
           case 'dashboard':
             return <AdminDashboard onNavigate={handleNavigate} />;
+          case 'existing-clients':
+            return <ExistingClients onNavigate={handleNavigate} />;
+          case 'pending-approvals':
+            return <PendingApprovals onNavigate={handleNavigate} />;
+          case 'record-payment':
+            return <RecordPayment onNavigate={handleNavigate} />;
+          case 'monthly-reconciliation':
+            return <MonthlyReconciliation onNavigate={handleNavigate} />;
+          case 'onboard-employer':
+            return <OnboardEmployer onNavigate={handleNavigate} />;
           case 'employers':
             return (
               <div className="flex items-center justify-center h-64">
