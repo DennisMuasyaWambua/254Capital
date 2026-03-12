@@ -82,9 +82,8 @@ export function OnboardEmployer({ onNavigate }: OnboardEmployerProps) {
       if (agreementFile.length > 0) {
         await documentService.uploadDocument({
           file: agreementFile[0],
-          documentType: 'agreement',
-          relatedTo: 'employer',
-          relatedId: newEmployer.id,
+          document_type: 'check_off_agreement',
+          employer_id: newEmployer.id,
         });
       }
 
@@ -102,7 +101,16 @@ export function OnboardEmployer({ onNavigate }: OnboardEmployerProps) {
       }, 5000);
     } catch (error: any) {
       console.error('Error onboarding employer:', error);
-      setError(error.message || 'Failed to onboard employer');
+      let errorMessage = 'Failed to onboard employer. Please try again.';
+      if (error.data && error.data.errors) {
+        const errorDetails = Object.entries(error.data.errors)
+          .map(([field, messages]) => `${field}: ${(messages as string[]).join(', ')}`)
+          .join('; ');
+        errorMessage = `Validation error: ${errorDetails}`;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
