@@ -66,9 +66,9 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
   const loadEmployers = async () => {
     try {
       setIsLoadingEmployers(true);
-      const employerList = await employerService.listEmployers();
+      const employerResponse = await employerService.listEmployers();
       setEmployers(
-        employerList
+        employerResponse.results
           .filter((emp) => emp.is_active)
           .map((emp) => ({ id: emp.id, name: emp.name }))
       );

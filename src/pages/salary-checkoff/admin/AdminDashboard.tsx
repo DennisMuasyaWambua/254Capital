@@ -78,8 +78,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       // Fetch total employers
       let totalEmployers = 0;
       try {
-        const employers = await employerService.listEmployers();
-        totalEmployers = employers.filter(emp => emp.is_active).length;
+        const employersResponse = await employerService.listEmployers();
+        totalEmployers = employersResponse.count;
       } catch (error) {
         console.error('Error fetching employers:', error);
       }
@@ -161,8 +161,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       });
 
       // Check for pending employer approvals
-      const employers = await employerService.listEmployers();
-      const pendingEmployers = employers.filter(emp => !emp.is_active);
+      const employersResponse = await employerService.listEmployers();
+      const pendingEmployers = employersResponse.results.filter(emp => !emp.is_active);
 
       pendingEmployers.forEach(employer => {
         alerts.push({

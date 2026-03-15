@@ -53,9 +53,9 @@ export function MonthlyReconciliation({
 
   const loadEmployers = async () => {
     try {
-      const employerList = await employerService.listEmployers();
+      const employerResponse = await employerService.listEmployers();
       setEmployers(
-        employerList
+        employerResponse.results
           .filter((emp) => emp.is_active)
           .map((emp) => ({ id: emp.id, name: emp.name }))
       );

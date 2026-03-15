@@ -42,17 +42,26 @@ export interface EmployerDetail extends Employer {
   }>;
 }
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  page: number;
+  total_pages: number;
+  results: T[];
+}
+
 export const employerService = {
   /**
    * List active employers with search
    */
-  listEmployers: async (search?: string): Promise<Employer[]> => {
+  listEmployers: async (search?: string): Promise<PaginatedResponse<Employer>> => {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
 
     const url = `${API_ENDPOINTS.EMPLOYERS.LIST}?${params.toString()}`;
 
-    return apiRequest<Employer[]>(url, {
+    return apiRequest<PaginatedResponse<Employer>>(url, {
       method: 'GET',
     });
   },
