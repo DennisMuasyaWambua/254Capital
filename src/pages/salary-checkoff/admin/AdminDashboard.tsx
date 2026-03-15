@@ -94,7 +94,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
       setStats({
         totalEmployers,
-        activeLoans: activeLoans || queueResponse.count,
+        activeLoans,
         totalDisbursed,
         defaultRate: 0, // Would need specific calculation
       });
@@ -268,7 +268,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           label="Total Employers"
-          value={stats.totalEmployers > 0 ? stats.totalEmployers.toString() : "N/A"}
+          value={stats.totalEmployers.toString()}
           icon={<Briefcase className="h-6 w-6 text-blue-600" />}
           color="blue" />
 
@@ -286,7 +286,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
         <StatCard
           label="Default Rate"
-          value={stats.defaultRate > 0 ? `${stats.defaultRate.toFixed(1)}%` : "0%"}
+          value={`${stats.defaultRate.toFixed(1)}%`}
           icon={<AlertTriangle className="h-6 w-6 text-red-600" />}
           color="amber" />
 

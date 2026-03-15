@@ -22,6 +22,7 @@ export function OnboardEmployer({ onNavigate }: OnboardEmployerProps) {
   const [sendEmail, setSendEmail] = useState(true);
   const [agreementFile, setAgreementFile] = useState<File[]>([]);
   const [generatedPassword, setGeneratedPassword] = useState<string>('');
+  const [generatedUsername, setGeneratedUsername] = useState<string>('');
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -51,13 +52,6 @@ export function OnboardEmployer({ onNavigate }: OnboardEmployerProps) {
     }));
   };
 
-  const generateTemporaryPassword = () => {
-    // Generate a secure temporary password
-    const year = new Date().getFullYear();
-    const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `HR-${randomChars}-${year}!`;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -75,8 +69,8 @@ export function OnboardEmployer({ onNavigate }: OnboardEmployerProps) {
         hr_contact_phone: formData.hrMobile,
       };
 
-      // Create the employer
-      const newEmployer = await employerService.createEmployer(employerData);
+      // Create the employer and get HR credentials from response
+      const newEmployer: any = await employerService.createEmployer(employerData);
 
       // Upload agreement document if provided
       if (agreementFile.length > 0) {
@@ -87,9 +81,11 @@ export function OnboardEmployer({ onNavigate }: OnboardEmployerProps) {
         });
       }
 
-      // Generate and display temporary password
-      const tempPassword = generateTemporaryPassword();
-      setGeneratedPassword(tempPassword);
+      // Set the credentials from backend response
+      if (newEmployer.hr_credentials) {
+        setGeneratedUsername(newEmployer.hr_credentials.username);
+        setGeneratedPassword(newEmployer.hr_credentials.temporary_password);
+      }
 
       // Show success
       setShowSuccess(true);
@@ -128,17 +124,34 @@ export function OnboardEmployer({ onNavigate }: OnboardEmployerProps) {
       {showSuccess && (
         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start text-emerald-800 animate-fade-in">
           <CheckCircle2 className="h-5 w-5 mr-3 mt-0.5 text-emerald-600 flex-shrink-0" />
-          <div>
+          <div className="flex-1">
             <h4 className="font-medium">Employer onboarded successfully!</h4>
             <p className="text-sm text-emerald-700 mt-1">
-              The company profile has been created.
-              {sendEmail && ' HR credentials have been sent via email.'}
-              {generatedPassword && (
-                <span className="block mt-2 font-mono bg-emerald-100 p-2 rounded">
-                  Temporary Password: {generatedPassword}
-                </span>
-              )}
+              The company profile has been created and an HR manager account has been set up.
+              {sendEmail && ' HR login credentials have been sent via email.'}
             </p>
+            {generatedUsername && generatedPassword && (
+              <div className="mt-3 p-3 bg-emerald-100 rounded border border-emerald-200">
+                <p className="text-sm font-medium text-emerald-900 mb-2">HR Login Credentials:</p>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-emerald-700 font-medium">Username:</span>
+                    <span className="text-xs font-mono bg-white px-2 py-1 rounded border border-emerald-200">
+                      {generatedUsername}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-emerald-700 font-medium">Password:</span>
+                    <span className="text-xs font-mono bg-white px-2 py-1 rounded border border-emerald-200">
+                      {generatedPassword}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-emerald-600 mt-2">
+                  Please save these credentials securely. The HR manager should change the password after first login.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
