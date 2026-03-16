@@ -25,13 +25,15 @@ interface SidebarProps {
   onNavigate: (page: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  onLogout?: () => void;
 }
 export function Sidebar({
   role,
   currentPage,
   onNavigate,
   isOpen,
-  onClose
+  onClose,
+  onLogout
 }: SidebarProps) {
   const employeeLinks = [
   {
@@ -224,7 +226,10 @@ export function Sidebar({
                   {role}
                 </p>
               </div>
-              <button className="text-slate-400 hover:text-slate-600">
+              <button
+                onClick={onLogout}
+                className="text-slate-400 hover:text-slate-600"
+              >
                 <LogOut className="h-5 w-5" />
               </button>
             </div>

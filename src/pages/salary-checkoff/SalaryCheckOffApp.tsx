@@ -233,6 +233,7 @@ export function SalaryCheckOffApp() {
         onNavigate={handleNavigate}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onLogout={handleLogout}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
