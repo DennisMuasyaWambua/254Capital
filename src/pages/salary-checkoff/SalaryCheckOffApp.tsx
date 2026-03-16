@@ -14,6 +14,7 @@ import { PendingApprovals } from './admin/PendingApprovals';
 import { RecordPayment } from './admin/RecordPayment';
 import { MonthlyReconciliation } from './admin/MonthlyReconciliation';
 import { OnboardEmployer } from './admin/OnboardEmployer';
+import { Employers } from './admin/Employers';
 
 type Role = 'employee' | 'hr' | 'admin' | null;
 type Page =
@@ -132,14 +133,7 @@ export function SalaryCheckOffApp() {
           case 'onboard-employer':
             return <OnboardEmployer onNavigate={handleNavigate} />;
           case 'employers':
-            return (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <h2 className="text-xl font-semibold text-slate-900 mb-2">Employer Management</h2>
-                  <p className="text-slate-600">This feature is coming soon.</p>
-                </div>
-              </div>
-            );
+            return <Employers onNavigate={handleNavigate} />;
           case 'disbursements':
             return (
               <div className="flex items-center justify-center h-64">
