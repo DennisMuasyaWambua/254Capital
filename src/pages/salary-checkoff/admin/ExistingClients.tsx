@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Tabs } from '@/components/salary-checkoff/ui/Tabs';
 import { Input } from '@/components/salary-checkoff/ui/Input';
+import { MoneyInput } from '@/components/salary-checkoff/ui/MoneyInput';
 import { Select } from '@/components/salary-checkoff/ui/Select';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { FileUpload } from '@/components/salary-checkoff/ui/FileUpload';
@@ -13,6 +14,7 @@ import {
   BulkUploadValidationRow,
 } from '@/services/salary-checkoff/client.service';
 import { employerService } from '@/services/salary-checkoff/employer.service';
+import { formatNumberWithCommas, parseFormattedNumber } from '@/utils/formatters';
 import {
   Save,
   Send,
@@ -81,10 +83,10 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
   };
 
   // Derived calculations
-  const loanAmountNum = Number(formData.loanAmount) || 0;
+  const loanAmountNum = parseFormattedNumber(formData.loanAmount) || 0;
   const interestRateNum = Number(formData.interestRate) || 0;
   const periodNum = Number(formData.repaymentPeriod) || 1;
-  const amountPaidNum = Number(formData.amountPaid) || 0;
+  const amountPaidNum = parseFormattedNumber(formData.amountPaid) || 0;
 
   const totalInterest = loanAmountNum * (interestRateNum / 100);
   const totalDue = loanAmountNum + totalInterest;
@@ -104,6 +106,23 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
   const handleSubmit = async (e: React.FormEvent, isDraft: boolean) => {
     e.preventDefault();
     setError(null);
+
+    // Validation
+    if (!formData.fullName || !formData.nationalId || !formData.mobile) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    if (!formData.employer) {
+      setError('Please select an employer');
+      return;
+    }
+
+    if (!formData.loanAmount || !formData.startDate || !formData.disbursementDate || !formData.disbursementMethod) {
+      setError('Please fill in all required loan details');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -319,13 +338,13 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                   Section B: Loan Details
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Input
+                  <MoneyInput
                     label="Loan Amount (KES) *"
                     name="loanAmount"
-                    type="number"
                     value={formData.loanAmount}
                     onChange={handleInputChange}
                     required
+                    placeholder="e.g. 100,000"
                   />
                   <Input
                     label="Interest Rate (%) *"
@@ -334,6 +353,8 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                     value={formData.interestRate}
                     onChange={handleInputChange}
                     required
+                    step="0.1"
+                    min="0"
                   />
                   <Input
                     label="Loan Start Date *"
@@ -392,36 +413,36 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <p className="text-sm text-slate-500 mb-1">Total Amount Due</p>
                     <p className="text-xl font-bold text-slate-900">
-                      KES {totalDue.toLocaleString()}
+                      KES {formatNumberWithCommas(totalDue)}
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
-                      Principal + {formData.interestRate}% Interest
+                      Principal + {formData.interestRate || 0}% Interest
                     </p>
                   </div>
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <p className="text-sm text-slate-500 mb-1">Monthly Deduction</p>
                     <p className="text-xl font-bold text-slate-900">
-                      KES {Math.round(monthlyDeduction).toLocaleString()}
+                      KES {formatNumberWithCommas(Math.round(monthlyDeduction))}
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
-                      Over {formData.repaymentPeriod} months
+                      Over {formData.repaymentPeriod || 0} months
                     </p>
                   </div>
                   <div className="bg-[#E0F2F2] p-4 rounded-lg border border-[#008080]/20">
                     <p className="text-sm text-[#006666] mb-1">Outstanding Balance</p>
                     <p className="text-xl font-bold text-[#008080]">
-                      KES {outstandingBalance.toLocaleString()}
+                      KES {formatNumberWithCommas(outstandingBalance)}
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Input
+                  <MoneyInput
                     label="Amount Paid to Date (KES)"
                     name="amountPaid"
-                    type="number"
                     value={formData.amountPaid}
                     onChange={handleInputChange}
+                    placeholder="e.g. 25,000"
                   />
                   <Select
                     label="Loan Status"

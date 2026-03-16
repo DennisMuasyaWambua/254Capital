@@ -226,8 +226,7 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
             Every Employee
           </h1>
           <p className="text-lg text-white/90 max-w-md">
-            Access salary advances and loans instantly with our secure check-off
-            system.
+            Access salary advances and loans instantly with our secure check-off system.
           </p>
         </div>
 

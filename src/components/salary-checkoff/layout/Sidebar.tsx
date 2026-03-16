@@ -19,6 +19,7 @@ import {
   GitCompare,
   Building } from
 'lucide-react';
+import { getInitials } from '@/utils/formatters';
 interface SidebarProps {
   role: 'employee' | 'hr' | 'admin';
   currentPage: string;
@@ -26,6 +27,7 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onLogout?: () => void;
+  userName?: string;
 }
 export function Sidebar({
   role,
@@ -33,7 +35,8 @@ export function Sidebar({
   onNavigate,
   isOpen,
   onClose,
-  onLogout
+  onLogout,
+  userName
 }: SidebarProps) {
   const employeeLinks = [
   {
@@ -211,24 +214,25 @@ export function Sidebar({
           {/* User Profile */}
           <div className="p-4 border-t border-slate-100">
             <div className="flex items-center px-3 py-2 space-x-3">
-              <div className="h-9 w-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-medium">
-                {role === 'employee' ? 'JK' : role === 'hr' ? 'MW' : 'AD'}
+              <div className="h-9 w-9 rounded-full bg-[#008080] flex items-center justify-center text-white font-semibold text-sm">
+                {userName ? getInitials(userName) : (role === 'employee' ? 'JK' : role === 'hr' ? 'MW' : 'AD')}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-900 truncate">
-                  {role === 'employee' ?
+                  {userName || (role === 'employee' ?
                   'John Kamau' :
                   role === 'hr' ?
                   'Mary Wanjiku' :
-                  'Admin User'}
+                  'Admin User')}
                 </p>
                 <p className="text-xs text-slate-500 truncate capitalize">
-                  {role}
+                  {role === 'hr' ? 'HR Manager' : role}
                 </p>
               </div>
               <button
                 onClick={onLogout}
                 className="text-slate-400 hover:text-slate-600"
+                title="Logout"
               >
                 <LogOut className="h-5 w-5" />
               </button>

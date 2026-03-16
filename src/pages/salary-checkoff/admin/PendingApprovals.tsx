@@ -8,6 +8,7 @@ import {
   clientService,
   ExistingClient,
 } from '@/services/salary-checkoff/client.service';
+import { formatDate, formatNumberWithCommas } from '@/utils/formatters';
 import { Check, X, Eye, Edit2, Loader2, AlertCircle } from 'lucide-react';
 
 interface PendingApprovalsProps {
@@ -94,8 +95,7 @@ export function PendingApprovals({ onNavigate }: PendingApprovalsProps) {
     },
     {
       header: 'Entry Date',
-      accessor: (item: ExistingClient) =>
-        new Date(item.created_at).toLocaleDateString(),
+      accessor: (item: ExistingClient) => formatDate(item.created_at),
     },
     {
       header: 'Entered By',
@@ -257,7 +257,7 @@ export function PendingApprovals({ onNavigate }: PendingApprovalsProps) {
               <div>
                 <p className="text-slate-500 mb-1">Entry Date</p>
                 <p className="font-medium text-slate-900">
-                  {new Date(selectedClient.created_at).toLocaleDateString()}
+                  {formatDate(selectedClient.created_at)}
                 </p>
               </div>
               <div>

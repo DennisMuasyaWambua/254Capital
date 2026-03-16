@@ -8,6 +8,7 @@ import {
   employerService,
   Employer,
 } from '@/services/salary-checkoff/employer.service';
+import { formatDate } from '@/utils/formatters';
 import { Loader2, AlertCircle, X, Building2, Search } from 'lucide-react';
 
 interface EmployersProps {
@@ -91,12 +92,7 @@ export function Employers({ onNavigate }: EmployersProps) {
     },
     {
       header: 'Onboarded Date',
-      accessor: (item: Employer) =>
-        new Date(item.onboarded_at).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        }),
+      accessor: (item: Employer) => formatDate(item.onboarded_at),
     },
   ];
 

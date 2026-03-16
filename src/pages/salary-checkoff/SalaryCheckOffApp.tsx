@@ -44,6 +44,7 @@ export function SalaryCheckOffApp() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRestoring, setIsRestoring] = useState(true);
+  const [userName, setUserName] = useState<string | undefined>(undefined);
 
   // Restore session from localStorage on mount
   useEffect(() => {
@@ -68,6 +69,10 @@ export function SalaryCheckOffApp() {
 
           if (userRole) {
             setRole(userRole);
+
+            // Set user name from profile
+            const fullName = `${profile.first_name} ${profile.last_name}`.trim();
+            setUserName(fullName || undefined);
 
             // Restore last visited page or default to dashboard
             const savedPage = localStorage.getItem('salary_checkoff_current_page') as Page;
@@ -234,6 +239,7 @@ export function SalaryCheckOffApp() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onLogout={handleLogout}
+        userName={userName}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
