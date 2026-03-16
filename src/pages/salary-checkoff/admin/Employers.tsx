@@ -92,7 +92,11 @@ export function Employers({ onNavigate }: EmployersProps) {
     {
       header: 'Onboarded Date',
       accessor: (item: Employer) =>
-        new Date(item.onboarded_at).toLocaleDateString(),
+        new Date(item.onboarded_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        }),
     },
   ];
 
