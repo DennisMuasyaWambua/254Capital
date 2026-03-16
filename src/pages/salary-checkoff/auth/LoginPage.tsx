@@ -227,7 +227,7 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
           </h1>
           <p className="text-lg text-white/90 max-w-md">
             Access salary advances and loans instantly with our secure check-off
-            system. No collateral, no hassle.
+            system.
           </p>
         </div>
 
