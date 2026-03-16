@@ -1,17 +1,20 @@
-import React from 'react';
-import { Bell, Menu } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, Menu, LogOut } from 'lucide-react';
 interface HeaderProps {
   title: string;
   role: 'employee' | 'hr' | 'admin';
   onMenuClick: () => void;
   onRoleChange: (role: 'employee' | 'hr' | 'admin') => void;
+  onLogout?: () => void;
 }
 export function Header({
   title,
   role,
   onMenuClick,
-  onRoleChange
+  onRoleChange,
+  onLogout
 }: HeaderProps) {
+  const [showDropdown, setShowDropdown] = useState(false);
   return (
     <header className="bg-[#11103a] h-16 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center">
@@ -51,7 +54,7 @@ export function Header({
 
         <div className="h-8 w-px bg-white/20 mx-2" />
 
-        <div className="flex items-center space-x-3">
+        <div className="relative flex items-center space-x-3">
           <div className="hidden sm:block text-right">
             <p className="text-sm font-medium text-white">
               {role === 'employee' ?
@@ -62,9 +65,30 @@ export function Header({
             </p>
             <p className="text-xs text-white/50 capitalize">{role}</p>
           </div>
-          <div className="h-9 w-9 rounded-full bg-white/20 text-white flex items-center justify-center font-medium border border-white/30">
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="h-9 w-9 rounded-full bg-white/20 text-white flex items-center justify-center font-medium border border-white/30 hover:bg-white/30 transition-colors"
+          >
             {role === 'employee' ? 'JK' : role === 'hr' ? 'MW' : 'AD'}
-          </div>
+          </button>
+
+          {showDropdown && onLogout && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+              <div className="absolute right-0 top-12 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
+                <button
+                  onClick={() => {
+                    setShowDropdown(false);
+                    onLogout();
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 flex items-center space-x-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>);

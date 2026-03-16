@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/salary-checkoff/layout/Sidebar';
 import { Header } from '@/components/salary-checkoff/layout/Header';
 import { LoginPage } from './auth/LoginPage';
@@ -15,6 +15,8 @@ import { RecordPayment } from './admin/RecordPayment';
 import { MonthlyReconciliation } from './admin/MonthlyReconciliation';
 import { OnboardEmployer } from './admin/OnboardEmployer';
 import { Employers } from './admin/Employers';
+import { authService } from '@/services/salary-checkoff/auth.service';
+import { Loader2 } from 'lucide-react';
 
 type Role = 'employee' | 'hr' | 'admin' | null;
 type Page =
@@ -41,6 +43,57 @@ export function SalaryCheckOffApp() {
   const [role, setRole] = useState<Role>(null);
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true);
+
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        // Check if user is authenticated
+        if (authService.isAuthenticated()) {
+          // Fetch user profile to get role
+          const profile = await authService.getProfile();
+
+          // Map backend role to frontend role
+          let userRole: Role;
+          if (profile.role === 'admin') {
+            userRole = 'admin';
+          } else if (profile.role === 'hr_manager') {
+            userRole = 'hr';
+          } else if (profile.role === 'employee') {
+            userRole = 'employee';
+          } else {
+            userRole = null;
+          }
+
+          if (userRole) {
+            setRole(userRole);
+
+            // Restore last visited page or default to dashboard
+            const savedPage = localStorage.getItem('salary_checkoff_current_page') as Page;
+            setCurrentPage(savedPage && savedPage !== 'login' && savedPage !== 'register' ? savedPage : 'dashboard');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to restore session:', error);
+        // Clear tokens if restoration fails
+        authService.logout();
+      } finally {
+        setIsRestoring(false);
+      }
+    };
+
+    restoreSession();
+  }, []);
+
+  // Save session state to localStorage whenever it changes
+  useEffect(() => {
+    if (role) {
+      localStorage.setItem('salary_checkoff_current_page', currentPage);
+    } else {
+      localStorage.removeItem('salary_checkoff_current_page');
+    }
+  }, [role, currentPage]);
 
   const handleLogin = (userRole: Role) => {
     setRole(userRole);
@@ -51,6 +104,22 @@ export function SalaryCheckOffApp() {
     setCurrentPage(page as Page);
     setIsSidebarOpen(false);
   };
+
+  const handleLogout = () => {
+    authService.logout();
+    setRole(null);
+    setCurrentPage('login');
+    localStorage.removeItem('salary_checkoff_current_page');
+  };
+
+  // Show loading screen while restoring session
+  if (isRestoring) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+      </div>
+    );
+  }
 
   // Render content based on role and current page
   const renderContent = () => {
@@ -181,6 +250,7 @@ export function SalaryCheckOffApp() {
             setRole(newRole);
             setCurrentPage('dashboard');
           }}
+          onLogout={handleLogout}
         />
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
