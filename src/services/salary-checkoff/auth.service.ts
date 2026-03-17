@@ -48,6 +48,7 @@ export interface RegisterEmployeeRequest {
   email?: string;
   bank_name?: string;
   mpesa_number?: string;
+  monthly_salary?: string;
 }
 
 export interface RegisterEmployeeResponse {

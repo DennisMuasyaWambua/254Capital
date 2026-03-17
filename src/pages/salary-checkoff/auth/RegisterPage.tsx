@@ -41,6 +41,7 @@ export function RegisterPage({
   const [employerCode, setEmployerCode] = useState('');
   const [bankName, setBankName] = useState('');
   const [mpesaNumber, setMpesaNumber] = useState('');
+  const [monthlySalary, setMonthlySalary] = useState('');
 
   // Employer dropdown
   const [employers, setEmployers] = useState<Employer[]>([]);
@@ -204,6 +205,7 @@ export function RegisterPage({
         email: email || undefined,
         bank_name: bankName || undefined,
         mpesa_number: normalizedMpesa,
+        monthly_salary: monthlySalary,
       });
 
       setIsLoading(false);
@@ -239,8 +241,14 @@ export function RegisterPage({
 
     // Validate step 2 (Employment & Banking)
     if (currentStep === 2) {
-      if (!employeeNumber || !employerCode || !bankName || !mpesaNumber) {
+      if (!employeeNumber || !employerCode || !bankName || !mpesaNumber || !monthlySalary) {
         setError('Please fill in all required fields');
+        return;
+      }
+      // Validate salary is a positive number
+      const salaryNum = parseFloat(monthlySalary);
+      if (isNaN(salaryNum) || salaryNum <= 0) {
+        setError('Please enter a valid monthly salary');
         return;
       }
     }
@@ -468,12 +476,21 @@ export function RegisterPage({
                     helperText="For M-Pesa disbursements"
                     required
                   />
+                  <Input
+                    label="Monthly Gross Salary (KES)"
+                    type="number"
+                    placeholder="50000"
+                    value={monthlySalary}
+                    onChange={(e) => setMonthlySalary(e.target.value)}
+                    helperText="Your total monthly salary before deductions"
+                    required
+                  />
                 </div>
 
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
                     <strong>Note:</strong> Please contact your HR department for your employee
-                    number if you don't have it. Ensure bank and M-Pesa details are accurate for loan disbursements.
+                    number if you don't have it. Ensure bank, M-Pesa, and salary details are accurate for loan processing.
                   </p>
                 </div>
 
@@ -523,6 +540,10 @@ export function RegisterPage({
                     <div>
                       <span className="block text-slate-500">M-Pesa</span>
                       <span className="font-medium">{mpesaNumber}</span>
+                    </div>
+                    <div>
+                      <span className="block text-slate-500">Monthly Salary</span>
+                      <span className="font-medium">KES {parseFloat(monthlySalary || '0').toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
