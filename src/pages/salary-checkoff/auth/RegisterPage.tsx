@@ -436,16 +436,11 @@ export function RegisterPage({
                       onChange={(e) => setEmployerCode(e.target.value)}
                       required
                       disabled={loadingEmployers}
-                    >
-                      <option value="">
-                        {loadingEmployers ? 'Loading employers...' : 'Select your employer'}
-                      </option>
-                      {employers.map((employer) => (
-                        <option key={employer.id} value={employer.registration_number}>
-                          {employer.name}
-                        </option>
-                      ))}
-                    </Select>
+                      options={employers.map((employer) => ({
+                        value: employer.registration_number,
+                        label: employer.name
+                      }))}
+                    />
                   ) : (
                     <Input
                       label="Employer Code"
@@ -489,7 +484,7 @@ export function RegisterPage({
             )}
 
             {/* Step 3: Review */}
-            {currentStep === 3 &&
+            {currentStep === 3 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <h3 className="text-lg font-semibold text-slate-900 border-b pb-2">
                   Review & Submit
@@ -551,7 +546,7 @@ export function RegisterPage({
                   <div className="text-sm text-red-600 text-center">{error}</div>
                 )}
               </div>
-            }
+            )}
 
             <div className="flex justify-between pt-6 border-t border-slate-100 mt-6">
               <Button
