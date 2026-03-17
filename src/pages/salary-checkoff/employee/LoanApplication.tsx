@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Button } from '@/components/salary-checkoff/ui/Button';
@@ -17,7 +17,8 @@ import {
   ArrowLeft,
   Check,
   Calendar,
-  AlertCircle } from
+  AlertCircle,
+  Loader2 } from
 'lucide-react';
 interface LoanApplicationProps {
   onCancel: () => void;
@@ -52,17 +53,9 @@ export function LoanApplication({
     payslips?: boolean;
   }>({});
 
-  // Debounced calculation
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      calculateLoan();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [amount, period]);
-
-  const calculateLoan = async () => {
+  const calculateLoan = useCallback(async () => {
     if (amount < 1000 || period < 1) {
+      setCalculationResult(null);
       return;
     }
 
@@ -79,17 +72,41 @@ export function LoanApplication({
       setCalculationResult(result);
     } catch (err: any) {
       console.error('Error calculating loan:', err);
-      setError(err.message || 'Failed to calculate loan');
+      // Don't set error for calculation failures, just use fallback
+      setCalculationResult(null);
     } finally {
       setIsCalculating(false);
     }
-  };
+  }, [amount, period]);
 
-  // Fallback calculations if API fails
+  // Debounced calculation - runs whenever amount or period changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      calculateLoan();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [calculateLoan]);
+
+  // Calculate loan details - these update dynamically when amount/period changes
   const interestRate = calculationResult ? parseFloat(calculationResult.interest_rate) : 0.05;
-  const totalInterest = calculationResult ? parseFloat(calculationResult.interest_amount) : amount * 0.05;
-  const totalRepayment = calculationResult ? parseFloat(calculationResult.total_repayment) : amount + totalInterest;
-  const monthlyDeduction = calculationResult ? parseFloat(calculationResult.monthly_deduction) : period > 0 ? totalRepayment / period : 0;
+
+  // For flat rate: 5% interest on principal for the entire loan (not per month)
+  // Total interest = principal * 5%
+  const totalInterest = calculationResult
+    ? parseFloat(calculationResult.interest_amount)
+    : amount * interestRate;
+
+  // Total repayment = principal + total interest
+  const totalRepayment = calculationResult
+    ? parseFloat(calculationResult.total_repayment)
+    : amount + totalInterest;
+
+  // Monthly deduction = total repayment / number of months
+  // This changes dynamically as amount or period changes
+  const monthlyDeduction = calculationResult
+    ? parseFloat(calculationResult.monthly_deduction)
+    : period > 0 ? totalRepayment / period : 0;
   // Deduction date logic — assume disbursement today for projection
   const today = new Date();
   const firstDeductionDate = getFirstDeductionDate(today);
@@ -346,16 +363,30 @@ export function LoanApplication({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Monthly Deduction</span>
-                    <span className="font-medium">
-                      KES {Math.round(monthlyDeduction).toLocaleString()}
+                    <span className="font-medium flex items-center gap-2">
+                      {isCalculating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin text-[#008080]" />
+                          Calculating...
+                        </>
+                      ) : (
+                        <>KES {Math.round(monthlyDeduction).toLocaleString()}</>
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between border-t border-slate-200 pt-3">
                     <span className="font-semibold text-slate-900">
                       Total Repayment
                     </span>
-                    <span className="font-bold text-[#00BCD4]">
-                      KES {totalRepayment.toLocaleString()}
+                    <span className="font-bold text-[#00BCD4] flex items-center gap-2">
+                      {isCalculating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Calculating...
+                        </>
+                      ) : (
+                        <>KES {Math.round(totalRepayment).toLocaleString()}</>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -464,8 +495,15 @@ export function LoanApplication({
             <div className="space-y-6">
               <div>
                 <p className="text-white/80 text-sm mb-1">Monthly Deduction</p>
-                <p className="text-3xl font-bold">
-                  KES {Math.round(monthlyDeduction).toLocaleString()}
+                <p className="text-3xl font-bold flex items-center gap-2">
+                  {isCalculating ? (
+                    <>
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="text-2xl">Calculating...</span>
+                    </>
+                  ) : (
+                    <>KES {Math.round(monthlyDeduction).toLocaleString()}</>
+                  )}
                 </p>
               </div>
 
@@ -479,13 +517,27 @@ export function LoanApplication({
                 <div className="flex justify-between text-sm">
                   <span className="text-white/80">Interest (5%)</span>
                   <span className="font-medium">
-                    KES {totalInterest.toLocaleString()}
+                    {isCalculating ? (
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        ...
+                      </span>
+                    ) : (
+                      <>KES {Math.round(totalInterest).toLocaleString()}</>
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm pt-2 border-t border-white/20">
                   <span className="font-semibold">Total Repayment</span>
                   <span className="font-bold">
-                    KES {totalRepayment.toLocaleString()}
+                    {isCalculating ? (
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        ...
+                      </span>
+                    ) : (
+                      <>KES {Math.round(totalRepayment).toLocaleString()}</>
+                    )}
                   </span>
                 </div>
               </div>
