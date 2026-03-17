@@ -42,13 +42,14 @@ export interface RegisterEmployeeRequest {
   phone_number: string;
   first_name: string;
   last_name: string;
-  employee_number: string;
-  employer_code: string;
+  employee_id: string;
+  employer_id: string;
   national_id: string;
   email?: string;
   bank_name?: string;
+  bank_account_number?: string;
   mpesa_number?: string;
-  monthly_salary?: string;
+  monthly_gross_salary?: string;
 }
 
 export interface RegisterEmployeeResponse {

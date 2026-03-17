@@ -40,6 +40,7 @@ export function RegisterPage({
   const [employeeNumber, setEmployeeNumber] = useState('');
   const [employerCode, setEmployerCode] = useState('');
   const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [mpesaNumber, setMpesaNumber] = useState('');
   const [monthlySalary, setMonthlySalary] = useState('');
 
@@ -200,12 +201,13 @@ export function RegisterPage({
         first_name: firstName,
         last_name: lastName,
         national_id: nationalId,
-        employee_number: employeeNumber,
-        employer_code: employerCode,
+        employee_id: employeeNumber,
+        employer_id: employerCode,
         email: email || undefined,
         bank_name: bankName || undefined,
+        bank_account_number: bankAccountNumber,
         mpesa_number: normalizedMpesa,
-        monthly_salary: monthlySalary,
+        monthly_gross_salary: monthlySalary,
       });
 
       setIsLoading(false);
@@ -241,7 +243,7 @@ export function RegisterPage({
 
     // Validate step 2 (Employment & Banking)
     if (currentStep === 2) {
-      if (!employeeNumber || !employerCode || !bankName || !mpesaNumber || !monthlySalary) {
+      if (!employeeNumber || !employerCode || !bankName || !bankAccountNumber || !mpesaNumber || !monthlySalary) {
         setError('Please fill in all required fields');
         return;
       }
@@ -445,7 +447,7 @@ export function RegisterPage({
                       required
                       disabled={loadingEmployers}
                       options={employers.map((employer) => ({
-                        value: employer.registration_number,
+                        value: employer.id,
                         label: employer.name
                       }))}
                     />
@@ -465,6 +467,14 @@ export function RegisterPage({
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
                     helperText="Your primary bank for disbursements"
+                    required
+                  />
+                  <Input
+                    label="Bank Account Number"
+                    placeholder="e.g., 1234567890"
+                    value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value)}
+                    helperText="Your bank account number"
                     required
                   />
                   <Input
@@ -490,7 +500,7 @@ export function RegisterPage({
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
                     <strong>Note:</strong> Please contact your HR department for your employee
-                    number if you don't have it. Ensure bank, M-Pesa, and salary details are accurate for loan processing.
+                    number if you don't have it. Ensure all banking and salary details are accurate as they will be used for loan eligibility verification and disbursements.
                   </p>
                 </div>
 
@@ -527,7 +537,7 @@ export function RegisterPage({
                     </div>
                     <div>
                       <span className="block text-slate-500">Employer</span>
-                      <span className="font-medium">{employers.find(e => e.registration_number === employerCode)?.name || employerCode}</span>
+                      <span className="font-medium">{employers.find(e => e.id === employerCode)?.name || employerCode}</span>
                     </div>
                     <div>
                       <span className="block text-slate-500">Employee Number</span>
@@ -536,6 +546,10 @@ export function RegisterPage({
                     <div>
                       <span className="block text-slate-500">Bank</span>
                       <span className="font-medium">{bankName}</span>
+                    </div>
+                    <div>
+                      <span className="block text-slate-500">Account Number</span>
+                      <span className="font-medium">{bankAccountNumber}</span>
                     </div>
                     <div>
                       <span className="block text-slate-500">M-Pesa</span>
