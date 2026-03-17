@@ -36,15 +36,18 @@ export function Select({
           className={`
             block w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2 pr-10 text-slate-900
             focus:border-[#008080] focus:outline-none focus:ring-1 focus:ring-[#008080]
-            disabled:bg-slate-50 disabled:text-slate-500
+            disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed
+            cursor-pointer
             ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
             ${className}
           `}
           {...props}>
 
-          <option value="" disabled>
-            Select an option
-          </option>
+          {!props.value && (
+            <option value="" disabled>
+              {props.disabled ? 'Loading...' : 'Select an option'}
+            </option>
+          )}
           {options.map((option) =>
           <option key={option.value} value={option.value}>
               {option.label}

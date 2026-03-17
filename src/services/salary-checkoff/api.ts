@@ -172,6 +172,51 @@ export async function apiRequest<T>(
 }
 
 /**
+ * Public API request wrapper (no authentication required)
+ */
+export async function publicApiRequest<T>(
+  url: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw {
+        message: errorData.detail || errorData.message || 'Request failed',
+        status: response.status,
+        data: errorData,
+      } as ApiError;
+    }
+
+    // Handle empty responses (204 No Content)
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    if (error.status) {
+      throw error;
+    }
+
+    throw {
+      message: error.message || 'Network error',
+      status: 0,
+    } as ApiError;
+  }
+}
+
+/**
  * Token management
  */
 export const tokenManager = {

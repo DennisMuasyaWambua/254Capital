@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Input } from '@/components/salary-checkoff/ui/Input';
+import { MoneyInput } from '@/components/salary-checkoff/ui/MoneyInput';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { ProgressSteps } from '@/components/salary-checkoff/ui/ProgressSteps';
 import { FileUpload } from '@/components/salary-checkoff/ui/FileUpload';
@@ -29,7 +30,7 @@ export function LoanApplication({
   onSubmitSuccess
 }: LoanApplicationProps) {
   const [step, setStep] = useState(1);
-  const [amount, setAmount] = useState<number>(50000);
+  const [amount, setAmount] = useState<string>('50000');
   const [period, setPeriod] = useState<number>(6);
   const [purpose, setPurpose] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +55,8 @@ export function LoanApplication({
   }>({});
 
   const calculateLoan = useCallback(async () => {
-    if (amount < 1000 || period < 1) {
+    const amountNum = parseFloat(amount.replace(/,/g, ''));
+    if (amountNum < 1000 || period < 1) {
       setCalculationResult(null);
       return;
     }
@@ -64,7 +66,7 @@ export function LoanApplication({
       setError(null);
 
       const result = await loanService.calculateLoan({
-        principal: amount,
+        principal: amountNum,
         months: period,
         calculation_type: 'flat',
       });
@@ -89,18 +91,19 @@ export function LoanApplication({
   }, [calculateLoan]);
 
   // Calculate loan details - these update dynamically when amount/period changes
+  const amountNum = parseFloat(amount.replace(/,/g, '')) || 0;
   const interestRate = calculationResult ? parseFloat(calculationResult.interest_rate) : 0.05;
 
   // For flat rate: 5% interest on principal for the entire loan (not per month)
   // Total interest = principal * 5%
   const totalInterest = calculationResult
     ? parseFloat(calculationResult.interest_amount)
-    : amount * interestRate;
+    : amountNum * interestRate;
 
   // Total repayment = principal + total interest
   const totalRepayment = calculationResult
     ? parseFloat(calculationResult.total_repayment)
-    : amount + totalInterest;
+    : amountNum + totalInterest;
 
   // Monthly deduction = total repayment / number of months
   // This changes dynamically as amount or period changes
@@ -135,8 +138,9 @@ export function LoanApplication({
         setIsLoading(true);
         setError(null);
 
+        const amountNum = parseFloat(amount.replace(/,/g, ''));
         await loanService.createApplication({
-          principal_amount: amount,
+          principal_amount: amountNum,
           repayment_months: period,
           purpose: purpose || 'Personal loan',
           terms_accepted: termsAccepted,
@@ -229,12 +233,12 @@ export function LoanApplication({
                 <h3 className="text-lg font-semibold text-slate-900">
                   Loan Configuration
                 </h3>
-                <Input
+                <MoneyInput
                 label="Loan Amount (KES)"
-                type="number"
                 value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                min={1000} />
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="50,000"
+                helperText="Minimum amount: KES 1,000" />
 
                 <Input
                 label="Repayment Period (Months)"
@@ -350,7 +354,7 @@ export function LoanApplication({
                   <div className="flex justify-between">
                     <span className="text-slate-500">Loan Amount</span>
                     <span className="font-medium">
-                      KES {amount.toLocaleString()}
+                      KES {amountNum.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -511,7 +515,7 @@ export function LoanApplication({
                 <div className="flex justify-between text-sm">
                   <span className="text-white/80">Principal</span>
                   <span className="font-medium">
-                    KES {amount.toLocaleString()}
+                    KES {amountNum.toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

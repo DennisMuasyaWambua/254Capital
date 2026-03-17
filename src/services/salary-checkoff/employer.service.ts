@@ -2,7 +2,7 @@
  * Employer Service for Salary Check-Off System
  */
 
-import { apiRequest, API_ENDPOINTS } from './api';
+import { apiRequest, publicApiRequest, API_ENDPOINTS } from './api';
 
 export interface Employer {
   id: string;
@@ -53,7 +53,7 @@ export interface PaginatedResponse<T> {
 
 export const employerService = {
   /**
-   * List active employers with search
+   * List active employers with search (public endpoint - no auth required)
    */
   listEmployers: async (search?: string): Promise<PaginatedResponse<Employer>> => {
     const params = new URLSearchParams();
@@ -61,7 +61,7 @@ export const employerService = {
 
     const url = `${API_ENDPOINTS.EMPLOYERS.LIST}?${params.toString()}`;
 
-    return apiRequest<PaginatedResponse<Employer>>(url, {
+    return publicApiRequest<PaginatedResponse<Employer>>(url, {
       method: 'GET',
     });
   },

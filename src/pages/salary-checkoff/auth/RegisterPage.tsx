@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Input } from '@/components/salary-checkoff/ui/Input';
+import { MoneyInput } from '@/components/salary-checkoff/ui/MoneyInput';
 import { Select } from '@/components/salary-checkoff/ui/Select';
 import { ProgressSteps } from '@/components/salary-checkoff/ui/ProgressSteps';
 import { Card } from '@/components/salary-checkoff/ui/Card';
@@ -73,26 +74,23 @@ export function RegisterPage({
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  // Fetch employers when user reaches step 2
+  // Fetch employers on component mount (public endpoint - no auth required)
   useEffect(() => {
-    if (currentStep === 2 && employers.length === 0 && !loadingEmployers) {
-      const fetchEmployers = async () => {
-        setLoadingEmployers(true);
-        try {
-          const response = await employerService.listEmployers();
-          setEmployers(response.results);
-        } catch (error) {
-          console.error('Failed to fetch employers:', error);
-          // If fetching fails, we'll allow manual entry via employer code
-          setError('Unable to load employer list. Please enter your employer code manually.');
-        } finally {
-          setLoadingEmployers(false);
-        }
-      };
+    const fetchEmployers = async () => {
+      setLoadingEmployers(true);
+      try {
+        const response = await employerService.listEmployers();
+        setEmployers(response.results);
+      } catch (error) {
+        console.error('Failed to fetch employers:', error);
+        setError('Unable to load employer list. Please try again.');
+      } finally {
+        setLoadingEmployers(false);
+      }
+    };
 
-      fetchEmployers();
-    }
-  }, [currentStep, employers.length, loadingEmployers]);
+    fetchEmployers();
+  }, []);
 
   const normalizePhone = (phoneNumber: string) => {
     const digits = phoneNumber.replace(/\D/g, '');
@@ -445,13 +443,11 @@ export function RegisterPage({
                     onChange={(e) => setEmployerCode(e.target.value)}
                     required
                     disabled={loadingEmployers}
-                    options={[
-                      { value: '', label: loadingEmployers ? 'Loading employers...' : 'Select your employer' },
-                      ...employers.map((employer) => ({
-                        value: employer.id,
-                        label: employer.name
-                      }))
-                    ]}
+                    helperText={loadingEmployers ? "Loading employers..." : "Select your company from the list"}
+                    options={employers.map((employer) => ({
+                      value: employer.id,
+                      label: employer.name
+                    }))}
                   />
                   <Input
                     label="Bank Name"
@@ -478,10 +474,9 @@ export function RegisterPage({
                     helperText="For M-Pesa disbursements"
                     required
                   />
-                  <Input
+                  <MoneyInput
                     label="Monthly Gross Salary (KES)"
-                    type="number"
-                    placeholder="50000"
+                    placeholder="50,000"
                     value={monthlySalary}
                     onChange={(e) => setMonthlySalary(e.target.value)}
                     helperText="Your total monthly salary before deductions"

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Input } from '@/components/salary-checkoff/ui/Input';
+import { MoneyInput } from '@/components/salary-checkoff/ui/MoneyInput';
 import { Select } from '@/components/salary-checkoff/ui/Select';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
@@ -100,8 +101,8 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
     ? discountData.new_outstanding
     : selectedLoan?.outstanding_balance || 0;
 
-  const newBalanceAfterPayment =
-    currentOutstanding - (Number(paymentAmount) || 0);
+  const paymentAmountNum = parseFloat(paymentAmount.replace(/,/g, '')) || 0;
+  const newBalanceAfterPayment = currentOutstanding - paymentAmountNum;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,12 +112,12 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
       return;
     }
 
-    if (!paymentAmount || Number(paymentAmount) <= 0) {
+    if (!paymentAmount || paymentAmountNum <= 0) {
       setError('Please enter a valid payment amount');
       return;
     }
 
-    if (Number(paymentAmount) > currentOutstanding) {
+    if (paymentAmountNum > currentOutstanding) {
       setError('Payment amount cannot exceed outstanding balance');
       return;
     }
@@ -127,7 +128,7 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
 
       const paymentData: RecordPaymentRequest = {
         payment_date: paymentDate,
-        amount_received: Number(paymentAmount),
+        amount_received: paymentAmountNum,
         payment_method: paymentMethod as any,
         reference_number: referenceNumber || undefined,
         notes: notes || undefined,
@@ -212,12 +213,11 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
                     onChange={(e) => setPaymentDate(e.target.value)}
                     required
                   />
-                  <Input
+                  <MoneyInput
                     label="Amount Received (KES) *"
-                    type="number"
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    max={currentOutstanding}
+                    placeholder="0"
                     required
                   />
                   <Select
@@ -255,7 +255,7 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
                   <Button
                     type="submit"
                     isLoading={isSubmitting}
-                    disabled={!paymentAmount || Number(paymentAmount) <= 0}
+                    disabled={!paymentAmount || paymentAmountNum <= 0}
                   >
                     Record Payment
                   </Button>
@@ -374,7 +374,7 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
                 </div>
               )}
 
-              {paymentAmount && Number(paymentAmount) > 0 && (
+              {paymentAmount && paymentAmountNum > 0 && (
                 <div className="mt-4 pt-4 border-t border-slate-100">
                   <p className="text-sm text-slate-500 mb-1">
                     Balance After Payment
