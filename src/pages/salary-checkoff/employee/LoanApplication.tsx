@@ -6,6 +6,7 @@ import { ProgressSteps } from '@/components/salary-checkoff/ui/ProgressSteps';
 import { FileUpload } from '@/components/salary-checkoff/ui/FileUpload';
 import { TermsModal } from './TermsModal';
 import { loanService, LoanCalculatorResponse } from '@/services/salary-checkoff/loan.service';
+import { documentService, Document } from '@/services/salary-checkoff/document.service';
 import {
   getFirstDeductionDate,
   formatDeductionDate } from
@@ -38,6 +39,18 @@ export function LoanApplication({
   const [calculationResult, setCalculationResult] = useState<LoanCalculatorResponse | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Document upload state
+  const [uploadedDocuments, setUploadedDocuments] = useState<{
+    nationalIdFront?: Document;
+    nationalIdBack?: Document;
+    payslips?: Document[];
+  }>({});
+  const [uploadingDocs, setUploadingDocs] = useState<{
+    nationalIdFront?: boolean;
+    nationalIdBack?: boolean;
+    payslips?: boolean;
+  }>({});
 
   // Debounced calculation
   useEffect(() => {
@@ -83,10 +96,20 @@ export function LoanApplication({
   const isSameMonth = today.getDate() <= 15;
   const firstDeductionLabel = formatDeductionDate(firstDeductionDate);
   const handleNext = async () => {
-    if (step === 2 && !termsAccepted) {
-      setIsTermsOpen(true);
-      return;
+    // Step 2: Check if still uploading documents
+    if (step === 2) {
+      const isUploading = Object.values(uploadingDocs).some(status => status);
+      if (isUploading) {
+        setError('Please wait for document uploads to complete');
+        return;
+      }
+
+      if (!termsAccepted) {
+        setIsTermsOpen(true);
+        return;
+      }
     }
+
     if (step < 3) {
       setStep((prev) => prev + 1);
     } else {
@@ -118,6 +141,40 @@ export function LoanApplication({
     setTermsAccepted(true);
     setTermsTimestamp(timestamp);
     setStep(3);
+  };
+
+  const handleDocumentUpload = async (files: File[], documentType: 'nationalIdFront' | 'nationalIdBack' | 'payslips') => {
+    if (files.length === 0) return;
+
+    try {
+      setUploadingDocs(prev => ({ ...prev, [documentType]: true }));
+      setError(null);
+
+      if (documentType === 'payslips') {
+        // Upload multiple payslips
+        const uploadPromises = files.slice(0, 3).map((file, index) =>
+          documentService.uploadDocument({
+            file,
+            document_type: `payslip_${index + 1}` as any,
+          })
+        );
+        const uploadedPayslips = await Promise.all(uploadPromises);
+        setUploadedDocuments(prev => ({ ...prev, payslips: uploadedPayslips }));
+      } else {
+        // Upload single document
+        const apiDocType = documentType === 'nationalIdFront' ? 'national_id_front' : 'national_id_back';
+        const uploadedDoc = await documentService.uploadDocument({
+          file: files[0],
+          document_type: apiDocType,
+        });
+        setUploadedDocuments(prev => ({ ...prev, [documentType]: uploadedDoc }));
+      }
+    } catch (err: any) {
+      console.error('Error uploading document:', err);
+      setError(err.message || `Failed to upload ${documentType}. Please try again.`);
+    } finally {
+      setUploadingDocs(prev => ({ ...prev, [documentType]: false }));
+    }
   };
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -192,20 +249,45 @@ export function LoanApplication({
                 </h3>
                 <div className="space-y-4">
                   <FileUpload
-                  label="National ID (Front)"
-                  onFilesSelected={() => {}}
-                  helperText="Clear photo or scan of your ID front side" />
+                    label="National ID (Front)"
+                    onFilesSelected={(files) => handleDocumentUpload(files, 'nationalIdFront')}
+                    helperText={
+                      uploadedDocuments.nationalIdFront
+                        ? `✓ Uploaded: ${uploadedDocuments.nationalIdFront.original_filename}`
+                        : uploadingDocs.nationalIdFront
+                        ? "Uploading..."
+                        : "Clear photo or scan of your ID front side"
+                    }
+                    isLoading={uploadingDocs.nationalIdFront}
+                  />
 
                   <FileUpload
-                  label="National ID (Back)"
-                  onFilesSelected={() => {}}
-                  helperText="Clear photo or scan of your ID back side" />
+                    label="National ID (Back)"
+                    onFilesSelected={(files) => handleDocumentUpload(files, 'nationalIdBack')}
+                    helperText={
+                      uploadedDocuments.nationalIdBack
+                        ? `✓ Uploaded: ${uploadedDocuments.nationalIdBack.original_filename}`
+                        : uploadingDocs.nationalIdBack
+                        ? "Uploading..."
+                        : "Clear photo or scan of your ID back side"
+                    }
+                    isLoading={uploadingDocs.nationalIdBack}
+                  />
 
                   <FileUpload
-                  label="Latest 3 Payslips"
-                  onFilesSelected={() => {}}
-                  helperText="Upload your most recent payslips (PDF preferred)"
-                  accept=".pdf" />
+                    label="Latest 3 Payslips"
+                    onFilesSelected={(files) => handleDocumentUpload(files, 'payslips')}
+                    helperText={
+                      uploadedDocuments.payslips && uploadedDocuments.payslips.length > 0
+                        ? `✓ Uploaded ${uploadedDocuments.payslips.length} payslip(s)`
+                        : uploadingDocs.payslips
+                        ? "Uploading..."
+                        : "Upload your most recent payslips (PDF preferred)"
+                    }
+                    accept=".pdf"
+                    multiple
+                    isLoading={uploadingDocs.payslips}
+                  />
 
                 </div>
 

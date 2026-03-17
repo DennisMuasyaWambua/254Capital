@@ -1,18 +1,22 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileText, X, CheckCircle } from 'lucide-react';
+import { UploadCloud, FileText, X, CheckCircle, Loader2 } from 'lucide-react';
 interface FileUploadProps {
   label?: string;
   accept?: string;
   maxSizeMB?: number;
+  multiple?: boolean;
   onFilesSelected: (files: File[]) => void;
   helperText?: string;
+  isLoading?: boolean;
 }
 export function FileUpload({
   label,
   accept = '.pdf,.jpg,.jpeg,.png',
   maxSizeMB = 5,
+  multiple = true,
   onFilesSelected,
-  helperText
+  helperText,
+  isLoading = false
 }: FileUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -68,19 +72,30 @@ export function FileUpload({
           type="file"
           ref={fileInputRef}
           className="hidden"
-          multiple
+          multiple={multiple}
           accept={accept}
-          onChange={handleFileSelect} />
+          onChange={handleFileSelect}
+          disabled={isLoading} />
 
         <div className="flex flex-col items-center justify-center space-y-2">
           <div className="p-3 bg-slate-100 rounded-full">
-            <UploadCloud className="h-6 w-6 text-slate-500" />
+            {isLoading ? (
+              <Loader2 className="h-6 w-6 text-[#008080] animate-spin" />
+            ) : (
+              <UploadCloud className="h-6 w-6 text-slate-500" />
+            )}
           </div>
           <div className="text-sm text-slate-600">
-            <span className="font-semibold text-[#008080]">
-              Click to upload
-            </span>{' '}
-            or drag and drop
+            {isLoading ? (
+              <span className="font-semibold text-[#008080]">Uploading...</span>
+            ) : (
+              <>
+                <span className="font-semibold text-[#008080]">
+                  Click to upload
+                </span>{' '}
+                or drag and drop
+              </>
+            )}
           </div>
           <p className="text-xs text-slate-500">
             {accept.replace(/\./g, '').toUpperCase().replace(/,/g, ', ')} (Max{' '}

@@ -22,6 +22,7 @@ interface EmployeeDashboardProps {
 }
 export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [activeLoan, setActiveLoan] = useState<LoanApplication | null>(null);
@@ -42,7 +43,8 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
 
       // Fetch user profile
       const profile = await authService.getProfile();
-      setUserName(profile.first_name);
+      const fullName = `${profile.first_name} ${profile.last_name}`.trim();
+      setUserName(fullName || profile.first_name);
 
       // Fetch loan applications
       const applicationsResponse = await loanService.listApplications({ page: 1 });
@@ -93,8 +95,9 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
           nextDeduction: nextDeduction.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }),
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading dashboard data:', error);
+      setError(error.message || 'Failed to load dashboard data. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -132,6 +135,20 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="text-red-600 text-center">
+          <p className="font-semibold">Error Loading Dashboard</p>
+          <p className="text-sm mt-2">{error}</p>
+        </div>
+        <Button onClick={loadDashboardData}>
+          Try Again
+        </Button>
       </div>
     );
   }
@@ -266,10 +283,23 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
               </button>
             }>
 
-            <Table
-              data={recentApplications}
-              columns={columns}
-              keyExtractor={(item) => item.id} />
+{recentApplications.length > 0 ? (
+              <Table
+                data={recentApplications}
+                columns={columns}
+                keyExtractor={(item) => item.id} />
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-slate-600">No loan applications yet</p>
+                <Button
+                  onClick={() => onNavigate('apply-loan')}
+                  className="mt-4"
+                  size="sm"
+                >
+                  Apply for your first loan
+                </Button>
+              </div>
+            )}
 
           </Card>
         </div>
