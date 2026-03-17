@@ -15,6 +15,7 @@ import { RecordPayment } from './admin/RecordPayment';
 import { MonthlyReconciliation } from './admin/MonthlyReconciliation';
 import { OnboardEmployer } from './admin/OnboardEmployer';
 import { Employers } from './admin/Employers';
+import { CollectionReport } from './admin/CollectionReport';
 import { authService } from '@/services/salary-checkoff/auth.service';
 import { Loader2 } from 'lucide-react';
 
@@ -37,7 +38,8 @@ type Page =
   | 'pending-approvals'
   | 'record-payment'
   | 'monthly-reconciliation'
-  | 'onboard-employer';
+  | 'onboard-employer'
+  | 'collection-report';
 
 export function SalaryCheckOffApp() {
   const [role, setRole] = useState<Role>(null);
@@ -189,6 +191,8 @@ export function SalaryCheckOffApp() {
                 </div>
               </div>
             );
+          case 'collection-report':
+            return <CollectionReport role="hr" />;
           default:
             return <HRDashboard onNavigate={handleNavigate} />;
         }
@@ -208,6 +212,8 @@ export function SalaryCheckOffApp() {
             return <OnboardEmployer onNavigate={handleNavigate} />;
           case 'employers':
             return <Employers onNavigate={handleNavigate} />;
+          case 'collection-report':
+            return <CollectionReport role="admin" />;
           case 'disbursements':
             return (
               <div className="flex items-center justify-center h-64">
@@ -252,6 +258,7 @@ export function SalaryCheckOffApp() {
               : 'Admin Portal'
           }
           role={role}
+          userName={userName}
           onMenuClick={() => setIsSidebarOpen(true)}
           onRoleChange={(newRole) => {
             setRole(newRole);

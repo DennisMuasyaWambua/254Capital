@@ -3,6 +3,7 @@ import { Bell, Menu, LogOut } from 'lucide-react';
 interface HeaderProps {
   title: string;
   role: 'employee' | 'hr' | 'admin';
+  userName?: string;
   onMenuClick: () => void;
   onRoleChange: (role: 'employee' | 'hr' | 'admin') => void;
   onLogout?: () => void;
@@ -10,6 +11,7 @@ interface HeaderProps {
 export function Header({
   title,
   role,
+  userName,
   onMenuClick,
   onRoleChange,
   onLogout
@@ -57,11 +59,7 @@ export function Header({
         <div className="relative flex items-center space-x-3">
           <div className="hidden sm:block text-right">
             <p className="text-sm font-medium text-white">
-              {role === 'employee' ?
-              'John Kamau' :
-              role === 'hr' ?
-              'Mary Wanjiku' :
-              'Admin User'}
+              {userName || (role === 'employee' ? 'John Kamau' : role === 'hr' ? 'Mary Wanjiku' : 'Admin User')}
             </p>
             <p className="text-xs text-white/50 capitalize">{role}</p>
           </div>
@@ -69,7 +67,7 @@ export function Header({
             onClick={() => setShowDropdown(!showDropdown)}
             className="h-9 w-9 rounded-full bg-white/20 text-white flex items-center justify-center font-medium border border-white/30 hover:bg-white/30 transition-colors"
           >
-            {role === 'employee' ? 'JK' : role === 'hr' ? 'MW' : 'AD'}
+            {userName ? userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : (role === 'employee' ? 'JK' : role === 'hr' ? 'MW' : 'AD')}
           </button>
 
           {showDropdown && onLogout && (

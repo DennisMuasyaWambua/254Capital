@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Select } from '@/components/salary-checkoff/ui/Select';
@@ -6,6 +6,7 @@ import { ProgressSteps } from '@/components/salary-checkoff/ui/ProgressSteps';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { ArrowLeft, ArrowRight, Check, Phone } from 'lucide-react';
 import { authService } from '@/services/salary-checkoff/auth.service';
+import { employerService, Employer } from '@/services/salary-checkoff/employer.service';
 import { ApiError } from '@/services/salary-checkoff/api';
 
 interface RegisterPageProps {
@@ -38,6 +39,12 @@ export function RegisterPage({
   // Step 2: Employment Info (required by backend)
   const [employeeNumber, setEmployeeNumber] = useState('');
   const [employerCode, setEmployerCode] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [mpesaNumber, setMpesaNumber] = useState('');
+
+  // Employer dropdown
+  const [employers, setEmployers] = useState<Employer[]>([]);
+  const [loadingEmployers, setLoadingEmployers] = useState(false);
 
   const steps = [
   {
@@ -63,6 +70,23 @@ export function RegisterPage({
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [countdown]);
+
+  // Fetch employers on component mount
+  useEffect(() => {
+    const fetchEmployers = async () => {
+      setLoadingEmployers(true);
+      try {
+        const response = await employerService.listEmployers();
+        setEmployers(response.results);
+      } catch (error) {
+        console.error('Failed to fetch employers:', error);
+      } finally {
+        setLoadingEmployers(false);
+      }
+    };
+
+    fetchEmployers();
+  }, []);
 
   const normalizePhone = (phoneNumber: string) => {
     const digits = phoneNumber.replace(/\D/g, '');
@@ -164,6 +188,7 @@ export function RegisterPage({
 
     try {
       const normalizedPhone = normalizePhone(phone);
+      const normalizedMpesa = mpesaNumber ? normalizePhone(mpesaNumber) : undefined;
 
       await authService.registerEmployee({
         phone_number: normalizedPhone,
@@ -173,6 +198,8 @@ export function RegisterPage({
         employee_number: employeeNumber,
         employer_code: employerCode,
         email: email || undefined,
+        bank_name: bankName || undefined,
+        mpesa_number: normalizedMpesa,
       });
 
       setIsLoading(false);
@@ -370,7 +397,7 @@ export function RegisterPage({
             {currentStep === 2 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                 <h3 className="text-lg font-semibold text-slate-900 border-b pb-2">
-                  Employment Details
+                  Employment & Banking Details
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input
@@ -381,12 +408,37 @@ export function RegisterPage({
                     helperText="Your unique employee ID"
                     required
                   />
-                  <Input
-                    label="Employer Code"
-                    placeholder="SAFARICOM"
+                  <Select
+                    label="Employer"
                     value={employerCode}
                     onChange={(e) => setEmployerCode(e.target.value)}
-                    helperText="Your company's code"
+                    required
+                    disabled={loadingEmployers}
+                  >
+                    <option value="">
+                      {loadingEmployers ? 'Loading employers...' : 'Select your employer'}
+                    </option>
+                    {employers.map((employer) => (
+                      <option key={employer.id} value={employer.registration_number}>
+                        {employer.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Input
+                    label="Bank Name"
+                    placeholder="e.g., KCB Bank, Equity Bank"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    helperText="Your primary bank for disbursements"
+                    required
+                  />
+                  <Input
+                    label="M-Pesa Number"
+                    type="tel"
+                    placeholder="0712 345 678"
+                    value={mpesaNumber}
+                    onChange={(e) => setMpesaNumber(e.target.value)}
+                    helperText="For M-Pesa disbursements"
                     required
                   />
                 </div>
@@ -394,7 +446,7 @@ export function RegisterPage({
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
                     <strong>Note:</strong> Please contact your HR department for your employee
-                    number and employer code if you don't have them.
+                    number if you don't have it. Ensure bank and M-Pesa details are accurate for loan disbursements.
                   </p>
                 </div>
 
@@ -415,27 +467,35 @@ export function RegisterPage({
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="block text-slate-500">Full Name</span>
-                      <span className="font-medium">John Kamau</span>
+                      <span className="font-medium">{firstName} {lastName}</span>
                     </div>
                     <div>
                       <span className="block text-slate-500">National ID</span>
-                      <span className="font-medium">12345678</span>
+                      <span className="font-medium">{nationalId}</span>
+                    </div>
+                    <div>
+                      <span className="block text-slate-500">Email</span>
+                      <span className="font-medium">{email || 'Not provided'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-slate-500">Phone Number</span>
+                      <span className="font-medium">{phone}</span>
                     </div>
                     <div>
                       <span className="block text-slate-500">Employer</span>
-                      <span className="font-medium">Safaricom PLC</span>
+                      <span className="font-medium">{employers.find(e => e.registration_number === employerCode)?.name || employerCode}</span>
                     </div>
                     <div>
-                      <span className="block text-slate-500">Gross Salary</span>
-                      <span className="font-medium">KES 150,000</span>
+                      <span className="block text-slate-500">Employee Number</span>
+                      <span className="font-medium">{employeeNumber}</span>
                     </div>
                     <div>
                       <span className="block text-slate-500">Bank</span>
-                      <span className="font-medium">KCB Bank</span>
+                      <span className="font-medium">{bankName}</span>
                     </div>
                     <div>
                       <span className="block text-slate-500">M-Pesa</span>
-                      <span className="font-medium">0712 345 678</span>
+                      <span className="font-medium">{mpesaNumber}</span>
                     </div>
                   </div>
                 </div>
@@ -454,6 +514,10 @@ export function RegisterPage({
                     and authorize 254 Capital to verify my employment details.
                   </label>
                 </div>
+
+                {error && (
+                  <div className="text-sm text-red-600 text-center">{error}</div>
+                )}
               </div>
             }
 
@@ -472,7 +536,7 @@ export function RegisterPage({
                 disabled={
                   (currentStep === 0 && otpStep === 'otp' && !otpComplete) ||
                   (currentStep === 1 && (!firstName || !lastName || !nationalId)) ||
-                  (currentStep === 2 && (!employeeNumber || !employerCode))
+                  (currentStep === 2 && (!employeeNumber || !employerCode || !bankName || !mpesaNumber))
                 }
                 rightIcon={
                   currentStep === 3 ? (

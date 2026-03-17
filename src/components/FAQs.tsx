@@ -32,7 +32,6 @@ const FAQs: React.FC = () => {
         <div>
           <p>Unlike traditional loans:</p>
           <ul className="list-disc pl-5 mt-2 space-y-1">
-            <li><strong>No fixed collateral</strong> – Financing is secured against your invoices or purchase orders.</li>
             <li><strong>Repayment aligns with buyer payments</strong> – No fixed monthly installments.</li>
             <li><strong>Faster approval</strong> – Focuses on transaction history, not just credit scores.</li>
           </ul>

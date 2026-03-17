@@ -88,7 +88,8 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
   const periodNum = Number(formData.repaymentPeriod) || 1;
   const amountPaidNum = parseFormattedNumber(formData.amountPaid) || 0;
 
-  const totalInterest = loanAmountNum * (interestRateNum / 100);
+  // Calculate interest based on number of months (flat interest per month)
+  const totalInterest = loanAmountNum * (interestRateNum / 100) * periodNum;
   const totalDue = loanAmountNum + totalInterest;
   const monthlyDeduction = totalDue / periodNum;
   const outstandingBalance = totalDue - amountPaidNum;
@@ -376,7 +377,11 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                       { value: '4', label: '4 Months' },
                       { value: '5', label: '5 Months' },
                       { value: '6', label: '6 Months' },
+                      { value: '7', label: '7 Months' },
+                      { value: '8', label: '8 Months' },
                       { value: '9', label: '9 Months' },
+                      { value: '10', label: '10 Months' },
+                      { value: '11', label: '11 Months' },
                       { value: '12', label: '12 Months' },
                     ]}
                     required

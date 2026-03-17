@@ -35,7 +35,7 @@ const Services = () => {
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Instant Invoice Financing</h3>
-              <p className="text-gray-600 mb-4">Turn unpaid invoices into working capital in 24 hours. No collateral needed.</p>
+              <p className="text-gray-600 mb-4">Turn unpaid invoices into working capital in 24 hours.</p>
               <p className="text-sm text-gray-500 italic mb-4">Trusted by growing SMEs in Africa.</p>
               <Link to="/contacts" className="text-[#48A7A7] font-medium flex items-center hover:underline">
                 Learn more

@@ -46,8 +46,8 @@ const HeroSection = () => {
         </h1>
         
         <p className="text-white/80 mb-8 max-w-md text-base animate-fade-in" style={{animationDuration: '0.7s', animationDelay: '0.2s'}}>
-          At 254-Capital, we simplify access to credit so you can grow your business,
-          achieve financial security and freedom - <b>without the hassle.</b>
+          At 254-Capital, we simplify access to credit so you can grow your business
+          and achieve financial security and freedom.
         </p>
         
         <div className="flex items-center mb-[70px] animate-fade-in" style={{animationDuration: '0.7s', animationDelay: '0.3s'}}>

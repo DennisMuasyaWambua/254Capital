@@ -87,8 +87,8 @@ export function Sidebar({
     icon: CreditCard
   },
   {
-    id: 'reports',
-    label: 'Reports',
+    id: 'collection-report',
+    label: 'Collection Report',
     icon: BarChart
   }];
 
@@ -132,6 +132,11 @@ export function Sidebar({
     id: 'employers',
     label: 'Employers',
     icon: Briefcase
+  },
+  {
+    id: 'collection-report',
+    label: 'Collection Report',
+    icon: BarChart
   },
   {
     id: 'disbursements',
