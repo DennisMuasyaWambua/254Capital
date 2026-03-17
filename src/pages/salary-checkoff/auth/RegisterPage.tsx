@@ -71,22 +71,26 @@ export function RegisterPage({
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  // Fetch employers on component mount
+  // Fetch employers when user reaches step 2
   useEffect(() => {
-    const fetchEmployers = async () => {
-      setLoadingEmployers(true);
-      try {
-        const response = await employerService.listEmployers();
-        setEmployers(response.results);
-      } catch (error) {
-        console.error('Failed to fetch employers:', error);
-      } finally {
-        setLoadingEmployers(false);
-      }
-    };
+    if (currentStep === 2 && employers.length === 0 && !loadingEmployers) {
+      const fetchEmployers = async () => {
+        setLoadingEmployers(true);
+        try {
+          const response = await employerService.listEmployers();
+          setEmployers(response.results);
+        } catch (error) {
+          console.error('Failed to fetch employers:', error);
+          // If fetching fails, we'll allow manual entry via employer code
+          setError('Unable to load employer list. Please enter your employer code manually.');
+        } finally {
+          setLoadingEmployers(false);
+        }
+      };
 
-    fetchEmployers();
-  }, []);
+      fetchEmployers();
+    }
+  }, [currentStep, employers.length, loadingEmployers]);
 
   const normalizePhone = (phoneNumber: string) => {
     const digits = phoneNumber.replace(/\D/g, '');
@@ -212,6 +216,7 @@ export function RegisterPage({
   };
 
   const handleNext = () => {
+    // Clear any previous errors
     setError('');
 
     if (currentStep === 0 && otpStep === 'phone') {
@@ -222,6 +227,22 @@ export function RegisterPage({
     if (currentStep === 0 && otpStep === 'otp') {
       handleVerifyOtp();
       return;
+    }
+
+    // Validate step 1 (Personal Info)
+    if (currentStep === 1) {
+      if (!firstName || !lastName || !nationalId) {
+        setError('Please fill in all required fields');
+        return;
+      }
+    }
+
+    // Validate step 2 (Employment & Banking)
+    if (currentStep === 2) {
+      if (!employeeNumber || !employerCode || !bankName || !mpesaNumber) {
+        setError('Please fill in all required fields');
+        return;
+      }
     }
 
     if (currentStep < 3) {
@@ -408,22 +429,33 @@ export function RegisterPage({
                     helperText="Your unique employee ID"
                     required
                   />
-                  <Select
-                    label="Employer"
-                    value={employerCode}
-                    onChange={(e) => setEmployerCode(e.target.value)}
-                    required
-                    disabled={loadingEmployers}
-                  >
-                    <option value="">
-                      {loadingEmployers ? 'Loading employers...' : 'Select your employer'}
-                    </option>
-                    {employers.map((employer) => (
-                      <option key={employer.id} value={employer.registration_number}>
-                        {employer.name}
+{employers.length > 0 ? (
+                    <Select
+                      label="Employer"
+                      value={employerCode}
+                      onChange={(e) => setEmployerCode(e.target.value)}
+                      required
+                      disabled={loadingEmployers}
+                    >
+                      <option value="">
+                        {loadingEmployers ? 'Loading employers...' : 'Select your employer'}
                       </option>
-                    ))}
-                  </Select>
+                      {employers.map((employer) => (
+                        <option key={employer.id} value={employer.registration_number}>
+                          {employer.name}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Input
+                      label="Employer Code"
+                      placeholder="e.g., SAFARICOM"
+                      value={employerCode}
+                      onChange={(e) => setEmployerCode(e.target.value)}
+                      helperText="Your company's registration code"
+                      required
+                    />
+                  )}
                   <Input
                     label="Bank Name"
                     placeholder="e.g., KCB Bank, Equity Bank"
@@ -535,8 +567,7 @@ export function RegisterPage({
                 isLoading={isLoading}
                 disabled={
                   (currentStep === 0 && otpStep === 'otp' && !otpComplete) ||
-                  (currentStep === 1 && (!firstName || !lastName || !nationalId)) ||
-                  (currentStep === 2 && (!employeeNumber || !employerCode || !bankName || !mpesaNumber))
+                  isLoading
                 }
                 rightIcon={
                   currentStep === 3 ? (
