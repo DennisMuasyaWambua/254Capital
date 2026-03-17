@@ -439,28 +439,20 @@ export function RegisterPage({
                     helperText="Your unique employee ID"
                     required
                   />
-{employers.length > 0 ? (
-                    <Select
-                      label="Employer"
-                      value={employerCode}
-                      onChange={(e) => setEmployerCode(e.target.value)}
-                      required
-                      disabled={loadingEmployers}
-                      options={employers.map((employer) => ({
+                  <Select
+                    label="Employer"
+                    value={employerCode}
+                    onChange={(e) => setEmployerCode(e.target.value)}
+                    required
+                    disabled={loadingEmployers}
+                    options={[
+                      { value: '', label: loadingEmployers ? 'Loading employers...' : 'Select your employer' },
+                      ...employers.map((employer) => ({
                         value: employer.id,
                         label: employer.name
-                      }))}
-                    />
-                  ) : (
-                    <Input
-                      label="Employer Code"
-                      placeholder="e.g., SAFARICOM"
-                      value={employerCode}
-                      onChange={(e) => setEmployerCode(e.target.value)}
-                      helperText="Your company's registration code"
-                      required
-                    />
-                  )}
+                      }))
+                    ]}
+                  />
                   <Input
                     label="Bank Name"
                     placeholder="e.g., KCB Bank, Equity Bank"
@@ -537,7 +529,7 @@ export function RegisterPage({
                     </div>
                     <div>
                       <span className="block text-slate-500">Employer</span>
-                      <span className="font-medium">{employers.find(e => e.id === employerCode)?.name || employerCode}</span>
+                      <span className="font-medium">{employers.find(e => e.id === employerCode)?.name || 'Not selected'}</span>
                     </div>
                     <div>
                       <span className="block text-slate-500">Employee Number</span>
