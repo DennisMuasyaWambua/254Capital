@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
     // HR endpoints
     HR_PENDING: `${API_BASE_URL}/api/v1/loans/hr/pending/`,
     HR_ALL: `${API_BASE_URL}/api/v1/loans/hr/all/`,
+    HR_DASHBOARD_STATS: `${API_BASE_URL}/api/v1/loans/hr/dashboard-stats/`,
     HR_REVIEW: (id: string) => `${API_BASE_URL}/api/v1/loans/hr/${id}/review/`,
     HR_BATCH_APPROVAL: `${API_BASE_URL}/api/v1/loans/hr/batch-approval/`,
 

@@ -58,7 +58,7 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
           empId: app.employee.id,
           amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
           date: new Date(app.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }),
-          department: 'N/A', // Not available in API response
+          department: app.department || 'N/A',
           disbursementDate: disbursementDate,
           fullApplication: app,
         };
@@ -66,35 +66,34 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
 
       setPendingApplications(formattedPending);
 
-      // Fetch all applications to calculate stats
-      const allResponse = await loanService.hrListAll({});
+      // Fetch dashboard statistics from server
+      const statsResponse = await loanService.hrGetDashboardStats();
 
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      const approvedThisMonth = allResponse.results.filter(
-        app => app.status === 'hr_approved' && new Date(app.updated_at) >= firstDayOfMonth
-      ).length;
-
-      const activeLoans = allResponse.results.filter(
-        app => app.status === 'disbursed' || app.status === 'approved'
-      ).length;
-
-      // Calculate monthly remittance (sum of all active monthly deductions)
-      const monthlyRemittance = allResponse.results
-        .filter(app => app.status === 'disbursed')
-        .reduce((sum, app) => sum + parseFloat(app.monthly_deduction), 0);
-
+      // Set stats directly from server response
       setStats({
-        pending: pendingResponse.count || 0,
-        approvedThisMonth,
-        activeLoans,
-        monthlyRemittance,
+        pending: statsResponse.statistics.pending_applications,
+        approvedThisMonth: statsResponse.statistics.approved_this_month,
+        activeLoans: statsResponse.statistics.active_loans,
+        monthlyRemittance: statsResponse.statistics.monthly_remittance,
       });
 
-      // Calculate upcoming deductions
-      const deductionsData = calculateUpcomingDeductions(allResponse.results);
-      setUpcomingDeductions(deductionsData);
+      // Set upcoming deductions from server data
+      const now = new Date();
+      const currentDay = now.getDate();
+      let nextDeductionDate: Date;
+
+      if (currentDay < 25) {
+        nextDeductionDate = new Date(now.getFullYear(), now.getMonth(), 25);
+      } else {
+        nextDeductionDate = new Date(now.getFullYear(), now.getMonth() + 1, 25);
+      }
+
+      setUpcomingDeductions({
+        nextDate: nextDeductionDate,
+        totalEmployees: statsResponse.deduction_breakdown.this_month.count + statsResponse.deduction_breakdown.next_month.count,
+        totalAmount: statsResponse.deduction_breakdown.this_month.total_amount + statsResponse.deduction_breakdown.next_month.total_amount,
+        processedPercentage: 65, // TODO: Calculate actual percentage based on remittance confirmation
+      });
 
       // Fetch recent activity from notifications
       const activityData = await fetchRecentActivity();

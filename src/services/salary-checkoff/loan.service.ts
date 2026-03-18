@@ -114,6 +114,38 @@ export interface AdminDisbursementRequest {
   disbursement_reference: string;
 }
 
+export interface HRDashboardStats {
+  statistics: {
+    pending_applications: number;
+    approved_this_month: number;
+    active_loans: number;
+    monthly_remittance: number;
+  };
+  deduction_breakdown: {
+    this_month: {
+      count: number;
+      total_amount: number;
+    };
+    next_month: {
+      count: number;
+      total_amount: number;
+    };
+  };
+  remittance_summary: {
+    recent_submissions: Array<{
+      id: string;
+      period_month: number;
+      period_year: number;
+      period_display: string;
+      total_amount: number;
+      status: string;
+      submitted_at: string;
+    }>;
+    pending_count: number;
+    confirmed_count: number;
+  };
+}
+
 export const loanService = {
   /**
    * List employee's loan applications
@@ -271,6 +303,18 @@ export const loanService = {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  /**
+   * Get HR dashboard statistics
+   */
+  hrGetDashboardStats: async (): Promise<HRDashboardStats> => {
+    return apiRequest<HRDashboardStats>(
+      API_ENDPOINTS.LOANS.HR_DASHBOARD_STATS,
+      {
+        method: 'GET',
+      }
+    );
   },
 
   // ===== ADMIN ENDPOINTS =====
