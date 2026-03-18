@@ -168,7 +168,7 @@ export function SalaryCheckOffApp() {
       case 'hr':
         switch (currentPage) {
           case 'dashboard':
-            return <HRDashboard onNavigate={handleNavigate} />;
+            return <HRDashboard onNavigate={handleNavigate} userName={userName} />;
           case 'application-review':
             return (
               <ApplicationReview onBack={() => handleNavigate('dashboard')} />
@@ -194,12 +194,12 @@ export function SalaryCheckOffApp() {
           case 'collection-report':
             return <CollectionReport role="hr" />;
           default:
-            return <HRDashboard onNavigate={handleNavigate} />;
+            return <HRDashboard onNavigate={handleNavigate} userName={userName} />;
         }
       case 'admin':
         switch (currentPage) {
           case 'dashboard':
-            return <AdminDashboard onNavigate={handleNavigate} />;
+            return <AdminDashboard onNavigate={handleNavigate} userName={userName} />;
           case 'existing-clients':
             return <ExistingClients onNavigate={handleNavigate} />;
           case 'pending-approvals':
@@ -224,7 +224,7 @@ export function SalaryCheckOffApp() {
               </div>
             );
           default:
-            return <AdminDashboard onNavigate={handleNavigate} />;
+            return <AdminDashboard onNavigate={handleNavigate} userName={userName} />;
         }
       default:
         return <div>Page not found</div>;

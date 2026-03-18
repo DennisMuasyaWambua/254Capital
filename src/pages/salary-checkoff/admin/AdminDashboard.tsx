@@ -24,8 +24,9 @@ import {
 '@/utils/salary-checkoff/deductionDate';
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
+  userName?: string;
 }
-export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
+export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [monthlyDisbursements, setMonthlyDisbursements] = useState<Array<{ month: string; amount: number; height: string }>>([]);
@@ -254,7 +255,9 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {userName ? `Welcome back, ${userName.split(' ')[0]}!` : 'Admin Dashboard'}
+          </h1>
           <p className="text-slate-500">
             System-wide overview of employers, loans, and disbursements.
           </p>

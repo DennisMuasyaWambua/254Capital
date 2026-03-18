@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { StatCard } from '@/components/salary-checkoff/ui/StatCard';
 import { Table } from '@/components/salary-checkoff/ui/Table';
-import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Button } from '@/components/salary-checkoff/ui/Button';
-import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
-import { notificationService, Notification } from '@/services/salary-checkoff/notification.service';
+import { loanService } from '@/services/salary-checkoff/loan.service';
+import { notificationService } from '@/services/salary-checkoff/notification.service';
 import {
   Users,
   FileText,
@@ -17,8 +16,9 @@ import {
 import { getDeductionTag } from '@/utils/salary-checkoff/deductionDate';
 interface HRDashboardProps {
   onNavigate: (page: string) => void;
+  userName?: string;
 }
-export function HRDashboard({ onNavigate }: HRDashboardProps) {
+export function HRDashboard({ onNavigate, userName }: HRDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [pendingApplications, setPendingApplications] = useState<any[]>([]);
   const [upcomingDeductions, setUpcomingDeductions] = useState({
@@ -58,7 +58,7 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
           empId: app.employee.id,
           amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
           date: new Date(app.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }),
-          department: app.department || 'N/A',
+          department: 'N/A',
           disbursementDate: disbursementDate,
           fullApplication: app,
         };
@@ -89,7 +89,7 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
       }
 
       setUpcomingDeductions({
-        nextDate: nextDeductionDate,
+        nextDate: nextDeductionDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
         totalEmployees: statsResponse.deduction_breakdown.this_month.count + statsResponse.deduction_breakdown.next_month.count,
         totalAmount: statsResponse.deduction_breakdown.this_month.total_amount + statsResponse.deduction_breakdown.next_month.total_amount,
         processedPercentage: 65, // TODO: Calculate actual percentage based on remittance confirmation
@@ -104,35 +104,6 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const calculateUpcomingDeductions = (applications: any[]) => {
-    const activeLoans = applications.filter(app => app.status === 'disbursed');
-
-    // Find next deduction date (typically 25th of current or next month)
-    const now = new Date();
-    const currentDay = now.getDate();
-    let nextDeductionDate: Date;
-
-    if (currentDay < 25) {
-      nextDeductionDate = new Date(now.getFullYear(), now.getMonth(), 25);
-    } else {
-      nextDeductionDate = new Date(now.getFullYear(), now.getMonth() + 1, 25);
-    }
-
-    const totalAmount = activeLoans.reduce((sum, app) =>
-      sum + parseFloat(app.monthly_deduction || 0), 0
-    );
-
-    // Calculate processed percentage based on confirmed remittances
-    const processedPercentage = activeLoans.length > 0 ? 65 : 0; // Simplified - would need remittance data
-
-    return {
-      nextDate: nextDeductionDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-      totalEmployees: activeLoans.length,
-      totalAmount,
-      processedPercentage,
-    };
   };
 
   const fetchRecentActivity = async () => {
@@ -228,7 +199,9 @@ export function HRDashboard({ onNavigate }: HRDashboardProps) {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">HR Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {userName ? `Welcome back, ${userName.split(' ')[0]}!` : 'HR Dashboard'}
+          </h1>
           <p className="text-slate-500">
             Overview of employee loan applications and deductions.
           </p>
