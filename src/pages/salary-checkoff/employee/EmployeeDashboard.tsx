@@ -19,11 +19,12 @@ import {
 'lucide-react';
 interface EmployeeDashboardProps {
   onNavigate: (page: string) => void;
+  userName?: string;
 }
-export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
+export function EmployeeDashboard({ onNavigate, userName: propUserName }: EmployeeDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userName, setUserName] = useState('');
+  const [userName, setUserName] = useState(propUserName || '');
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [activeLoan, setActiveLoan] = useState<LoanApplication | null>(null);
   const [stats, setStats] = useState({
@@ -41,10 +42,12 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
     try {
       setIsLoading(true);
 
-      // Fetch user profile
-      const profile = await authService.getProfile();
-      const fullName = `${profile.first_name} ${profile.last_name}`.trim();
-      setUserName(fullName || profile.first_name);
+      // Fetch user profile only if userName not provided
+      if (!propUserName) {
+        const profile = await authService.getProfile();
+        const fullName = `${profile.first_name} ${profile.last_name}`.trim();
+        setUserName(fullName || profile.first_name);
+      }
 
       // Fetch loan applications
       const applicationsResponse = await loanService.listApplications({ page: 1 });

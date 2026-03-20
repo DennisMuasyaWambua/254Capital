@@ -4,6 +4,7 @@ import { StatCard } from '@/components/salary-checkoff/ui/StatCard';
 import { Table } from '@/components/salary-checkoff/ui/Table';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Button } from '@/components/salary-checkoff/ui/Button';
+import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
 import { employerService } from '@/services/salary-checkoff/employer.service';
 import { reconciliationService } from '@/services/salary-checkoff/reconciliation.service';
@@ -37,6 +38,8 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
     totalDisbursed: 0,
     defaultRate: 0,
   });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
 
   useEffect(() => {
     loadAdminDashboardData();
@@ -50,15 +53,15 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
       const queueResponse = await loanService.adminListQueue({});
 
       // Format recent applications
-      const formattedApplications = queueResponse.results.slice(0, 4).map(app => {
+      const formattedApplications = queueResponse.results.slice(0, 4).map((app: any) => {
         const disbursedDate = app.disbursement_date
           ? new Date(app.disbursement_date)
           : null;
 
         return {
           id: app.application_number,
-          employer: app.employer.name,
-          employee: `${app.employee.first_name} ${app.employee.last_name}`,
+          employer: app.employer_name || app.employer?.name || 'N/A',
+          employee: app.employee_name || `${app.employee?.first_name} ${app.employee?.last_name}` || 'N/A',
           amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
           disbursedDate: disbursedDate,
           status: app.status,
@@ -236,8 +239,13 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
   },
   {
     header: 'Action',
-    accessor: () =>
-    <button className="text-[#00BCD4] hover:underline text-sm font-medium">
+    accessor: (item: any) =>
+    <button
+      className="text-[#00BCD4] hover:underline text-sm font-medium"
+      onClick={() => {
+        setSelectedApplication(item);
+        setIsModalOpen(true);
+      }}>
           View
         </button>
 
@@ -421,6 +429,64 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
           keyExtractor={(item) => item.id} />
 
       </Card>
+
+      {/* Disbursement Details Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedApplication(null);
+        }}
+        title="Disbursement Details"
+        size="lg">
+        {selectedApplication && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-500">Application ID</label>
+                <p className="mt-1 text-base font-semibold text-slate-900">{selectedApplication.id}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-500">Status</label>
+                <div className="mt-1">
+                  <Badge variant={selectedApplication.status}>{selectedApplication.status}</Badge>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-500">Employer</label>
+                <p className="mt-1 text-base text-slate-900">{selectedApplication.employer}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-500">Employee</label>
+                <p className="mt-1 text-base text-slate-900">{selectedApplication.employee}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-500">Amount Disbursed</label>
+                <p className="mt-1 text-base font-semibold text-slate-900">{selectedApplication.amount}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-500">Disbursed Date</label>
+                <p className="mt-1 text-base text-slate-900">
+                  {selectedApplication.disbursedDate ? formatDeductionDate(selectedApplication.disbursedDate) : '—'}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-500">First Deduction</label>
+                <p className="mt-1 text-base text-slate-900">
+                  {selectedApplication.disbursedDate ? (
+                    <>
+                      {formatDeductionDate(getFirstDeductionDate(selectedApplication.disbursedDate))}
+                      <span className={`ml-2 text-xs px-2 py-1 rounded-full ${getDeductionTag(selectedApplication.disbursedDate) === 'same-month' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {getDeductionTag(selectedApplication.disbursedDate) === 'same-month' ? 'Same month' : 'Next month'}
+                      </span>
+                    </>
+                  ) : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>);
 
 }

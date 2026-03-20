@@ -40,6 +40,7 @@ export function RegisterPage({
   // Step 2: Employment Info (required by backend)
   const [employeeNumber, setEmployeeNumber] = useState('');
   const [employerCode, setEmployerCode] = useState('');
+  const [department, setDepartment] = useState('');
   const [bankName, setBankName] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [mpesaNumber, setMpesaNumber] = useState('');
@@ -201,6 +202,7 @@ export function RegisterPage({
         national_id: nationalId,
         employee_id: employeeNumber,
         employer_id: employerCode,
+        department: department || undefined,
         email: email || undefined,
         bank_name: bankName || undefined,
         bank_account_number: bankAccountNumber,
@@ -450,6 +452,13 @@ export function RegisterPage({
                     }))}
                   />
                   <Input
+                    label="Department"
+                    placeholder="e.g., Finance, IT, HR"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    helperText="Your department or division"
+                  />
+                  <Input
                     label="Bank Name"
                     placeholder="e.g., KCB Bank, Equity Bank"
                     value={bankName}
@@ -529,6 +538,10 @@ export function RegisterPage({
                     <div>
                       <span className="block text-slate-500">Employee Number</span>
                       <span className="font-medium">{employeeNumber}</span>
+                    </div>
+                    <div>
+                      <span className="block text-slate-500">Department</span>
+                      <span className="font-medium">{department || 'Not provided'}</span>
                     </div>
                     <div>
                       <span className="block text-slate-500">Bank</span>

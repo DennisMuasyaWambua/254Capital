@@ -45,6 +45,7 @@ export interface RegisterEmployeeRequest {
   employee_id: string;
   employer_id: string;
   national_id: string;
+  department?: string;
   email?: string;
   bank_name?: string;
   bank_account_number?: string;

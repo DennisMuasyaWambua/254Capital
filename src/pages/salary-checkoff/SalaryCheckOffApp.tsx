@@ -152,7 +152,7 @@ export function SalaryCheckOffApp() {
       case 'employee':
         switch (currentPage) {
           case 'dashboard':
-            return <EmployeeDashboard onNavigate={handleNavigate} />;
+            return <EmployeeDashboard onNavigate={handleNavigate} userName={userName} />;
           case 'apply-loan':
             return (
               <LoanApplication
@@ -163,7 +163,7 @@ export function SalaryCheckOffApp() {
           case 'repayment':
             return <RepaymentSchedule />;
           default:
-            return <EmployeeDashboard onNavigate={handleNavigate} />;
+            return <EmployeeDashboard onNavigate={handleNavigate} userName={userName} />;
         }
       case 'hr':
         switch (currentPage) {

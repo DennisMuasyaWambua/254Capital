@@ -138,13 +138,13 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
 
   const employee = {
     name: `${application.employee.first_name} ${application.employee.last_name}`,
-    id: application.employee.id,
-    department: 'N/A', // Not available in API
-    salary: application.employee_profile?.monthly_salary
-      ? parseFloat(application.employee_profile.monthly_salary)
+    id: application.employee.employee_profile?.employee_id || 'N/A',
+    department: application.employee.employee_profile?.department || 'N/A',
+    salary: application.employee.employee_profile?.monthly_gross_salary
+      ? parseFloat(application.employee.employee_profile.monthly_gross_salary)
       : 0,
     employmentDate: 'N/A', // Not available in API
-    type: 'Permanent' // Not available in API
+    type: application.employee.employee_profile?.employment_type === 'confirmed' ? 'Permanent' : 'Contract'
   };
 
   const loan = {
