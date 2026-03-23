@@ -87,6 +87,11 @@ export function Sidebar({
     icon: CreditCard
   },
   {
+    id: 'disbursements',
+    label: 'Disbursements',
+    icon: DollarSign
+  },
+  {
     id: 'collection-report',
     label: 'Collection Report',
     icon: BarChart
@@ -124,8 +129,8 @@ export function Sidebar({
     icon: Building
   },
   {
-    id: 'applications',
-    label: 'All Applications',
+    id: 'loan-queue',
+    label: 'Loan Applications',
     icon: FileText
   },
   {

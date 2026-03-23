@@ -417,7 +417,7 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => onNavigate('applications')}>
+          onClick={() => onNavigate('loan-queue')}>
 
             View All <ArrowRight className="h-4 w-4 ml-1" />
           </Button>

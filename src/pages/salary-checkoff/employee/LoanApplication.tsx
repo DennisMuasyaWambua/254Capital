@@ -42,6 +42,12 @@ export function LoanApplication({
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Disbursement details state
+  const [disbursementMethod, setDisbursementMethod] = useState<'bank' | 'mpesa'>('mpesa');
+  const [bankName, setBankName] = useState<string>('');
+  const [bankBranch, setBankBranch] = useState<string>('');
+  const [accountNumber, setAccountNumber] = useState<string>('');
+
   // Document upload state
   const [uploadedDocuments, setUploadedDocuments] = useState<{
     nationalIdFront?: Document;
@@ -116,6 +122,17 @@ export function LoanApplication({
   const isSameMonth = today.getDate() <= 15;
   const firstDeductionLabel = formatDeductionDate(firstDeductionDate);
   const handleNext = async () => {
+    // Step 1: Validate disbursement details
+    if (step === 1) {
+      if (disbursementMethod === 'bank') {
+        if (!bankName.trim() || !bankBranch.trim() || !accountNumber.trim()) {
+          setError('Please fill in all bank account details');
+          return;
+        }
+      }
+      setError(null);
+    }
+
     // Step 2: Check if still uploading documents
     if (step === 2) {
       const isUploading = Object.values(uploadingDocs).some(status => status);
@@ -139,12 +156,22 @@ export function LoanApplication({
         setError(null);
 
         const amountNum = parseFloat(amount.replace(/,/g, ''));
-        await loanService.createApplication({
+        const applicationData: any = {
           principal_amount: amountNum,
           repayment_months: period,
           purpose: purpose || 'Personal loan',
           terms_accepted: termsAccepted,
-        });
+          disbursement_method: disbursementMethod,
+        };
+
+        // Add bank details if bank method is selected
+        if (disbursementMethod === 'bank') {
+          applicationData.bank_name = bankName;
+          applicationData.bank_branch = bankBranch;
+          applicationData.account_number = accountNumber;
+        }
+
+        await loanService.createApplication(applicationData);
 
         onSubmitSuccess();
       } catch (err: any) {
@@ -233,6 +260,19 @@ export function LoanApplication({
                 <h3 className="text-lg font-semibold text-slate-900">
                   Loan Configuration
                 </h3>
+                {error && (
+                  <div className="flex items-start space-x-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800">
+                        Error
+                      </p>
+                      <p className="text-xs text-red-700 mt-1">
+                        {error}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <MoneyInput
                 label="Loan Amount (KES)"
                 value={amount}
@@ -260,6 +300,69 @@ export function LoanApplication({
                   onChange={(e) => setPurpose(e.target.value)} />
 
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Disbursement Method
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDisbursementMethod('mpesa')}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        disbursementMethod === 'mpesa'
+                          ? 'border-[#00BCD4] bg-[#00BCD4]/5 shadow-sm'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-slate-900">M-Pesa</div>
+                        <div className="text-xs text-slate-500 mt-1">Instant mobile transfer</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDisbursementMethod('bank')}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        disbursementMethod === 'bank'
+                          ? 'border-[#00BCD4] bg-[#00BCD4]/5 shadow-sm'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-slate-900">Bank Transfer</div>
+                        <div className="text-xs text-slate-500 mt-1">Direct to bank account</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {disbursementMethod === 'bank' && (
+                  <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200 animate-fade-in">
+                    <h4 className="text-sm font-medium text-slate-700">Bank Account Details</h4>
+                    <Input
+                      label="Bank Name"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="e.g. Equity Bank"
+                      required
+                    />
+                    <Input
+                      label="Bank Branch"
+                      value={bankBranch}
+                      onChange={(e) => setBankBranch(e.target.value)}
+                      placeholder="e.g. Westlands Branch"
+                      required
+                    />
+                    <Input
+                      label="Account Number"
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value)}
+                      placeholder="Enter your account number"
+                      required
+                    />
+                  </div>
+                )}
               </div>
             }
 
@@ -393,6 +496,28 @@ export function LoanApplication({
                       )}
                     </span>
                   </div>
+                  <div className="flex justify-between border-t border-slate-200 pt-3">
+                    <span className="text-slate-500">Disbursement Method</span>
+                    <span className="font-medium">
+                      {disbursementMethod === 'bank' ? 'Bank Transfer' : 'M-Pesa'}
+                    </span>
+                  </div>
+                  {disbursementMethod === 'bank' && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Bank Name</span>
+                        <span className="font-medium">{bankName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Bank Branch</span>
+                        <span className="font-medium">{bankBranch}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Account Number</span>
+                        <span className="font-medium">{accountNumber}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* First Deduction Date */}

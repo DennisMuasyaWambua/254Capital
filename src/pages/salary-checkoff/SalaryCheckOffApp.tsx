@@ -9,6 +9,8 @@ import { RepaymentSchedule } from './employee/RepaymentSchedule';
 import { HRDashboard } from './hr/HRDashboard';
 import { ApplicationReview } from './hr/ApplicationReview';
 import { AdminDashboard } from './admin/AdminDashboard';
+import { AdminLoanQueue } from './admin/AdminLoanQueue';
+import { DisbursementHistory } from './admin/DisbursementHistory';
 import { ExistingClients } from './admin/ExistingClients';
 import { PendingApprovals } from './admin/PendingApprovals';
 import { RecordPayment } from './admin/RecordPayment';
@@ -31,6 +33,7 @@ type Page =
   | 'application-review'
   | 'payroll'
   | 'applications'
+  | 'loan-queue'
   | 'employers'
   | 'disbursements'
   | 'reconciliation'
@@ -193,6 +196,8 @@ export function SalaryCheckOffApp() {
             );
           case 'collection-report':
             return <CollectionReport role="hr" />;
+          case 'disbursements':
+            return <DisbursementHistory onBack={() => handleNavigate('dashboard')} role="hr" />;
           default:
             return <HRDashboard onNavigate={handleNavigate} userName={userName} />;
         }
@@ -200,6 +205,8 @@ export function SalaryCheckOffApp() {
         switch (currentPage) {
           case 'dashboard':
             return <AdminDashboard onNavigate={handleNavigate} userName={userName} />;
+          case 'loan-queue':
+            return <AdminLoanQueue onBack={() => handleNavigate('dashboard')} />;
           case 'existing-clients':
             return <ExistingClients onNavigate={handleNavigate} />;
           case 'pending-approvals':
@@ -215,14 +222,7 @@ export function SalaryCheckOffApp() {
           case 'collection-report':
             return <CollectionReport role="admin" />;
           case 'disbursements':
-            return (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <h2 className="text-xl font-semibold text-slate-900 mb-2">Disbursement Tracking</h2>
-                  <p className="text-slate-600">This feature is coming soon.</p>
-                </div>
-              </div>
-            );
+            return <DisbursementHistory onBack={() => handleNavigate('dashboard')} role="admin" />;
           default:
             return <AdminDashboard onNavigate={handleNavigate} userName={userName} />;
         }
