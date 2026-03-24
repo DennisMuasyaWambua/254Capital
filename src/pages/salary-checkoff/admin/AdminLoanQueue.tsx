@@ -315,6 +315,14 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                     Record Disbursement
                   </Button>
                 )}
+                {selectedApplication.status !== 'hr_approved' &&
+                 selectedApplication.status !== 'approved' &&
+                 selectedApplication.status !== 'disbursed' && (
+                  <div className="text-sm text-amber-600 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Awaiting HR approval. Current status: {selectedApplication.status.replace('_', ' ')}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -406,17 +414,23 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                     <>
                       <div>
                         <span className="font-medium">Bank:</span>{' '}
-                        {(selectedApplication as any).bank_name || 'N/A'}
+                        {selectedApplication.bank_name || 'N/A'}
                       </div>
                       <div>
                         <span className="font-medium">Branch:</span>{' '}
-                        {(selectedApplication as any).bank_branch || 'N/A'}
+                        {selectedApplication.bank_branch || 'N/A'}
                       </div>
                       <div>
                         <span className="font-medium">Account:</span>{' '}
-                        {(selectedApplication as any).account_number || 'N/A'}
+                        {selectedApplication.account_number || 'N/A'}
                       </div>
                     </>
+                  )}
+                  {selectedApplication.disbursement_method === 'mpesa' && (
+                    <div>
+                      <span className="font-medium">M-Pesa Number:</span>{' '}
+                      {selectedApplication.employee.phone_number || 'N/A'}
+                    </div>
                   )}
                 </div>
               </div>

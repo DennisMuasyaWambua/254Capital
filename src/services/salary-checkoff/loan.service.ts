@@ -32,6 +32,9 @@ export interface LoanApplication {
   updated_at: string;
   disbursement_date?: string;
   first_deduction_date?: string;
+  bank_name?: string;
+  bank_branch?: string;
+  account_number?: string;
 }
 
 export interface LoanApplicationDetail extends LoanApplication {
