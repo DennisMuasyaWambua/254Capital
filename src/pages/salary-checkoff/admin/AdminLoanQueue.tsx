@@ -5,6 +5,7 @@ import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Table } from '@/components/salary-checkoff/ui/Table';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { Input } from '@/components/salary-checkoff/ui/Input';
+import { Checkbox } from '@/components/salary-checkoff/ui/Checkbox';
 import { loanService, LoanApplication, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
 import {
   ArrowLeft,
@@ -16,6 +17,7 @@ import {
   AlertCircle,
   DollarSign,
   Calendar,
+  CheckSquare,
 } from 'lucide-react';
 
 interface AdminLoanQueueProps {
@@ -30,10 +32,15 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
   const [isDisbursementModalOpen, setIsDisbursementModalOpen] = useState(false);
+  const [isMassDisbursementModalOpen, setIsMassDisbursementModalOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [creditScoreNotes, setCreditScoreNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Selection state
+  const [selectedApplications, setSelectedApplications] = useState<Set<string>>(new Set());
+  const [showHistoricalApprovals, setShowHistoricalApprovals] = useState(false);
 
   // Disbursement fields
   const [disbursementDate, setDisbursementDate] = useState(
@@ -160,7 +167,138 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
     }
   };
 
+  const handleApproveAndDisburse = async () => {
+    if (!selectedApplication) return;
+
+    if (!disbursementReference.trim()) {
+      setError('Please provide a disbursement reference');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      // If not yet approved, approve first
+      if (selectedApplication.status === 'hr_approved') {
+        await loanService.adminAssess(selectedApplication.id, {
+          action: 'approve',
+          comment: comment || 'Application approved by admin',
+          credit_score_notes: creditScoreNotes,
+        });
+      }
+
+      // Then disburse
+      const disbursementMethod = selectedApplication.disbursement_method || 'mpesa';
+      await loanService.adminDisburse(selectedApplication.id, {
+        disbursement_date: disbursementDate,
+        disbursement_method: disbursementMethod,
+        disbursement_reference: disbursementReference,
+      });
+
+      setIsDisbursementModalOpen(false);
+      setIsViewModalOpen(false);
+      setDisbursementReference('');
+      setComment('');
+      setCreditScoreNotes('');
+      await loadApplications();
+    } catch (err: any) {
+      console.error('Error approving and disbursing:', err);
+      setError(err.message || 'Failed to approve and disburse');
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSelectApplication = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedApplications);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedApplications(newSelected);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const approvedIds = applications
+        .filter(app => app.status === 'approved' || app.status === 'hr_approved')
+        .map(app => app.id);
+      setSelectedApplications(new Set(approvedIds));
+    } else {
+      setSelectedApplications(new Set());
+    }
+  };
+
+  const handleMassDisbursement = async () => {
+    if (selectedApplications.size === 0) return;
+
+    if (!disbursementReference.trim()) {
+      setError('Please provide a disbursement reference');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      const selectedApps = applications.filter(app => selectedApplications.has(app.id));
+
+      // Process each disbursement
+      for (const app of selectedApps) {
+        // If not yet approved, approve first
+        if (app.status === 'hr_approved') {
+          await loanService.adminAssess(app.id, {
+            action: 'approve',
+            comment: 'Batch approved by admin',
+            credit_score_notes: '',
+          });
+        }
+
+        // Then disburse
+        const disbursementMethod = app.disbursement_method || 'mpesa';
+        await loanService.adminDisburse(app.id, {
+          disbursement_date: disbursementDate,
+          disbursement_method: disbursementMethod,
+          disbursement_reference: `${disbursementReference}-${app.application_number}`,
+        });
+      }
+
+      setIsMassDisbursementModalOpen(false);
+      setSelectedApplications(new Set());
+      setDisbursementReference('');
+      await loadApplications();
+    } catch (err: any) {
+      console.error('Error processing mass disbursement:', err);
+      setError(err.message || 'Failed to process mass disbursement');
+      setIsSubmitting(false);
+    }
+  };
+
+  const approvedApplications = applications.filter(
+    app => app.status === 'approved' || app.status === 'hr_approved'
+  );
+  const allApprovedSelected = approvedApplications.length > 0 &&
+    approvedApplications.every(app => selectedApplications.has(app.id));
+
   const columns = [
+    {
+      header: (
+        <Checkbox
+          checked={allApprovedSelected}
+          onChange={handleSelectAll}
+        />
+      ),
+      accessor: (item: LoanApplication) => {
+        const canSelect = item.status === 'approved' || item.status === 'hr_approved';
+        return canSelect ? (
+          <Checkbox
+            checked={selectedApplications.has(item.id)}
+            onChange={(checked) => handleSelectApplication(item.id, checked)}
+          />
+        ) : null;
+      },
+    },
     {
       header: 'App #',
       accessor: 'application_number',
@@ -227,6 +365,25 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
             Loan Application Queue
           </h1>
         </div>
+        <div className="flex items-center space-x-3">
+          {selectedApplications.size > 1 && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsMassDisbursementModalOpen(true)}
+              leftIcon={<CheckSquare className="h-4 w-4" />}
+            >
+              Mass Disbursement ({selectedApplications.size})
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowHistoricalApprovals(!showHistoricalApprovals)}
+          >
+            {showHistoricalApprovals ? 'Hide' : 'Show'} History
+          </Button>
+        </div>
       </div>
 
       {error && !isViewModalOpen && (
@@ -239,10 +396,10 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
         </div>
       )}
 
-      <Card>
-        {applications.length > 0 ? (
+      <Card title="Application Queue">
+        {applications.filter(app => app.status !== 'disbursed').length > 0 ? (
           <Table
-            data={applications}
+            data={applications.filter(app => app.status !== 'disbursed')}
             columns={columns}
             keyExtractor={(item) => item.id}
           />
@@ -253,6 +410,99 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
           </div>
         )}
       </Card>
+
+      {/* Historical Approvals */}
+      {showHistoricalApprovals && (
+        <Card title="Historical Approvals & Disbursements">
+          {applications.filter(app => app.status === 'disbursed').length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Date Disbursed
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      App #
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Employer
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Employee
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Method
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Reference
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {applications
+                    .filter(app => app.status === 'disbursed')
+                    .map((app) => (
+                      <tr key={app.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-sm text-slate-900">
+                          {app.disbursement_date
+                            ? new Date(app.disbursement_date).toLocaleDateString('en-KE', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : 'N/A'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-900">
+                          {app.application_number}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-900">
+                          {app.employer?.name || 'N/A'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-900">
+                          {app.employee?.first_name} {app.employee?.last_name}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-900">
+                          KES {parseFloat(app.principal_amount).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <Badge
+                            variant={app.disbursement_method === 'bank' ? 'pending' : 'approved'}
+                          >
+                            {app.disbursement_method === 'bank' ? 'Bank' : 'M-Pesa'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-slate-600">
+                          {app.disbursement_reference || 'N/A'}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewApplication(app)}
+                          >
+                            View
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-12 text-center">
+              <AlertCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <p className="text-slate-600">No historical disbursements found</p>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* View Application Modal */}
       <Modal
@@ -290,7 +540,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                       Decline
                     </Button>
                     <Button
-                      variant="primary"
+                      variant="ghost"
                       size="sm"
                       onClick={() => {
                         setIsViewModalOpen(false);
@@ -299,6 +549,17 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                       leftIcon={<Check className="h-4 w-4" />}
                     >
                       Approve
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        setIsViewModalOpen(false);
+                        setIsDisbursementModalOpen(true);
+                      }}
+                      leftIcon={<DollarSign className="h-4 w-4" />}
+                    >
+                      Approve & Disburse
                     </Button>
                   </>
                 )}
@@ -581,6 +842,117 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
         </div>
       </Modal>
 
+      {/* Mass Disbursement Modal */}
+      <Modal
+        isOpen={isMassDisbursementModalOpen}
+        onClose={() => {
+          setIsMassDisbursementModalOpen(false);
+          setError(null);
+        }}
+        title="Mass Disbursement Confirmation"
+        size="xl"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => setIsMassDisbursementModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleMassDisbursement} isLoading={isSubmitting}>
+              Approve & Disburse All
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-slate-600">
+            You are about to approve and disburse {selectedApplications.size} loan{selectedApplications.size > 1 ? 's' : ''}. Please review the details below and provide a disbursement reference.
+          </p>
+
+          {error && (
+            <div className="flex items-start space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          <Input
+            label="Disbursement Date"
+            type="date"
+            value={disbursementDate}
+            onChange={(e) => setDisbursementDate(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Disbursement Reference Prefix"
+            value={disbursementReference}
+            onChange={(e) => setDisbursementReference(e.target.value)}
+            placeholder="e.g. BATCH-001"
+            helperText="Will be suffixed with application number for each disbursement"
+            required
+          />
+
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    App #
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Employee
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Method
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Details
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {applications
+                  .filter(app => selectedApplications.has(app.id))
+                  .map((app) => (
+                    <tr key={app.id}>
+                      <td className="px-4 py-3 text-sm text-slate-900">
+                        {app.application_number}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900">
+                        {app.employee?.first_name} {app.employee?.last_name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900">
+                        KES {parseFloat(app.principal_amount).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <Badge
+                          variant={app.disbursement_method === 'bank' ? 'pending' : 'approved'}
+                        >
+                          {app.disbursement_method === 'bank' ? 'Bank' : 'M-Pesa'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {app.disbursement_method === 'bank' ? (
+                          <div>
+                            {app.bank_name || 'N/A'} - {app.account_number || 'N/A'}
+                          </div>
+                        ) : (
+                          <div>{app.employee?.phone_number || 'N/A'}</div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Modal>
+
       {/* Disbursement Modal */}
       <Modal
         isOpen={isDisbursementModalOpen}
@@ -589,7 +961,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
           setIsViewModalOpen(true);
           setError(null);
         }}
-        title="Record Disbursement"
+        title={selectedApplication?.status === 'hr_approved' ? 'Approve and Disburse' : 'Record Disbursement'}
         footer={
           <>
             <Button
@@ -601,15 +973,20 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
             >
               Cancel
             </Button>
-            <Button onClick={handleDisburse} isLoading={isSubmitting}>
-              Record Disbursement
+            <Button
+              onClick={selectedApplication?.status === 'hr_approved' ? handleApproveAndDisburse : handleDisburse}
+              isLoading={isSubmitting}
+            >
+              {selectedApplication?.status === 'hr_approved' ? 'Approve & Disburse' : 'Record Disbursement'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-slate-600">
-            Record the disbursement details for this approved loan.
+            {selectedApplication?.status === 'hr_approved'
+              ? 'This will approve the loan and immediately disburse it.'
+              : 'Record the disbursement details for this approved loan.'}
           </p>
 
           {error && (
@@ -635,12 +1012,43 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
             required
           />
 
-          <div className="p-3 bg-emerald-50 rounded-lg text-sm text-emerald-800">
-            <strong>Method:</strong>{' '}
-            {selectedApplication?.disbursement_method === 'bank'
-              ? 'Bank Transfer'
-              : 'M-Pesa'}
-          </div>
+          {selectedApplication?.disbursement_method && (
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                Disbursement Method
+              </h4>
+              <div className="space-y-1 text-sm text-blue-800">
+                <div>
+                  <span className="font-medium">Method:</span>{' '}
+                  {selectedApplication.disbursement_method === 'bank'
+                    ? 'Bank Transfer'
+                    : 'M-Pesa'}
+                </div>
+                {selectedApplication.disbursement_method === 'bank' && (
+                  <>
+                    <div>
+                      <span className="font-medium">Bank:</span>{' '}
+                      {selectedApplication.bank_name || 'N/A'}
+                    </div>
+                    <div>
+                      <span className="font-medium">Branch:</span>{' '}
+                      {selectedApplication.bank_branch || 'N/A'}
+                    </div>
+                    <div>
+                      <span className="font-medium">Account:</span>{' '}
+                      {selectedApplication.account_number || 'N/A'}
+                    </div>
+                  </>
+                )}
+                {selectedApplication.disbursement_method === 'mpesa' && (
+                  <div>
+                    <span className="font-medium">M-Pesa Number:</span>{' '}
+                    {selectedApplication.employee.phone_number || 'N/A'}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
