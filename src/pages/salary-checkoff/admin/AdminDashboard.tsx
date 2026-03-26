@@ -790,53 +790,79 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
               </div>
             </div>
 
-            {/* Disbursement Method & Payment Details - Prominently Displayed */}
+            {/* Payment Details - ALWAYS SHOW ALL AVAILABLE INFORMATION */}
             <div className="border-t pt-4">
               <h3 className="text-sm font-semibold text-slate-900 mb-3">Payment Details</h3>
 
-              {selectedApplication.fullData?.disbursement_method === 'mpesa' && (
-                <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-600 text-white">
-                      M-Pesa
-                    </span>
-                    <span className="text-sm text-green-700 font-medium">Disbursement Method</span>
+              <div className="space-y-4">
+                {/* Disbursement Method Badge */}
+                {selectedApplication.fullData?.disbursement_method && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-500">Preferred Disbursement Method</label>
+                    <div className="mt-1">
+                      {selectedApplication.fullData.disbursement_method === 'mpesa' ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-600 text-white">
+                          M-Pesa
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-600 text-white">
+                          Bank Transfer
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="bg-white rounded-md p-3 border border-green-200">
-                    <label className="text-xs font-medium text-green-700 uppercase tracking-wide">M-Pesa Number to Send Money To:</label>
-                    <p className="mt-1 text-lg font-bold text-green-900">
-                      {selectedApplication.fullData?.mpesa_number || selectedApplication.fullData?.employee?.phone_number || 'Not provided'}
-                    </p>
-                  </div>
-                </div>
-              )}
+                )}
 
-              {selectedApplication.fullData?.disbursement_method === 'bank' && (
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-600 text-white">
-                      Bank Transfer
-                    </span>
-                    <span className="text-sm text-blue-700 font-medium">Disbursement Method</span>
-                  </div>
-                  <div className="bg-white rounded-md p-3 border border-blue-200 space-y-3">
-                    <div>
-                      <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Bank Name:</label>
-                      <p className="mt-1 text-lg font-bold text-blue-900">{selectedApplication.fullData?.bank_name || 'Not provided'}</p>
+                {/* BANK DETAILS - ALWAYS SHOW IF AVAILABLE */}
+                {(selectedApplication.fullData?.bank_name || selectedApplication.fullData?.bank_account_number) && (
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                      Bank Account Details
+                    </h4>
+                    <div className="bg-white rounded-md p-4 border border-blue-200 space-y-3">
+                      {selectedApplication.fullData?.bank_name && (
+                        <div>
+                          <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Bank Name:</label>
+                          <p className="mt-1 text-xl font-bold text-blue-900">{selectedApplication.fullData.bank_name}</p>
+                        </div>
+                      )}
+                      {selectedApplication.fullData?.bank_branch && (
+                        <div className="border-t border-blue-100 pt-3">
+                          <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Bank Branch:</label>
+                          <p className="mt-1 text-lg font-semibold text-blue-900">{selectedApplication.fullData.bank_branch}</p>
+                        </div>
+                      )}
+                      {selectedApplication.fullData?.bank_account_number && (
+                        <div className="border-t border-blue-100 pt-3">
+                          <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Account Number:</label>
+                          <p className="mt-1 text-2xl font-bold text-blue-900 font-mono tracking-wide">{selectedApplication.fullData.bank_account_number}</p>
+                        </div>
+                      )}
                     </div>
-                    {selectedApplication.fullData?.bank_branch && (
-                      <div className="border-t border-blue-100 pt-2">
-                        <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Bank Branch:</label>
-                        <p className="mt-1 text-base font-semibold text-blue-900">{selectedApplication.fullData.bank_branch}</p>
-                      </div>
-                    )}
-                    <div className="border-t border-blue-100 pt-2">
-                      <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Account Number:</label>
-                      <p className="mt-1 text-lg font-bold text-blue-900 font-mono">{selectedApplication.fullData?.bank_account_number || 'Not provided'}</p>
+                  </div>
+                )}
+
+                {/* M-PESA DETAILS - ALWAYS SHOW IF AVAILABLE */}
+                {(selectedApplication.fullData?.mpesa_number || selectedApplication.fullData?.employee?.phone_number) && (
+                  <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-green-900 mb-3 flex items-center gap-2">
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      M-Pesa Details
+                    </h4>
+                    <div className="bg-white rounded-md p-4 border border-green-200">
+                      <label className="text-xs font-medium text-green-700 uppercase tracking-wide">M-Pesa Number:</label>
+                      <p className="mt-1 text-2xl font-bold text-green-900 tracking-wide">
+                        {selectedApplication.fullData?.mpesa_number || selectedApplication.fullData?.employee?.phone_number}
+                      </p>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Disbursement Form */}
