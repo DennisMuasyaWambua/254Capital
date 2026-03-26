@@ -60,13 +60,13 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
 
       // Separate pending and historical applications
       const pendingApps = queueResponse.results.filter(
-        app => app.status === 'hr_approved' || app.status === 'approved'
+        app => app.status !== 'disbursed'
       );
       const historicalApps = queueResponse.results.filter(
         app => app.status === 'disbursed'
       );
 
-      // Format recent applications (pending only)
+      // Format recent applications (pending only - showing first 4)
       const formattedApplications = pendingApps.slice(0, 4).map((app: any) => {
         const disbursedDate = app.disbursement_date
           ? new Date(app.disbursement_date)
