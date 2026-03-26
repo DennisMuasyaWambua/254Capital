@@ -658,41 +658,46 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
               </div>
             </div>
 
-            {/* Disbursement Details */}
-            {selectedApplication.disbursement_method && (
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="text-sm font-semibold text-blue-900 mb-2">
-                  Disbursement Method
-                </h4>
-                <div className="space-y-1 text-sm text-blue-800">
+            {/* Disbursement Method & Details - Prominently Displayed */}
+            {selectedApplication.disbursement_method === 'mpesa' && (
+              <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-600 text-white">
+                    M-Pesa
+                  </span>
+                  <span className="text-sm text-green-700 font-medium">Disbursement Method</span>
+                </div>
+                <div className="bg-white rounded-md p-3 border border-green-200">
+                  <label className="text-xs font-medium text-green-700 uppercase tracking-wide">M-Pesa Number to Send Money To:</label>
+                  <p className="mt-1 text-lg font-bold text-green-900">
+                    {selectedApplication.employee.phone_number || 'Not provided'}
+                  </p>
+                </div>
+              </div>
+            )}
+            {selectedApplication.disbursement_method === 'bank' && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-600 text-white">
+                    Bank Transfer
+                  </span>
+                  <span className="text-sm text-blue-700 font-medium">Disbursement Method</span>
+                </div>
+                <div className="bg-white rounded-md p-3 border border-blue-200 space-y-3">
                   <div>
-                    <span className="font-medium">Method:</span>{' '}
-                    {selectedApplication.disbursement_method === 'bank'
-                      ? 'Bank Transfer'
-                      : 'M-Pesa'}
+                    <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Bank Name:</label>
+                    <p className="mt-1 text-lg font-bold text-blue-900">{selectedApplication.bank_name || 'Not provided'}</p>
                   </div>
-                  {selectedApplication.disbursement_method === 'bank' && (
-                    <>
-                      <div>
-                        <span className="font-medium">Bank:</span>{' '}
-                        {selectedApplication.bank_name || 'N/A'}
-                      </div>
-                      <div>
-                        <span className="font-medium">Branch:</span>{' '}
-                        {selectedApplication.bank_branch || 'N/A'}
-                      </div>
-                      <div>
-                        <span className="font-medium">Account:</span>{' '}
-                        {selectedApplication.account_number || 'N/A'}
-                      </div>
-                    </>
-                  )}
-                  {selectedApplication.disbursement_method === 'mpesa' && (
-                    <div>
-                      <span className="font-medium">M-Pesa Number:</span>{' '}
-                      {selectedApplication.employee.phone_number || 'N/A'}
+                  {selectedApplication.bank_branch && (
+                    <div className="border-t border-blue-100 pt-2">
+                      <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Branch:</label>
+                      <p className="mt-1 text-base font-semibold text-blue-900">{selectedApplication.bank_branch}</p>
                     </div>
                   )}
+                  <div className="border-t border-blue-100 pt-2">
+                    <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Account Number:</label>
+                    <p className="mt-1 text-lg font-bold text-blue-900 font-mono">{selectedApplication.account_number || 'Not provided'}</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -936,13 +941,19 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                           {app.disbursement_method === 'bank' ? 'Bank' : 'M-Pesa'}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td className="px-4 py-3 text-sm">
                         {app.disbursement_method === 'bank' ? (
                           <div>
-                            {app.bank_name || 'N/A'} - {app.account_number || 'N/A'}
+                            <div className="text-xs text-blue-700 font-medium">Bank:</div>
+                            <div className="font-semibold text-slate-900">{app.bank_name || 'Not provided'}</div>
+                            <div className="text-xs text-blue-700 font-medium mt-1">Account:</div>
+                            <div className="font-semibold text-slate-900 font-mono text-xs">{app.account_number || 'Not provided'}</div>
                           </div>
                         ) : (
-                          <div>{app.employee?.phone_number || 'N/A'}</div>
+                          <div>
+                            <div className="text-xs text-green-700 font-medium">M-Pesa Number:</div>
+                            <div className="font-semibold text-slate-900">{app.employee?.phone_number || 'Not provided'}</div>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -1012,40 +1023,45 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
             required
           />
 
-          {selectedApplication?.disbursement_method && (
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="text-sm font-semibold text-blue-900 mb-2">
-                Disbursement Method
-              </h4>
-              <div className="space-y-1 text-sm text-blue-800">
+          {selectedApplication?.disbursement_method === 'mpesa' && (
+            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-600 text-white">
+                  M-Pesa
+                </span>
+                <span className="text-sm text-green-700 font-medium">Disbursement Method</span>
+              </div>
+              <div className="bg-white rounded-md p-3 border border-green-200">
+                <label className="text-xs font-medium text-green-700 uppercase tracking-wide">M-Pesa Number to Send Money To:</label>
+                <p className="mt-1 text-lg font-bold text-green-900">
+                  {selectedApplication.employee.phone_number || 'Not provided'}
+                </p>
+              </div>
+            </div>
+          )}
+          {selectedApplication?.disbursement_method === 'bank' && (
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-600 text-white">
+                  Bank Transfer
+                </span>
+                <span className="text-sm text-blue-700 font-medium">Disbursement Method</span>
+              </div>
+              <div className="bg-white rounded-md p-3 border border-blue-200 space-y-3">
                 <div>
-                  <span className="font-medium">Method:</span>{' '}
-                  {selectedApplication.disbursement_method === 'bank'
-                    ? 'Bank Transfer'
-                    : 'M-Pesa'}
+                  <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Bank Name:</label>
+                  <p className="mt-1 text-lg font-bold text-blue-900">{selectedApplication.bank_name || 'Not provided'}</p>
                 </div>
-                {selectedApplication.disbursement_method === 'bank' && (
-                  <>
-                    <div>
-                      <span className="font-medium">Bank:</span>{' '}
-                      {selectedApplication.bank_name || 'N/A'}
-                    </div>
-                    <div>
-                      <span className="font-medium">Branch:</span>{' '}
-                      {selectedApplication.bank_branch || 'N/A'}
-                    </div>
-                    <div>
-                      <span className="font-medium">Account:</span>{' '}
-                      {selectedApplication.account_number || 'N/A'}
-                    </div>
-                  </>
-                )}
-                {selectedApplication.disbursement_method === 'mpesa' && (
-                  <div>
-                    <span className="font-medium">M-Pesa Number:</span>{' '}
-                    {selectedApplication.employee.phone_number || 'N/A'}
+                {selectedApplication.bank_branch && (
+                  <div className="border-t border-blue-100 pt-2">
+                    <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Branch:</label>
+                    <p className="mt-1 text-base font-semibold text-blue-900">{selectedApplication.bank_branch}</p>
                   </div>
                 )}
+                <div className="border-t border-blue-100 pt-2">
+                  <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Account Number:</label>
+                  <p className="mt-1 text-lg font-bold text-blue-900 font-mono">{selectedApplication.account_number || 'Not provided'}</p>
+                </div>
               </div>
             </div>
           )}

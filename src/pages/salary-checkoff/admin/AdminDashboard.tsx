@@ -686,19 +686,28 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                         '—'
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
+                    <td className="px-4 py-3 text-sm">
                       {app.disbursementMethod === 'mpesa' ? (
                         <div>
-                          {app.fullData?.mpesa_number || app.fullData?.employee?.phone_number || '—'}
+                          <div className="text-xs text-green-700 font-medium">M-Pesa Number:</div>
+                          <div className="font-semibold text-slate-900">
+                            {app.fullData?.mpesa_number || app.fullData?.employee?.phone_number || 'Not provided'}
+                          </div>
                         </div>
                       ) : app.disbursementMethod === 'bank' ? (
                         <div>
                           {app.fullData?.bank_name && (
-                            <div>{app.fullData.bank_name}</div>
+                            <div>
+                              <div className="text-xs text-blue-700 font-medium">Bank:</div>
+                              <div className="font-semibold text-slate-900">{app.fullData.bank_name}</div>
+                            </div>
                           )}
                           {app.fullData?.bank_account_number && (
-                            <div className="text-xs text-slate-500">
-                              A/C: {app.fullData.bank_account_number}
+                            <div className="mt-1">
+                              <div className="text-xs text-blue-700 font-medium">Account:</div>
+                              <div className="font-semibold text-slate-900 font-mono text-xs">
+                                {app.fullData.bank_account_number}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -756,33 +765,22 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                 <label className="text-sm font-medium text-slate-500">Amount</label>
                 <p className="mt-1 text-base font-semibold text-slate-900">{selectedApplication.amount}</p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-slate-500">Disbursement Method</label>
-                <p className="mt-1 text-base text-slate-900">
-                  {selectedApplication.fullData?.disbursement_method === 'mpesa' ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      M-Pesa
-                    </span>
-                  ) : selectedApplication.fullData?.disbursement_method === 'bank' ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Bank Transfer
-                    </span>
-                  ) : (
-                    '—'
-                  )}
-                </p>
-              </div>
             </div>
 
-            {/* Disbursement Information */}
+            {/* Disbursement Method & Details - Prominently Displayed */}
             {selectedApplication.fullData?.disbursement_method === 'mpesa' && (
               <div className="border-t pt-4">
-                <h3 className="text-sm font-semibold text-slate-900 mb-3">M-Pesa Details</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-slate-500">M-Pesa Number</label>
-                    <p className="mt-1 text-base text-slate-900">
-                      {selectedApplication.fullData?.mpesa_number || selectedApplication.fullData?.employee?.phone_number || '—'}
+                <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-600 text-white">
+                      M-Pesa
+                    </span>
+                    <span className="text-sm text-green-700 font-medium">Disbursement Method</span>
+                  </div>
+                  <div className="bg-white rounded-md p-3 border border-green-200">
+                    <label className="text-xs font-medium text-green-700 uppercase tracking-wide">M-Pesa Number to Send Money To:</label>
+                    <p className="mt-1 text-lg font-bold text-green-900">
+                      {selectedApplication.fullData?.mpesa_number || selectedApplication.fullData?.employee?.phone_number || 'Not provided'}
                     </p>
                   </div>
                 </div>
@@ -791,15 +789,22 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
 
             {selectedApplication.fullData?.disbursement_method === 'bank' && (
               <div className="border-t pt-4">
-                <h3 className="text-sm font-semibold text-slate-900 mb-3">Bank Details</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-slate-500">Bank Name</label>
-                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData?.bank_name || '—'}</p>
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-600 text-white">
+                      Bank Transfer
+                    </span>
+                    <span className="text-sm text-blue-700 font-medium">Disbursement Method</span>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-500">Account Number</label>
-                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData?.bank_account_number || '—'}</p>
+                  <div className="bg-white rounded-md p-3 border border-blue-200 space-y-3">
+                    <div>
+                      <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Bank Name:</label>
+                      <p className="mt-1 text-lg font-bold text-blue-900">{selectedApplication.fullData?.bank_name || 'Not provided'}</p>
+                    </div>
+                    <div className="border-t border-blue-100 pt-2">
+                      <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Account Number:</label>
+                      <p className="mt-1 text-lg font-bold text-blue-900 font-mono">{selectedApplication.fullData?.bank_account_number || 'Not provided'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -959,19 +964,28 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                             '—'
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-4 py-3 text-sm">
                           {app.fullData?.disbursement_method === 'mpesa' ? (
                             <div>
-                              {app.fullData?.mpesa_number || app.fullData?.employee?.phone_number || '—'}
+                              <div className="text-xs text-green-700 font-medium">M-Pesa Number:</div>
+                              <div className="font-semibold text-slate-900">
+                                {app.fullData?.mpesa_number || app.fullData?.employee?.phone_number || 'Not provided'}
+                              </div>
                             </div>
                           ) : app.fullData?.disbursement_method === 'bank' ? (
                             <div>
                               {app.fullData?.bank_name && (
-                                <div>{app.fullData.bank_name}</div>
+                                <div>
+                                  <div className="text-xs text-blue-700 font-medium">Bank:</div>
+                                  <div className="font-semibold text-slate-900">{app.fullData.bank_name}</div>
+                                </div>
                               )}
                               {app.fullData?.bank_account_number && (
-                                <div className="text-xs text-slate-500">
-                                  A/C: {app.fullData.bank_account_number}
+                                <div className="mt-1">
+                                  <div className="text-xs text-blue-700 font-medium">Account:</div>
+                                  <div className="font-semibold text-slate-900 font-mono text-xs">
+                                    {app.fullData.bank_account_number}
+                                  </div>
                                 </div>
                               )}
                             </div>
