@@ -813,6 +813,50 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
             {/* Disbursement Form */}
             <div className="border-t pt-4 space-y-4">
               <h3 className="text-sm font-semibold text-slate-900 mb-3">Disbursement Information</h3>
+
+              {/* Payment Account Details */}
+              {selectedApplication.fullData?.disbursement_method && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
+                  <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-3">Payment Account Details</p>
+
+                  {selectedApplication.fullData.disbursement_method === 'mpesa' ? (
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-sm text-slate-600">M-Pesa Number:</span>
+                        <p className="text-base font-bold text-slate-900">
+                          {selectedApplication.fullData?.mpesa_number || selectedApplication.fullData?.employee?.phone_number || 'Not provided'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : selectedApplication.fullData.disbursement_method === 'bank' ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-sm text-slate-600">Bank Name:</span>
+                          <p className="text-base font-bold text-slate-900">
+                            {selectedApplication.fullData?.bank_name || 'Not provided'}
+                          </p>
+                        </div>
+                        {selectedApplication.fullData?.bank_branch && (
+                          <div>
+                            <span className="text-sm text-slate-600">Bank Branch:</span>
+                            <p className="text-base font-bold text-slate-900">
+                              {selectedApplication.fullData.bank_branch}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="pt-2 border-t border-slate-200">
+                        <span className="text-sm text-slate-600">Account Number:</span>
+                        <p className="text-lg font-bold text-slate-900 font-mono">
+                          {selectedApplication.fullData?.bank_account_number || 'Not provided'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
