@@ -742,34 +742,59 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
         size="lg">
         {selectedApplication && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-slate-500">Application ID</label>
-                <p className="mt-1 text-base font-semibold text-slate-900">{selectedApplication.id}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-500">Status</label>
-                <div className="mt-1">
-                  <Badge variant={selectedApplication.status}>{selectedApplication.status}</Badge>
+            {/* Application Overview */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">Application Overview</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-500">Application ID</label>
+                  <p className="mt-1 text-base font-semibold text-slate-900">{selectedApplication.id}</p>
                 </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-500">Employer</label>
-                <p className="mt-1 text-base text-slate-900">{selectedApplication.employer}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-500">Employee</label>
-                <p className="mt-1 text-base text-slate-900">{selectedApplication.employee}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-500">Amount</label>
-                <p className="mt-1 text-base font-semibold text-slate-900">{selectedApplication.amount}</p>
+                <div>
+                  <label className="text-sm font-medium text-slate-500">Status</label>
+                  <div className="mt-1">
+                    <Badge variant={selectedApplication.status}>{selectedApplication.status}</Badge>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-500">Loan Amount</label>
+                  <p className="mt-1 text-base font-semibold text-slate-900">{selectedApplication.amount}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-500">Employer</label>
+                  <p className="mt-1 text-base text-slate-900">{selectedApplication.employer}</p>
+                </div>
               </div>
             </div>
 
-            {/* Disbursement Method & Details - Prominently Displayed */}
-            {selectedApplication.fullData?.disbursement_method === 'mpesa' && (
-              <div className="border-t pt-4">
+            {/* Employee Information */}
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">Employee Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-500">Employee Name</label>
+                  <p className="mt-1 text-base font-semibold text-slate-900">{selectedApplication.employee}</p>
+                </div>
+                {selectedApplication.fullData?.employee?.phone_number && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-500">Phone Number</label>
+                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData.employee.phone_number}</p>
+                  </div>
+                )}
+                {selectedApplication.fullData?.department && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-500">Department</label>
+                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData.department}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Disbursement Method & Payment Details - Prominently Displayed */}
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">Payment Details</h3>
+
+              {selectedApplication.fullData?.disbursement_method === 'mpesa' && (
                 <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-600 text-white">
@@ -784,11 +809,9 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                     </p>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {selectedApplication.fullData?.disbursement_method === 'bank' && (
-              <div className="border-t pt-4">
+              {selectedApplication.fullData?.disbursement_method === 'bank' && (
                 <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-600 text-white">
@@ -801,61 +824,25 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                       <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Bank Name:</label>
                       <p className="mt-1 text-lg font-bold text-blue-900">{selectedApplication.fullData?.bank_name || 'Not provided'}</p>
                     </div>
+                    {selectedApplication.fullData?.bank_branch && (
+                      <div className="border-t border-blue-100 pt-2">
+                        <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Bank Branch:</label>
+                        <p className="mt-1 text-base font-semibold text-blue-900">{selectedApplication.fullData.bank_branch}</p>
+                      </div>
+                    )}
                     <div className="border-t border-blue-100 pt-2">
                       <label className="text-xs font-medium text-blue-700 uppercase tracking-wide">Account Number:</label>
                       <p className="mt-1 text-lg font-bold text-blue-900 font-mono">{selectedApplication.fullData?.bank_account_number || 'Not provided'}</p>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Disbursement Form */}
             <div className="border-t pt-4 space-y-4">
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Disbursement Information</h3>
-
-              {/* Payment Account Details */}
-              {selectedApplication.fullData?.disbursement_method && (
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
-                  <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-3">Payment Account Details</p>
-
-                  {selectedApplication.fullData.disbursement_method === 'mpesa' ? (
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-sm text-slate-600">M-Pesa Number:</span>
-                        <p className="text-base font-bold text-slate-900">
-                          {selectedApplication.fullData?.mpesa_number || selectedApplication.fullData?.employee?.phone_number || 'Not provided'}
-                        </p>
-                      </div>
-                    </div>
-                  ) : selectedApplication.fullData.disbursement_method === 'bank' ? (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <span className="text-sm text-slate-600">Bank Name:</span>
-                          <p className="text-base font-bold text-slate-900">
-                            {selectedApplication.fullData?.bank_name || 'Not provided'}
-                          </p>
-                        </div>
-                        {selectedApplication.fullData?.bank_branch && (
-                          <div>
-                            <span className="text-sm text-slate-600">Bank Branch:</span>
-                            <p className="text-base font-bold text-slate-900">
-                              {selectedApplication.fullData.bank_branch}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="pt-2 border-t border-slate-200">
-                        <span className="text-sm text-slate-600">Account Number:</span>
-                        <p className="text-lg font-bold text-slate-900 font-mono">
-                          {selectedApplication.fullData?.bank_account_number || 'Not provided'}
-                        </p>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              )}
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">Record Disbursement</h3>
+              <p className="text-sm text-slate-600 mb-4">Enter the disbursement details to complete the transaction</p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
