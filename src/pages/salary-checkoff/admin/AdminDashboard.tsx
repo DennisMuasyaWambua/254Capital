@@ -5,10 +5,10 @@ import { Table } from '@/components/salary-checkoff/ui/Table';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
-import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
+import { loanService } from '@/services/salary-checkoff/loan.service';
 import { employerService } from '@/services/salary-checkoff/employer.service';
 import { reconciliationService } from '@/services/salary-checkoff/reconciliation.service';
-import { notificationService } from '@/services/salary-checkoff/notification.service';
+import { toast } from '@/hooks/use-toast';
 import {
   Briefcase,
   Users,
@@ -30,6 +30,7 @@ interface AdminDashboardProps {
 export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
+  const [historicalApplications, setHistoricalApplications] = useState<any[]>([]);
   const [monthlyDisbursements, setMonthlyDisbursements] = useState<Array<{ month: string; amount: number; height: string }>>([]);
   const [systemAlerts, setSystemAlerts] = useState<Array<{ type: 'error' | 'warning'; title: string; message: string }>>([]);
   const [stats, setStats] = useState({
@@ -40,6 +41,11 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [selectedApplicationIds, setSelectedApplicationIds] = useState<Set<string>>(new Set());
+  const [isMassDisburseModalOpen, setIsMassDisburseModalOpen] = useState(false);
+  const [disbursementDate, setDisbursementDate] = useState('');
+  const [disbursementReference, setDisbursementReference] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     loadAdminDashboardData();
@@ -52,14 +58,23 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
       // Fetch applications from admin queue
       const queueResponse = await loanService.adminListQueue({});
 
-      // Format recent applications
-      const formattedApplications = queueResponse.results.slice(0, 4).map((app: any) => {
+      // Separate pending and historical applications
+      const pendingApps = queueResponse.results.filter(
+        app => app.status === 'hr_approved' || app.status === 'approved'
+      );
+      const historicalApps = queueResponse.results.filter(
+        app => app.status === 'disbursed'
+      );
+
+      // Format recent applications (pending only)
+      const formattedApplications = pendingApps.slice(0, 4).map((app: any) => {
         const disbursedDate = app.disbursement_date
           ? new Date(app.disbursement_date)
           : null;
 
         return {
           id: app.application_number,
+          fullData: app,
           employer: app.employer_name || app.employer?.name || 'N/A',
           employee: app.employee_name || `${app.employee?.first_name} ${app.employee?.last_name}` || 'N/A',
           amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
@@ -68,7 +83,27 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
         };
       });
 
+      // Format historical applications
+      const formattedHistorical = historicalApps.slice(0, 10).map((app: any) => {
+        const disbursedDate = app.disbursement_date
+          ? new Date(app.disbursement_date)
+          : null;
+
+        return {
+          id: app.application_number,
+          fullData: app,
+          employer: app.employer_name || app.employer?.name || 'N/A',
+          employee: app.employee_name || `${app.employee?.first_name} ${app.employee?.last_name}` || 'N/A',
+          amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
+          disbursedDate: disbursedDate,
+          status: app.status,
+          disbursementMethod: app.disbursement_method,
+          disbursementReference: app.disbursement_reference,
+        };
+      });
+
       setRecentApplications(formattedApplications);
+      setHistoricalApplications(formattedHistorical);
 
       // Calculate stats
       const activeLoans = queueResponse.results.filter(
@@ -143,6 +178,119 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
     }));
   };
 
+  const handleSelectApplication = (appId: string) => {
+    const newSelected = new Set(selectedApplicationIds);
+    if (newSelected.has(appId)) {
+      newSelected.delete(appId);
+    } else {
+      newSelected.add(appId);
+    }
+    setSelectedApplicationIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedApplicationIds.size === recentApplications.length) {
+      setSelectedApplicationIds(new Set());
+    } else {
+      const allIds = new Set(recentApplications.map(app => app.id));
+      setSelectedApplicationIds(allIds);
+    }
+  };
+
+  const handleApproveAndDisburse = async (application: any) => {
+    try {
+      setIsProcessing(true);
+
+      // First approve if not already approved
+      if (application.fullData.status === 'hr_approved') {
+        await loanService.adminAssess(application.fullData.id, {
+          action: 'approve',
+          comment: 'Approved via dashboard',
+        });
+      }
+
+      // Then disburse
+      await loanService.adminDisburse(application.fullData.id, {
+        disbursement_date: disbursementDate || new Date().toISOString().split('T')[0],
+        disbursement_method: application.fullData.disbursement_method || 'bank',
+        disbursement_reference: disbursementReference || `REF-${application.id}`,
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Application approved and disbursed successfully',
+      });
+
+      // Reload data
+      await loadAdminDashboardData();
+
+      // Close modal
+      setIsModalOpen(false);
+      setSelectedApplication(null);
+      setDisbursementDate('');
+      setDisbursementReference('');
+    } catch (error: any) {
+      console.error('Error approving and disbursing:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to approve and disburse',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleMassDisburse = async () => {
+    try {
+      setIsProcessing(true);
+
+      const selectedApps = recentApplications.filter(app =>
+        selectedApplicationIds.has(app.id)
+      );
+
+      for (const app of selectedApps) {
+        // Approve if needed
+        if (app.fullData.status === 'hr_approved') {
+          await loanService.adminAssess(app.fullData.id, {
+            action: 'approve',
+            comment: 'Mass approved via dashboard',
+          });
+        }
+
+        // Disburse
+        await loanService.adminDisburse(app.fullData.id, {
+          disbursement_date: disbursementDate || new Date().toISOString().split('T')[0],
+          disbursement_method: app.fullData.disbursement_method || 'bank',
+          disbursement_reference: `${disbursementReference}-${app.id}`,
+        });
+      }
+
+      toast({
+        title: 'Success',
+        description: `Successfully disbursed ${selectedApps.length} application(s)`,
+      });
+
+      // Reload data
+      await loadAdminDashboardData();
+
+      // Reset state
+      setIsMassDisburseModalOpen(false);
+      setSelectedApplicationIds(new Set());
+      setDisbursementDate('');
+      setDisbursementReference('');
+    } catch (error: any) {
+      console.error('Error mass disbursing:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to mass disburse',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const fetchSystemAlerts = async (): Promise<Array<{ type: 'error' | 'warning'; title: string; message: string }>> => {
     const alerts: Array<{ type: 'error' | 'warning'; title: string; message: string }> = [];
 
@@ -184,6 +332,17 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
   };
 
   const columns = [
+  {
+    header: '',
+    accessor: (item: any) => (
+      <input
+        type="checkbox"
+        checked={selectedApplicationIds.has(item.id)}
+        onChange={() => handleSelectApplication(item.id)}
+        className="w-4 h-4 text-[#008080] border-slate-300 rounded focus:ring-[#008080]"
+      />
+    )
+  },
   {
     header: 'App ID',
     accessor: 'id'
@@ -410,9 +569,21 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
         </div>
       </div>
 
+      {/* Mass Disburse Button */}
+      {selectedApplicationIds.size > 1 && (
+        <div className="flex justify-end">
+          <Button
+            onClick={() => setIsMassDisburseModalOpen(true)}
+            className="bg-[#008080] hover:bg-[#006666]">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Mass Approve & Disburse ({selectedApplicationIds.size} selected)
+          </Button>
+        </div>
+      )}
+
       {/* Recent Applications with First Deduction Date */}
       <Card
-        title="Recent Disbursements"
+        title="Pending Disbursements"
         action={
         <Button
           variant="ghost"
@@ -423,6 +594,21 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
           </Button>
         }>
 
+        {/* Select All Checkbox */}
+        {recentApplications.length > 0 && (
+          <div className="px-6 py-3 border-b border-slate-200 bg-slate-50">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedApplicationIds.size === recentApplications.length && recentApplications.length > 0}
+                onChange={handleSelectAll}
+                className="w-4 h-4 text-[#008080] border-slate-300 rounded focus:ring-[#008080]"
+              />
+              Select All
+            </label>
+          </div>
+        )}
+
         <Table
           data={recentApplications}
           columns={columns}
@@ -430,12 +616,118 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
 
       </Card>
 
+      {/* Historical Approvals & Disbursements */}
+      {historicalApplications.length > 0 && (
+        <Card
+          title="Historical Approvals & Disbursements"
+          action={
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate('disbursements')}>
+              View All <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          }>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    App ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Employer
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Employee
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Method
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Details
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Disbursed
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {historicalApplications.map((app) => (
+                  <tr key={app.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                      {app.id}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {app.employer}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-900">
+                      {app.employee}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                      {app.amount}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {app.disbursementMethod === 'mpesa' ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          M-Pesa
+                        </span>
+                      ) : app.disbursementMethod === 'bank' ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Bank
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {app.disbursementMethod === 'mpesa' ? (
+                        <div>
+                          {app.disbursementReference || app.fullData?.employee?.phone_number || '—'}
+                        </div>
+                      ) : app.disbursementMethod === 'bank' ? (
+                        <div>
+                          {app.fullData?.bank_name && (
+                            <div>{app.fullData.bank_name}</div>
+                          )}
+                          {app.fullData?.account_number && (
+                            <div className="text-xs text-slate-500">
+                              A/C: {app.fullData.account_number}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {app.disbursedDate ? formatDeductionDate(app.disbursedDate) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <Badge variant={app.status}>{app.status}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {/* Disbursement Details Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedApplication(null);
+          setDisbursementDate('');
+          setDisbursementReference('');
         }}
         title="Disbursement Details"
         size="lg">
@@ -461,31 +753,295 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                 <p className="mt-1 text-base text-slate-900">{selectedApplication.employee}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500">Amount Disbursed</label>
+                <label className="text-sm font-medium text-slate-500">Amount</label>
                 <p className="mt-1 text-base font-semibold text-slate-900">{selectedApplication.amount}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500">Disbursed Date</label>
+                <label className="text-sm font-medium text-slate-500">Disbursement Method</label>
                 <p className="mt-1 text-base text-slate-900">
-                  {selectedApplication.disbursedDate ? formatDeductionDate(selectedApplication.disbursedDate) : '—'}
+                  {selectedApplication.fullData?.disbursement_method === 'mpesa' ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      M-Pesa
+                    </span>
+                  ) : selectedApplication.fullData?.disbursement_method === 'bank' ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      Bank Transfer
+                    </span>
+                  ) : (
+                    '—'
+                  )}
                 </p>
               </div>
+            </div>
+
+            {/* Disbursement Information */}
+            {selectedApplication.fullData?.disbursement_method === 'mpesa' && (
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3">M-Pesa Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-500">M-Pesa Number</label>
+                    <p className="mt-1 text-base text-slate-900">
+                      {selectedApplication.fullData?.disbursement_reference || selectedApplication.fullData?.employee?.phone_number || '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedApplication.fullData?.disbursement_method === 'bank' && (
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3">Bank Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-500">Bank Name</label>
+                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData?.bank_name || '—'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-500">Branch</label>
+                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData?.bank_branch || '—'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-500">Account Number</label>
+                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData?.account_number || '—'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Disbursement Form */}
+            <div className="border-t pt-4 space-y-4">
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">Disbursement Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Disbursement Date
+                  </label>
+                  <input
+                    type="date"
+                    value={disbursementDate}
+                    onChange={(e) => setDisbursementDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008080]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Reference/Transaction ID
+                  </label>
+                  <input
+                    type="text"
+                    value={disbursementReference}
+                    onChange={(e) => setDisbursementReference(e.target.value)}
+                    placeholder={`REF-${selectedApplication.id}`}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008080]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setSelectedApplication(null);
+                  setDisbursementDate('');
+                  setDisbursementReference('');
+                }}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleApproveAndDisburse(selectedApplication)}
+                disabled={isProcessing}>
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Approve and Disburse'
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Mass Disbursement Modal */}
+      <Modal
+        isOpen={isMassDisburseModalOpen}
+        onClose={() => {
+          setIsMassDisburseModalOpen(false);
+          setDisbursementDate('');
+          setDisbursementReference('');
+        }}
+        title={`Mass Approve & Disburse (${selectedApplicationIds.size} applications)`}
+        size="xl">
+        <div className="space-y-6">
+          {/* Disbursement Information */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-900">Disbursement Information</h3>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-500">First Deduction</label>
-                <p className="mt-1 text-base text-slate-900">
-                  {selectedApplication.disbursedDate ? (
-                    <>
-                      {formatDeductionDate(getFirstDeductionDate(selectedApplication.disbursedDate))}
-                      <span className={`ml-2 text-xs px-2 py-1 rounded-full ${getDeductionTag(selectedApplication.disbursedDate) === 'same-month' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {getDeductionTag(selectedApplication.disbursedDate) === 'same-month' ? 'Same month' : 'Next month'}
-                      </span>
-                    </>
-                  ) : '—'}
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Disbursement Date
+                </label>
+                <input
+                  type="date"
+                  value={disbursementDate}
+                  onChange={(e) => setDisbursementDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008080]"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Reference Prefix
+                </label>
+                <input
+                  type="text"
+                  value={disbursementReference}
+                  onChange={(e) => setDisbursementReference(e.target.value)}
+                  placeholder="BATCH"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008080]"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Will be suffixed with application number (e.g., BATCH-APP123)
                 </p>
               </div>
             </div>
           </div>
-        )}
+
+          {/* Selected Applications Table */}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      App ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Employee
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Method
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Details
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {recentApplications
+                    .filter(app => selectedApplicationIds.has(app.id))
+                    .map((app) => (
+                      <tr key={app.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                          {app.id}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-900">
+                          {app.employee}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                          {app.amount}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {app.fullData?.disbursement_method === 'mpesa' ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              M-Pesa
+                            </span>
+                          ) : app.fullData?.disbursement_method === 'bank' ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Bank
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {app.fullData?.disbursement_method === 'mpesa' ? (
+                            <div>
+                              {app.fullData?.disbursement_reference || app.fullData?.employee?.phone_number || '—'}
+                            </div>
+                          ) : app.fullData?.disbursement_method === 'bank' ? (
+                            <div>
+                              {app.fullData?.bank_name && (
+                                <div>{app.fullData.bank_name}</div>
+                              )}
+                              {app.fullData?.account_number && (
+                                <div className="text-xs text-slate-500">
+                                  A/C: {app.fullData.account_number}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Summary */}
+          <div className="bg-slate-50 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-slate-700">
+                Total Applications:
+              </span>
+              <span className="text-lg font-bold text-slate-900">
+                {selectedApplicationIds.size}
+              </span>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-sm font-medium text-slate-700">
+                Total Amount:
+              </span>
+              <span className="text-lg font-bold text-[#008080]">
+                KES {recentApplications
+                  .filter(app => selectedApplicationIds.has(app.id))
+                  .reduce((sum, app) => sum + parseFloat(app.amount.replace('KES ', '').replace(/,/g, '')), 0)
+                  .toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsMassDisburseModalOpen(false);
+                setDisbursementDate('');
+                setDisbursementReference('');
+              }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMassDisburse}
+              disabled={isProcessing || !disbursementDate}
+              className="bg-[#008080] hover:bg-[#006666]">
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Approve & Disburse All
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>);
 
