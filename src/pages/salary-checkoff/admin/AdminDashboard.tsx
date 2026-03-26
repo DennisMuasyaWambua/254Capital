@@ -689,16 +689,16 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                     <td className="px-4 py-3 text-sm text-slate-600">
                       {app.disbursementMethod === 'mpesa' ? (
                         <div>
-                          {app.disbursementReference || app.fullData?.employee?.phone_number || '—'}
+                          {app.fullData?.mpesa_number || app.fullData?.employee?.phone_number || '—'}
                         </div>
                       ) : app.disbursementMethod === 'bank' ? (
                         <div>
                           {app.fullData?.bank_name && (
                             <div>{app.fullData.bank_name}</div>
                           )}
-                          {app.fullData?.account_number && (
+                          {app.fullData?.bank_account_number && (
                             <div className="text-xs text-slate-500">
-                              A/C: {app.fullData.account_number}
+                              A/C: {app.fullData.bank_account_number}
                             </div>
                           )}
                         </div>
@@ -782,7 +782,7 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                   <div>
                     <label className="text-sm font-medium text-slate-500">M-Pesa Number</label>
                     <p className="mt-1 text-base text-slate-900">
-                      {selectedApplication.fullData?.disbursement_reference || selectedApplication.fullData?.employee?.phone_number || '—'}
+                      {selectedApplication.fullData?.mpesa_number || selectedApplication.fullData?.employee?.phone_number || '—'}
                     </p>
                   </div>
                 </div>
@@ -798,12 +798,8 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                     <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData?.bank_name || '—'}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-500">Branch</label>
-                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData?.bank_branch || '—'}</p>
-                  </div>
-                  <div>
                     <label className="text-sm font-medium text-slate-500">Account Number</label>
-                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData?.account_number || '—'}</p>
+                    <p className="mt-1 text-base text-slate-900">{selectedApplication.fullData?.bank_account_number || '—'}</p>
                   </div>
                 </div>
               </div>
@@ -966,16 +962,16 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {app.fullData?.disbursement_method === 'mpesa' ? (
                             <div>
-                              {app.fullData?.disbursement_reference || app.fullData?.employee?.phone_number || '—'}
+                              {app.fullData?.mpesa_number || app.fullData?.employee?.phone_number || '—'}
                             </div>
                           ) : app.fullData?.disbursement_method === 'bank' ? (
                             <div>
                               {app.fullData?.bank_name && (
                                 <div>{app.fullData.bank_name}</div>
                               )}
-                              {app.fullData?.account_number && (
+                              {app.fullData?.bank_account_number && (
                                 <div className="text-xs text-slate-500">
-                                  A/C: {app.fullData.account_number}
+                                  A/C: {app.fullData.bank_account_number}
                                 </div>
                               )}
                             </div>
