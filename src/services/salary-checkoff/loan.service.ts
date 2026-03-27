@@ -35,6 +35,8 @@ export interface LoanApplication {
   bank_name?: string;
   bank_branch?: string;
   account_number?: string;
+  bank_account_number?: string;  // From list serializer
+  mpesa_number?: string;
 }
 
 export interface LoanApplicationDetail extends LoanApplication {
