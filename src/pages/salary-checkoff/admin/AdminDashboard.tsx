@@ -202,14 +202,16 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
       setIsProcessing(true);
 
       // Step 1: Approve if not already approved
-      if (application.fullData.status === 'submitted') {
+      // Valid statuses that need approval: 'submitted', 'under_review_admin'
+      // Valid statuses for disbursement: 'hr_approved', 'approved'
+      if (application.fullData.status === 'submitted' || application.fullData.status === 'under_review_admin') {
         await loanService.adminAssess(application.fullData.id, {
           action: 'approve',
           comment: 'Approved via dashboard',
         });
-      } else if (application.fullData.status !== 'approved') {
+      } else if (application.fullData.status !== 'approved' && application.fullData.status !== 'hr_approved') {
         // Validate status before disbursement
-        throw new Error(`Invalid status: ${application.fullData.status}. Application must be in 'submitted' or 'approved' status before disbursement.`);
+        throw new Error(`Invalid status: ${application.fullData.status}. Application must be in valid status for approval/disbursement.`);
       }
 
       // Step 2: Disburse (only after approval is confirmed)
@@ -258,16 +260,18 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
       for (const app of selectedApps) {
         try {
           // Step 1: Approve if needed
-          if (app.fullData.status === 'submitted') {
+          // Valid statuses that need approval: 'submitted', 'under_review_admin'
+          // Valid statuses for disbursement: 'hr_approved', 'approved'
+          if (app.fullData.status === 'submitted' || app.fullData.status === 'under_review_admin') {
             await loanService.adminAssess(app.fullData.id, {
               action: 'approve',
               comment: 'Mass approved via dashboard',
             });
-          } else if (app.fullData.status !== 'approved') {
-            // Skip applications that are not in submitted or approved status
+          } else if (app.fullData.status !== 'approved' && app.fullData.status !== 'hr_approved') {
+            // Skip applications that are not in valid status
             failedDisbursements.push({
               id: app.id,
-              error: `Invalid status: ${app.fullData.status}. Application must be approved before disbursement.`,
+              error: `Invalid status: ${app.fullData.status}. Application must be in valid status for approval/disbursement.`,
             });
             continue;
           }
