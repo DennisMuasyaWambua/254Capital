@@ -202,14 +202,14 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
       setIsProcessing(true);
 
       // Step 1: Approve if not already approved
-      if (application.fullData.status === 'hr_approved') {
+      if (application.fullData.status === 'submitted') {
         await loanService.adminAssess(application.fullData.id, {
           action: 'approve',
           comment: 'Approved via dashboard',
         });
       } else if (application.fullData.status !== 'approved') {
         // Validate status before disbursement
-        throw new Error(`Invalid status: ${application.fullData.status}. Application must be in 'hr_approved' or 'approved' status before disbursement.`);
+        throw new Error(`Invalid status: ${application.fullData.status}. Application must be in 'submitted' or 'approved' status before disbursement.`);
       }
 
       // Step 2: Disburse (only after approval is confirmed)
@@ -258,13 +258,13 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
       for (const app of selectedApps) {
         try {
           // Step 1: Approve if needed
-          if (app.fullData.status === 'hr_approved') {
+          if (app.fullData.status === 'submitted') {
             await loanService.adminAssess(app.fullData.id, {
               action: 'approve',
               comment: 'Mass approved via dashboard',
             });
           } else if (app.fullData.status !== 'approved') {
-            // Skip applications that are not in hr_approved or approved status
+            // Skip applications that are not in submitted or approved status
             failedDisbursements.push({
               id: app.id,
               error: `Invalid status: ${app.fullData.status}. Application must be approved before disbursement.`,

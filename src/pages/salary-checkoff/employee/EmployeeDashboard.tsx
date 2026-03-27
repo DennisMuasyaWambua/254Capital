@@ -218,22 +218,17 @@ export function EmployeeDashboard({ onNavigate, userName: propUserName }: Employ
         <Card title="Current Application Status" className="overflow-visible">
           <div className="relative py-8 px-4">
             <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 hidden md:block" />
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-8 relative">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
               {[
               {
                 label: 'Submitted',
-                status: activeLoan.status === 'submitted' ? 'current' : ['hr_pending', 'hr_approved', 'admin_pending', 'approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
+                status: activeLoan.status === 'submitted' ? 'current' : ['approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
                 date: new Date(activeLoan.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
               },
               {
-                label: 'HR Review',
-                status: activeLoan.status === 'hr_pending' ? 'current' : ['hr_approved', 'admin_pending', 'approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
-                date: activeLoan.status === 'submitted' ? 'Pending' : 'In Review'
-              },
-              {
                 label: '254 Review',
-                status: activeLoan.status === 'admin_pending' ? 'current' : ['approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
-                date: activeLoan.status === 'admin_pending' ? 'In Review' : activeLoan.status === 'hr_pending' || activeLoan.status === 'submitted' ? 'Pending' : 'Reviewed'
+                status: activeLoan.status === 'submitted' ? 'current' : ['approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
+                date: activeLoan.status === 'submitted' ? 'In Review' : activeLoan.status === 'approved' || activeLoan.status === 'disbursed' ? 'Reviewed' : 'Pending'
               },
               {
                 label: 'Approved',

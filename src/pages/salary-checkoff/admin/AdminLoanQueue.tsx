@@ -180,7 +180,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
       setError(null);
 
       // Step 1: Approve if not yet approved
-      if (selectedApplication.status === 'hr_approved') {
+      if (selectedApplication.status === 'submitted') {
         await loanService.adminAssess(selectedApplication.id, {
           action: 'approve',
           comment: comment || 'Application approved by admin',
@@ -188,7 +188,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
         });
       } else if (selectedApplication.status !== 'approved') {
         // Validate status before disbursement
-        throw new Error(`Invalid status: ${selectedApplication.status}. Application must be in 'hr_approved' or 'approved' status before disbursement.`);
+        throw new Error(`Invalid status: ${selectedApplication.status}. Application must be in 'submitted' or 'approved' status before disbursement.`);
       }
 
       // Step 2: Disburse (only after approval is confirmed)
@@ -225,7 +225,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       const approvedIds = applications
-        .filter(app => app.status === 'approved' || app.status === 'hr_approved')
+        .filter(app => app.status === 'approved' || app.status === 'submitted')
         .map(app => app.id);
       setSelectedApplications(new Set(approvedIds));
     } else {
@@ -254,14 +254,14 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
       for (const app of selectedApps) {
         try {
           // Step 1: Approve if needed
-          if (app.status === 'hr_approved') {
+          if (app.status === 'submitted') {
             await loanService.adminAssess(app.id, {
               action: 'approve',
               comment: 'Batch approved by admin',
               credit_score_notes: '',
             });
           } else if (app.status !== 'approved') {
-            // Skip applications that are not in hr_approved or approved status
+            // Skip applications that are not in submitted or approved status
             failedDisbursements.push({
               id: app.id,
               appNumber: app.application_number,
@@ -319,7 +319,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
   };
 
   const approvedApplications = applications.filter(
-    app => app.status === 'approved' || app.status === 'hr_approved'
+    app => app.status === 'approved' || app.status === 'submitted'
   );
   const allApprovedSelected = approvedApplications.length > 0 &&
     approvedApplications.every(app => selectedApplications.has(app.id));
@@ -333,7 +333,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
         />
       ),
       accessor: (item: LoanApplication) => {
-        const canSelect = item.status === 'approved' || item.status === 'hr_approved';
+        const canSelect = item.status === 'approved' || item.status === 'submitted';
         return canSelect ? (
           <Checkbox
             checked={selectedApplications.has(item.id)}
@@ -569,7 +569,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                 </Badge>
               </div>
               <div className="flex space-x-3">
-                {selectedApplication.status === 'hr_approved' && (
+                {selectedApplication.status === 'submitted' && (
                   <>
                     <Button
                       variant="danger"
@@ -619,12 +619,12 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                     Record Disbursement
                   </Button>
                 )}
-                {selectedApplication.status !== 'hr_approved' &&
+                {selectedApplication.status !== 'submitted' &&
                  selectedApplication.status !== 'approved' &&
                  selectedApplication.status !== 'disbursed' && (
                   <div className="text-sm text-amber-600 flex items-center">
                     <AlertCircle className="h-4 w-4 mr-2" />
-                    Awaiting HR approval. Current status: {selectedApplication.status.replace('_', ' ')}
+                    Current status: {selectedApplication.status.replace('_', ' ')}
                   </div>
                 )}
               </div>
@@ -1015,7 +1015,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
           setIsViewModalOpen(true);
           setError(null);
         }}
-        title={selectedApplication?.status === 'hr_approved' ? 'Approve and Disburse' : 'Record Disbursement'}
+        title={selectedApplication?.status === 'submitted' ? 'Approve and Disburse' : 'Record Disbursement'}
         footer={
           <>
             <Button
@@ -1028,17 +1028,17 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
               Cancel
             </Button>
             <Button
-              onClick={selectedApplication?.status === 'hr_approved' ? handleApproveAndDisburse : handleDisburse}
+              onClick={selectedApplication?.status === 'submitted' ? handleApproveAndDisburse : handleDisburse}
               isLoading={isSubmitting}
             >
-              {selectedApplication?.status === 'hr_approved' ? 'Approve & Disburse' : 'Record Disbursement'}
+              {selectedApplication?.status === 'submitted' ? 'Approve & Disburse' : 'Record Disbursement'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-slate-600">
-            {selectedApplication?.status === 'hr_approved'
+            {selectedApplication?.status === 'submitted'
               ? 'This will approve the loan and immediately disburse it.'
               : 'Record the disbursement details for this approved loan.'}
           </p>
