@@ -179,16 +179,19 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
       setIsSubmitting(true);
       setError(null);
 
-      // If not yet approved, approve first
+      // Step 1: Approve if not yet approved
       if (selectedApplication.status === 'hr_approved') {
         await loanService.adminAssess(selectedApplication.id, {
           action: 'approve',
           comment: comment || 'Application approved by admin',
           credit_score_notes: creditScoreNotes,
         });
+      } else if (selectedApplication.status !== 'approved') {
+        // Validate status before disbursement
+        throw new Error(`Invalid status: ${selectedApplication.status}. Application must be in 'hr_approved' or 'approved' status before disbursement.`);
       }
 
-      // Then disburse
+      // Step 2: Disburse (only after approval is confirmed)
       const disbursementMethod = selectedApplication.disbursement_method || 'mpesa';
       await loanService.adminDisburse(selectedApplication.id, {
         disbursement_date: disbursementDate,
@@ -244,30 +247,70 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
 
       const selectedApps = applications.filter(app => selectedApplications.has(app.id));
 
+      const successfulDisbursements: string[] = [];
+      const failedDisbursements: Array<{ id: string; appNumber: string; error: string }> = [];
+
       // Process each disbursement
       for (const app of selectedApps) {
-        // If not yet approved, approve first
-        if (app.status === 'hr_approved') {
-          await loanService.adminAssess(app.id, {
-            action: 'approve',
-            comment: 'Batch approved by admin',
-            credit_score_notes: '',
+        try {
+          // Step 1: Approve if needed
+          if (app.status === 'hr_approved') {
+            await loanService.adminAssess(app.id, {
+              action: 'approve',
+              comment: 'Batch approved by admin',
+              credit_score_notes: '',
+            });
+          } else if (app.status !== 'approved') {
+            // Skip applications that are not in hr_approved or approved status
+            failedDisbursements.push({
+              id: app.id,
+              appNumber: app.application_number,
+              error: `Invalid status: ${app.status}. Application must be approved before disbursement.`,
+            });
+            continue;
+          }
+
+          // Step 2: Disburse (only if approved or just approved)
+          const disbursementMethod = app.disbursement_method || 'mpesa';
+          await loanService.adminDisburse(app.id, {
+            disbursement_date: disbursementDate,
+            disbursement_method: disbursementMethod,
+            disbursement_reference: `${disbursementReference}-${app.application_number}`,
+          });
+
+          successfulDisbursements.push(app.application_number);
+        } catch (err: any) {
+          console.error(`Error processing application ${app.application_number}:`, err);
+          failedDisbursements.push({
+            id: app.id,
+            appNumber: app.application_number,
+            error: err.message || 'Unknown error',
           });
         }
-
-        // Then disburse
-        const disbursementMethod = app.disbursement_method || 'mpesa';
-        await loanService.adminDisburse(app.id, {
-          disbursement_date: disbursementDate,
-          disbursement_method: disbursementMethod,
-          disbursement_reference: `${disbursementReference}-${app.application_number}`,
-        });
       }
 
-      setIsMassDisbursementModalOpen(false);
-      setSelectedApplications(new Set());
-      setDisbursementReference('');
+      // Set appropriate error message based on results
+      if (successfulDisbursements.length > 0 && failedDisbursements.length > 0) {
+        setError(`Processed ${successfulDisbursements.length} successfully. ${failedDisbursements.length} failed. Check console for details.`);
+        console.error('Failed disbursements:', failedDisbursements);
+      } else if (failedDisbursements.length > 0) {
+        setError(`Failed to process all ${failedDisbursements.length} application(s). Check console for details.`);
+        console.error('Failed disbursements:', failedDisbursements);
+      }
+
+      // Only close modal and reset if all succeeded
+      if (failedDisbursements.length === 0) {
+        setIsMassDisbursementModalOpen(false);
+        setSelectedApplications(new Set());
+        setDisbursementReference('');
+      }
+
       await loadApplications();
+
+      // Reset submitting state if there were no errors
+      if (failedDisbursements.length === 0) {
+        setIsSubmitting(false);
+      }
     } catch (err: any) {
       console.error('Error processing mass disbursement:', err);
       setError(err.message || 'Failed to process mass disbursement');

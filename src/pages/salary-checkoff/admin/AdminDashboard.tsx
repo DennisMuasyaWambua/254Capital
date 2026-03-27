@@ -201,15 +201,18 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
     try {
       setIsProcessing(true);
 
-      // First approve if not already approved
+      // Step 1: Approve if not already approved
       if (application.fullData.status === 'hr_approved') {
         await loanService.adminAssess(application.fullData.id, {
           action: 'approve',
           comment: 'Approved via dashboard',
         });
+      } else if (application.fullData.status !== 'approved') {
+        // Validate status before disbursement
+        throw new Error(`Invalid status: ${application.fullData.status}. Application must be in 'hr_approved' or 'approved' status before disbursement.`);
       }
 
-      // Then disburse
+      // Step 2: Disburse (only after approval is confirmed)
       await loanService.adminDisburse(application.fullData.id, {
         disbursement_date: disbursementDate || new Date().toISOString().split('T')[0],
         disbursement_method: application.fullData.disbursement_method || 'bank',
@@ -249,27 +252,67 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
         selectedApplicationIds.has(app.id)
       );
 
+      const successfulDisbursements: string[] = [];
+      const failedDisbursements: Array<{ id: string; error: string }> = [];
+
       for (const app of selectedApps) {
-        // Approve if needed
-        if (app.fullData.status === 'hr_approved') {
-          await loanService.adminAssess(app.fullData.id, {
-            action: 'approve',
-            comment: 'Mass approved via dashboard',
+        try {
+          // Step 1: Approve if needed
+          if (app.fullData.status === 'hr_approved') {
+            await loanService.adminAssess(app.fullData.id, {
+              action: 'approve',
+              comment: 'Mass approved via dashboard',
+            });
+          } else if (app.fullData.status !== 'approved') {
+            // Skip applications that are not in hr_approved or approved status
+            failedDisbursements.push({
+              id: app.id,
+              error: `Invalid status: ${app.fullData.status}. Application must be approved before disbursement.`,
+            });
+            continue;
+          }
+
+          // Step 2: Disburse (only if approved or just approved)
+          await loanService.adminDisburse(app.fullData.id, {
+            disbursement_date: disbursementDate || new Date().toISOString().split('T')[0],
+            disbursement_method: app.fullData.disbursement_method || 'bank',
+            disbursement_reference: `${disbursementReference}-${app.id}`,
+          });
+
+          successfulDisbursements.push(app.id);
+        } catch (error: any) {
+          console.error(`Error processing application ${app.id}:`, error);
+          failedDisbursements.push({
+            id: app.id,
+            error: error.message || 'Unknown error',
           });
         }
+      }
 
-        // Disburse
-        await loanService.adminDisburse(app.fullData.id, {
-          disbursement_date: disbursementDate || new Date().toISOString().split('T')[0],
-          disbursement_method: app.fullData.disbursement_method || 'bank',
-          disbursement_reference: `${disbursementReference}-${app.id}`,
+      // Show appropriate toast based on results
+      if (successfulDisbursements.length > 0 && failedDisbursements.length === 0) {
+        toast({
+          title: 'Success',
+          description: `Successfully approved and disbursed ${successfulDisbursements.length} application(s)`,
+        });
+      } else if (successfulDisbursements.length > 0 && failedDisbursements.length > 0) {
+        toast({
+          title: 'Partial Success',
+          description: `Successfully processed ${successfulDisbursements.length} application(s). ${failedDisbursements.length} failed.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: `Failed to process all ${failedDisbursements.length} application(s)`,
+          variant: 'destructive',
         });
       }
 
-      toast({
-        title: 'Success',
-        description: `Successfully disbursed ${selectedApps.length} application(s)`,
-      });
+      // Log failed disbursements for debugging
+      if (failedDisbursements.length > 0) {
+        console.error('Failed disbursements:', failedDisbursements);
+      }
 
       // Reload data
       await loadAdminDashboardData();
