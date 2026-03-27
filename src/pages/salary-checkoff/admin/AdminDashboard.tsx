@@ -202,9 +202,11 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
       setIsProcessing(true);
 
       // Step 1: Approve if not already approved
-      // Valid status that needs approval: 'submitted'
+      // Valid statuses that need approval: 'submitted', 'under_review_admin', 'under_review_hr'
       // Valid status for disbursement: 'approved'
-      if (application.fullData.status === 'submitted') {
+      const needsApproval = ['submitted', 'under_review_admin', 'under_review_hr'].includes(application.fullData.status);
+
+      if (needsApproval) {
         const approvalResponse = await loanService.adminAssess(application.fullData.id, {
           action: 'approve',
           comment: 'Approved via dashboard',
@@ -221,7 +223,7 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
         });
       } else if (application.fullData.status !== 'approved') {
         // Validate status before disbursement
-        throw new Error(`Invalid status: ${application.fullData.status}. Application must be submitted or approved for disbursement.`);
+        throw new Error(`Invalid status: ${application.fullData.status}. Cannot approve and disburse from this status.`);
       }
 
       // Step 2: Disburse (only after approval is confirmed)
@@ -270,9 +272,11 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
       for (const app of selectedApps) {
         try {
           // Step 1: Approve if needed
-          // Valid status that needs approval: 'submitted'
+          // Valid statuses that need approval: 'submitted', 'under_review_admin', 'under_review_hr'
           // Valid status for disbursement: 'approved'
-          if (app.fullData.status === 'submitted') {
+          const needsApproval = ['submitted', 'under_review_admin', 'under_review_hr'].includes(app.fullData.status);
+
+          if (needsApproval) {
             const approvalResponse = await loanService.adminAssess(app.fullData.id, {
               action: 'approve',
               comment: 'Mass approved via dashboard',
@@ -290,7 +294,7 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
             // Skip applications that are not in valid status
             failedDisbursements.push({
               id: app.id,
-              error: `Invalid status: ${app.fullData.status}. Application must be submitted or approved for disbursement.`,
+              error: `Invalid status: ${app.fullData.status}. Cannot approve and disburse from this status.`,
             });
             continue;
           }
