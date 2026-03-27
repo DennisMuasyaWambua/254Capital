@@ -96,7 +96,7 @@ export const API_ENDPOINTS = {
     LIST: `${API_BASE_URL}/api/v1/clients/`,
     MANUAL_CREATE: `${API_BASE_URL}/api/v1/clients/manual/`,
     BULK_UPLOAD: `${API_BASE_URL}/api/v1/clients/bulk-upload/`,
-    VALIDATE_BULK: `${API_BASE_URL}/api/v1/clients/validate/`,
+    VALIDATE_BULK: `${API_BASE_URL}/api/v1/clients/validate-upload/`,
     UPLOAD_TEMPLATE: `${API_BASE_URL}/api/v1/clients/template-download/`,
     PENDING_LIST: `${API_BASE_URL}/api/v1/clients/pending/`,
     CLIENT_DETAIL: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/`,
