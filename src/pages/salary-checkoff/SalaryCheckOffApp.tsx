@@ -8,6 +8,7 @@ import { LoanApplication } from './employee/LoanApplication';
 import { RepaymentSchedule } from './employee/RepaymentSchedule';
 import { HRDashboard } from './hr/HRDashboard';
 import { ApplicationReview } from './hr/ApplicationReview';
+import { HRActiveLoans } from './hr/HRActiveLoans';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminLoanQueue } from './admin/AdminLoanQueue';
 import { DisbursementHistory } from './admin/DisbursementHistory';
@@ -31,6 +32,7 @@ type Page =
   | 'notifications'
   | 'pending-applications'
   | 'application-review'
+  | 'active-loans'
   | 'payroll'
   | 'applications'
   | 'loan-queue'
@@ -185,6 +187,8 @@ export function SalaryCheckOffApp() {
                 </div>
               </div>
             );
+          case 'active-loans':
+            return <HRActiveLoans onNavigate={handleNavigate} />;
           case 'payroll':
             return (
               <div className="flex items-center justify-center h-64">

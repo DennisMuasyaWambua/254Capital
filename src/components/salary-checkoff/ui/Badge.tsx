@@ -5,6 +5,7 @@ export type BadgeVariant =
 'declined' |
 'disbursed' |
 'under-review' |
+'success' |
 'default';
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -22,7 +23,8 @@ export function Badge({
     approved: 'bg-[#E0F2F2] text-[#008080]',
     declined: 'bg-red-100 text-red-800',
     disbursed: 'bg-blue-100 text-blue-800',
-    'under-review': 'bg-[#E0F2F2] text-[#008080]'
+    'under-review': 'bg-[#E0F2F2] text-[#008080]',
+    success: 'bg-emerald-100 text-emerald-800'
   };
   return (
     <span

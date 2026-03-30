@@ -277,4 +277,40 @@ export const clientService = {
 
     return await response.blob();
   },
+
+  /**
+   * Fetch collection report data as JSON for preview
+   */
+  getCollectionReportData: async (params: {
+    employer_id?: string;
+    month?: number;
+    year?: number;
+  }): Promise<CollectionReportData> => {
+    const queryParams = new URLSearchParams();
+    if (params.employer_id) queryParams.append('employer_id', params.employer_id);
+    if (params.month) queryParams.append('month', params.month.toString());
+    if (params.year) queryParams.append('year', params.year.toString());
+
+    const url = `${API_ENDPOINTS.CLIENTS.COLLECTION_REPORT_DATA}?${queryParams.toString()}`;
+
+    return apiRequest<CollectionReportData>(url, {
+      method: 'GET',
+    });
+  },
 };
+
+export interface CollectionReportItem {
+  id: string;
+  full_name: string;
+  loan_amount: string;
+  monthly_deduction: string;
+  outstanding_balance: string;
+}
+
+export interface CollectionReportData {
+  employer_name: string;
+  period: string;
+  items: CollectionReportItem[];
+  total_amount_borrowed: string;
+  total_installment_due: string;
+}
