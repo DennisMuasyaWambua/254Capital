@@ -241,4 +241,40 @@ export const clientService = {
       body: JSON.stringify(data),
     });
   },
+
+  /**
+   * Download collection/deduction report
+   */
+  downloadCollectionReport: async (params: {
+    employer_id?: string;
+    month?: number;
+    year?: number;
+  }): Promise<Blob> => {
+    const token = localStorage.getItem('salary_checkoff_access_token');
+
+    const queryParams = new URLSearchParams();
+    if (params.employer_id) queryParams.append('employer_id', params.employer_id);
+    if (params.month) queryParams.append('month', params.month.toString());
+    if (params.year) queryParams.append('year', params.year.toString());
+
+    const url = `${API_ENDPOINTS.CLIENTS.COLLECTION_REPORT}?${queryParams.toString()}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw {
+        message: errorData.error || errorData.detail || 'Failed to download report',
+        status: response.status,
+        data: errorData,
+      };
+    }
+
+    return await response.blob();
+  },
 };

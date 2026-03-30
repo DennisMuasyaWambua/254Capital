@@ -103,6 +103,7 @@ export const API_ENDPOINTS = {
     APPROVE_CLIENT: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/approve/`,
     REJECT_CLIENT: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/reject/`,
     BULK_APPROVE: `${API_BASE_URL}/api/v1/clients/bulk-approve/`,
+    COLLECTION_REPORT: `${API_BASE_URL}/api/v1/clients/collection-report/`,
   },
 
   // Payment management endpoints
