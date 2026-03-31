@@ -12,10 +12,8 @@ export interface ExistingClient {
   national_id: string;
   mobile: string;
   email?: string;
-  employer: {
-    id: string;
-    employer_name: string;
-  };
+  employer: string; // Employer UUID
+  employer_name: string;
   employee_id?: string;
   loan_amount: string;
   interest_rate: string;

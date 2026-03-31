@@ -86,7 +86,7 @@ export function PendingApprovals({ onNavigate }: PendingApprovalsProps) {
     },
     {
       header: 'Employer',
-      accessor: (item: ExistingClient) => item.employer.employer_name,
+      accessor: (item: ExistingClient) => item.employer_name,
     },
     {
       header: 'Loan Amount',
@@ -245,7 +245,7 @@ export function PendingApprovals({ onNavigate }: PendingApprovalsProps) {
               <div>
                 <p className="text-slate-500 mb-1">Employer</p>
                 <p className="font-medium text-slate-900">
-                  {selectedClient.employer.employer_name}
+                  {selectedClient.employer_name}
                 </p>
               </div>
               <div>
