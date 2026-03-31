@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Select } from '@/components/salary-checkoff/ui/Select';
@@ -30,21 +30,6 @@ export function CollectionReport({ role }: CollectionReportProps) {
   const [previewData, setPreviewData] = useState<CollectionReportData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Fetch employers on mount (admin only)
-  useEffect(() => {
-    if (role === 'admin') {
-      fetchEmployers();
-    }
-  }, [role]);
-
-  // Auto-load preview for HR users
-  useEffect(() => {
-    if (role === 'hr') {
-      handleLoadPreview();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role]);
-
   const fetchEmployers = async () => {
     setLoadingEmployers(true);
     try {
@@ -58,7 +43,7 @@ export function CollectionReport({ role }: CollectionReportProps) {
     }
   };
 
-  const handleLoadPreview = useCallback(async () => {
+  const handleLoadPreview = async () => {
     // Validation for admin
     if (role === 'admin' && !selectedEmployerId) {
       setError('Please select an employer to view the report');
@@ -88,7 +73,22 @@ export function CollectionReport({ role }: CollectionReportProps) {
     } finally {
       setIsLoadingPreview(false);
     }
-  }, [role, selectedEmployerId, month, year]);
+  };
+
+  // Fetch employers on mount (admin only)
+  useEffect(() => {
+    if (role === 'admin') {
+      fetchEmployers();
+    }
+  }, [role]);
+
+  // Auto-load preview for HR users
+  useEffect(() => {
+    if (role === 'hr') {
+      handleLoadPreview();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
   const handleDownloadReport = async () => {
     // Validation
