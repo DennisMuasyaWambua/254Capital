@@ -77,16 +77,16 @@ export function PendingApprovals({ onNavigate }: PendingApprovalsProps) {
   const columns = [
     {
       header: 'Name',
-      accessor: 'full_name',
+      accessor: (item: ExistingClient) => item.full_name,
       className: 'font-medium',
     },
     {
       header: 'ID Number',
-      accessor: 'national_id',
+      accessor: (item: ExistingClient) => item.national_id,
     },
     {
       header: 'Employer',
-      accessor: (item: ExistingClient) => item.employer.name,
+      accessor: (item: ExistingClient) => item.employer.employer_name,
     },
     {
       header: 'Loan Amount',
@@ -245,7 +245,7 @@ export function PendingApprovals({ onNavigate }: PendingApprovalsProps) {
               <div>
                 <p className="text-slate-500 mb-1">Employer</p>
                 <p className="font-medium text-slate-900">
-                  {selectedClient.employer.name}
+                  {selectedClient.employer.employer_name}
                 </p>
               </div>
               <div>

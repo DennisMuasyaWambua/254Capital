@@ -14,7 +14,7 @@ export interface ExistingClient {
   email?: string;
   employer: {
     id: string;
-    name: string;
+    employer_name: string;
   };
   employee_id?: string;
   loan_amount: string;
