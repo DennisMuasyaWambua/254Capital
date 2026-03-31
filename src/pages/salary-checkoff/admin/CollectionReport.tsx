@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Select } from '@/components/salary-checkoff/ui/Select';
@@ -42,7 +42,7 @@ export function CollectionReport({ role }: CollectionReportProps) {
     if (role === 'hr') {
       handleLoadPreview();
     }
-  }, [role, month, year]);
+  }, [role, handleLoadPreview]);
 
   const fetchEmployers = async () => {
     setLoadingEmployers(true);
@@ -57,7 +57,7 @@ export function CollectionReport({ role }: CollectionReportProps) {
     }
   };
 
-  const handleLoadPreview = async () => {
+  const handleLoadPreview = useCallback(async () => {
     // Validation for admin
     if (role === 'admin' && !selectedEmployerId) {
       setError('Please select an employer to view the report');
@@ -87,7 +87,7 @@ export function CollectionReport({ role }: CollectionReportProps) {
     } finally {
       setIsLoadingPreview(false);
     }
-  };
+  }, [role, selectedEmployerId, month, year]);
 
   const handleDownloadReport = async () => {
     // Validation
