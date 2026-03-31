@@ -11,6 +11,8 @@ interface CollectionReportProps {
 }
 
 export function CollectionReport({ role }: CollectionReportProps) {
+  console.log('CollectionReport rendering, role:', role);
+
   const [isDownloading, setIsDownloading] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +79,7 @@ export function CollectionReport({ role }: CollectionReportProps) {
 
   // Fetch employers on mount (admin only)
   useEffect(() => {
+    console.log('useEffect fetchEmployers, role:', role);
     if (role === 'admin') {
       fetchEmployers();
     }
@@ -84,6 +87,7 @@ export function CollectionReport({ role }: CollectionReportProps) {
 
   // Auto-load preview for HR users
   useEffect(() => {
+    console.log('useEffect handleLoadPreview, role:', role);
     if (role === 'hr') {
       handleLoadPreview();
     }
