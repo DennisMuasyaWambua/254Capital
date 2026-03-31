@@ -42,7 +42,8 @@ export function CollectionReport({ role }: CollectionReportProps) {
     if (role === 'hr') {
       handleLoadPreview();
     }
-  }, [role, handleLoadPreview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
   const fetchEmployers = async () => {
     setLoadingEmployers(true);
