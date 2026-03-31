@@ -3,7 +3,7 @@ import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Select } from '@/components/salary-checkoff/ui/Select';
 import { Download, FileSpreadsheet, Loader2, AlertCircle, CheckCircle2, Eye, RefreshCw } from 'lucide-react';
-import { clientService, CollectionReportData, CollectionReportItem } from '@/services/salary-checkoff/client.service';
+import { clientService, CollectionReportData } from '@/services/salary-checkoff/client.service';
 import { employerService, Employer } from '@/services/salary-checkoff/employer.service';
 
 interface CollectionReportProps {
@@ -11,8 +11,6 @@ interface CollectionReportProps {
 }
 
 export function CollectionReport({ role }: CollectionReportProps) {
-  console.log('CollectionReport rendering, role:', role);
-
   const [isDownloading, setIsDownloading] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +77,6 @@ export function CollectionReport({ role }: CollectionReportProps) {
 
   // Fetch employers on mount (admin only)
   useEffect(() => {
-    console.log('useEffect fetchEmployers, role:', role);
     if (role === 'admin') {
       fetchEmployers();
     }
@@ -87,7 +84,6 @@ export function CollectionReport({ role }: CollectionReportProps) {
 
   // Auto-load preview for HR users
   useEffect(() => {
-    console.log('useEffect handleLoadPreview, role:', role);
     if (role === 'hr') {
       handleLoadPreview();
     }
@@ -245,9 +241,8 @@ export function CollectionReport({ role }: CollectionReportProps) {
                   setSelectedEmployerId(e.target.value);
                   setShowPreview(false);
                   setPreviewData(null);
-                }}
-                disabled={loadingEmployers}
-              >
+                } }
+                disabled={loadingEmployers} options={[]}              >
                 <option value="">Select Employer</option>
                 {employers.map((employer) => (
                   <option key={employer.id} value={employer.id}>
