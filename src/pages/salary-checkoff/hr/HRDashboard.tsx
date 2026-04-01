@@ -52,10 +52,15 @@ export function HRDashboard({ onNavigate, userName }: HRDashboardProps) {
           ? new Date(app.disbursement_date)
           : new Date(app.created_at);
 
+        // Handle employee name with fallback
+        const employeeName = app.employee?.first_name || app.employee?.last_name
+          ? `${app.employee.first_name || ''} ${app.employee.last_name || ''}`.trim()
+          : 'N/A';
+
         return {
           id: app.application_number,
-          employee: `${app.employee.first_name} ${app.employee.last_name}`,
-          empId: app.employee.id,
+          employee: employeeName,
+          empId: app.employee?.id || 'N/A',
           amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
           date: new Date(app.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }),
           department: 'N/A',

@@ -142,8 +142,12 @@ export function DisbursementHistory({ onBack, role = 'admin' }: DisbursementHist
       : []),
     {
       header: 'Employee',
-      accessor: (item: LoanApplication) =>
-        `${item.employee?.first_name} ${item.employee?.last_name}`,
+      accessor: (item: LoanApplication) => {
+        if (!item.employee || (!item.employee.first_name && !item.employee.last_name)) {
+          return 'N/A';
+        }
+        return `${item.employee.first_name || ''} ${item.employee.last_name || ''}`.trim();
+      },
     },
     {
       header: 'Amount',
@@ -407,14 +411,15 @@ export function DisbursementHistory({ onBack, role = 'admin' }: DisbursementHist
                   <div>
                     <span className="text-slate-500">Name:</span>{' '}
                     <span className="font-medium">
-                      {selectedDisbursement.employee?.first_name}{' '}
-                      {selectedDisbursement.employee?.last_name}
+                      {selectedDisbursement.employee?.first_name || selectedDisbursement.employee?.last_name
+                        ? `${selectedDisbursement.employee?.first_name || ''} ${selectedDisbursement.employee?.last_name || ''}`.trim()
+                        : 'N/A'}
                     </span>
                   </div>
                   <div>
                     <span className="text-slate-500">Phone:</span>{' '}
                     <span className="font-medium">
-                      {selectedDisbursement.employee?.phone_number}
+                      {selectedDisbursement.employee?.phone_number || 'N/A'}
                     </span>
                   </div>
                   {role === 'admin' && (

@@ -127,8 +127,10 @@ export function EmployeeDashboard({ onNavigate, userName: propUserName }: Employ
   },
   {
     header: 'Action',
-    accessor: () =>
-    <button className="text-[#00BCD4] hover:underline text-sm font-medium">
+    accessor: (item: any) =>
+    <button
+      className="text-[#00BCD4] hover:underline text-sm font-medium"
+      onClick={() => onNavigate('repayment')}>
           View
         </button>
 
@@ -276,7 +278,9 @@ export function EmployeeDashboard({ onNavigate, userName: propUserName }: Employ
           <Card
             title="Recent Applications"
             action={
-            <button className="text-sm text-[#008080] font-medium hover:underline flex items-center">
+            <button
+              className="text-sm text-[#008080] font-medium hover:underline flex items-center"
+              onClick={() => onNavigate('repayment')}>
                 View All <ArrowRight className="h-4 w-4 ml-1" />
               </button>
             }>
@@ -323,7 +327,10 @@ export function EmployeeDashboard({ onNavigate, userName: propUserName }: Employ
                 of every month.
               </p>
             </div>
-            <Button variant="outline" className="w-full">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => onNavigate('help')}>
               Contact Support
             </Button>
           </div>

@@ -6,9 +6,11 @@ import { RegisterPage } from './auth/RegisterPage';
 import { EmployeeDashboard } from './employee/EmployeeDashboard';
 import { LoanApplication } from './employee/LoanApplication';
 import { RepaymentSchedule } from './employee/RepaymentSchedule';
+import { HelpPage } from './employee/HelpPage';
 import { HRDashboard } from './hr/HRDashboard';
 import { ApplicationReview } from './hr/ApplicationReview';
 import { HRActiveLoans } from './hr/HRActiveLoans';
+import { PayrollDeductions } from './hr/PayrollDeductions';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminLoanQueue } from './admin/AdminLoanQueue';
 import { DisbursementHistory } from './admin/DisbursementHistory';
@@ -30,6 +32,7 @@ type Page =
   | 'apply-loan'
   | 'repayment'
   | 'notifications'
+  | 'help'
   | 'pending-applications'
   | 'application-review'
   | 'active-loans'
@@ -167,6 +170,8 @@ export function SalaryCheckOffApp() {
             );
           case 'repayment':
             return <RepaymentSchedule />;
+          case 'help':
+            return <HelpPage />;
           default:
             return <EmployeeDashboard onNavigate={handleNavigate} userName={userName} />;
         }
@@ -190,16 +195,7 @@ export function SalaryCheckOffApp() {
           case 'active-loans':
             return <HRActiveLoans onNavigate={handleNavigate} />;
           case 'payroll':
-            return (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <h2 className="text-xl font-semibold text-slate-900 mb-2">Payroll & Deductions</h2>
-                  <p className="text-slate-600">This feature is coming soon.</p>
-                </div>
-              </div>
-            );
-          case 'collection-report':
-            return <CollectionReport role="hr" />;
+            return <PayrollDeductions />;
           case 'disbursements':
             return <DisbursementHistory onBack={() => handleNavigate('dashboard')} role="hr" />;
           default:

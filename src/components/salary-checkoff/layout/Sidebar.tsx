@@ -90,11 +90,6 @@ export function Sidebar({
     id: 'disbursements',
     label: 'Disbursements',
     icon: DollarSign
-  },
-  {
-    id: 'collection-report',
-    label: 'Collection Report',
-    icon: BarChart
   }];
 
   const adminLinks = [

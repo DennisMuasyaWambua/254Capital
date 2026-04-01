@@ -4,6 +4,7 @@ import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { loanService, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
+import { documentService, Document } from '@/services/salary-checkoff/document.service';
 import {
   ArrowLeft,
   Check,
@@ -25,6 +26,8 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [application, setApplication] = useState<LoanApplicationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
 
   useEffect(() => {
     loadApplication();
@@ -49,6 +52,15 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
       const applicationDetail = await loanService.getApplication(firstPending.id);
 
       setApplication(applicationDetail);
+
+      // Fetch documents for this application
+      try {
+        const docs = await documentService.listApplicationDocuments(applicationDetail.id);
+        setDocuments(docs.results || []);
+      } catch (docError) {
+        console.error('Error loading documents:', docError);
+        // Don't fail the whole page if documents can't be loaded
+      }
     } catch (err: any) {
       console.error('Error loading application:', err);
       setError(err.message || 'Failed to load application');
@@ -101,6 +113,29 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
       console.error('Error declining application:', err);
       setError(err.message || 'Failed to decline application');
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadDocument = async (docId: string, filename: string) => {
+    try {
+      setDownloadingDoc(docId);
+      const blob = await documentService.downloadDocument(docId);
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      console.error('Error downloading document:', err);
+      setError('Failed to download document');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setDownloadingDoc(null);
     }
   };
 
@@ -273,32 +308,38 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
           </Card>
 
           <Card title="Uploaded Documents">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-              'National ID (Front)',
-              'National ID (Back)',
-              'Payslip - Dec 2025'].
-              map((doc, i) =>
-              <div
-                key={i}
-                className="border border-slate-200 rounded-lg p-4 flex flex-col items-center text-center hover:bg-slate-50 transition-colors cursor-pointer">
-
-                  <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-500">
-                    <FileText className="h-5 w-5" />
+            {documents.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="border border-slate-200 rounded-lg p-4 flex flex-col items-center text-center hover:bg-slate-50 transition-colors">
+                    <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-500">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-900 mb-1">
+                      {doc.document_type.replace('_', ' ').toUpperCase()}
+                    </p>
+                    <p className="text-xs text-slate-500 mb-2 truncate w-full px-2">
+                      {doc.original_filename}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      leftIcon={downloadingDoc === doc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                      onClick={() => handleDownloadDocument(doc.id, doc.original_filename)}
+                      disabled={downloadingDoc === doc.id}>
+                      {downloadingDoc === doc.id ? 'Downloading...' : 'Download'}
+                    </Button>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 mb-2">
-                    {doc}
-                  </p>
-                  <Button
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<Download className="h-3 w-3" />}>
-
-                    Download
-                  </Button>
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500">No documents uploaded for this application</p>
+              </div>
+            )}
           </Card>
         </div>
 
@@ -390,6 +431,12 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
           This will forward the application to 254 Capital for final
           disbursement processing.
         </p>
+        {error && (
+          <div className="flex items-start space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
         <div className="bg-emerald-50 text-emerald-800 p-3 rounded-lg text-sm">
           Monthly deduction of{' '}
           <strong>KES {loan.monthly.toLocaleString()}</strong> will be scheduled

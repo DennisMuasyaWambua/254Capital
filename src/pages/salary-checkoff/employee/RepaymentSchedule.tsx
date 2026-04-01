@@ -5,6 +5,7 @@ import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Download, Calendar, Info, Loader2 } from 'lucide-react';
 import { loanService, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
+import { exportService } from '@/services/salary-checkoff/export.service';
 import {
   getFirstDeductionDate,
   formatDeductionDate } from
@@ -12,6 +13,7 @@ import {
 
 export function RepaymentSchedule() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [loanApplication, setLoanApplication] = useState<LoanApplicationDetail | null>(null);
   const [disbursementDate, setDisbursementDate] = useState<Date | null>(null);
   const [firstDeductionDate, setFirstDeductionDate] = useState<Date | null>(null);
@@ -160,6 +162,21 @@ export function RepaymentSchedule() {
     setScheduleData(schedule);
   };
 
+  const handleDownloadPDF = async () => {
+    if (!loanApplication) return;
+
+    try {
+      setIsDownloading(true);
+      const blob = await exportService.generateRepaymentPDF(loanApplication.id);
+      exportService.downloadFile(blob, `Repayment_Schedule_${loanApplication.application_number}.pdf`);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -234,8 +251,12 @@ export function RepaymentSchedule() {
         <h1 className="text-2xl font-bold text-slate-900">
           Repayment Schedule
         </h1>
-        <Button variant="outline" leftIcon={<Download className="h-4 w-4" />}>
-          Download PDF
+        <Button
+          variant="outline"
+          leftIcon={isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          onClick={handleDownloadPDF}
+          disabled={isDownloading}>
+          {isDownloading ? 'Downloading...' : 'Download PDF'}
         </Button>
       </div>
 
