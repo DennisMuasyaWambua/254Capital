@@ -241,15 +241,13 @@ export function CollectionReport({ role }: CollectionReportProps) {
                   setSelectedEmployerId(e.target.value);
                   setShowPreview(false);
                   setPreviewData(null);
-                } }
-                disabled={loadingEmployers} options={[]}              >
-                <option value="">Select Employer</option>
-                {employers.map((employer) => (
-                  <option key={employer.id} value={employer.id}>
-                    {employer.name}
-                  </option>
-                ))}
-              </Select>
+                }}
+                disabled={loadingEmployers}
+                options={employers.map((employer) => ({
+                  value: employer.id,
+                  label: employer.name,
+                }))}
+              />
             )}
           </div>
 

@@ -56,7 +56,7 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
       // Fetch documents for this application
       try {
         const docs = await documentService.listApplicationDocuments(applicationDetail.id);
-        setDocuments(docs.results || []);
+        setDocuments(docs || []);
       } catch (docError) {
         console.error('Error loading documents:', docError);
         // Don't fail the whole page if documents can't be loaded
@@ -209,14 +209,22 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
         <div className="flex space-x-3">
           <Button
             variant="danger"
-            onClick={() => setIsDeclineModalOpen(true)}
+            onClick={() => {
+              setError(null);
+              setComment('');
+              setIsDeclineModalOpen(true);
+            }}
             leftIcon={<X className="h-4 w-4" />}>
 
             Decline
           </Button>
           <Button
             variant="primary"
-            onClick={() => setIsApproveModalOpen(true)}
+            onClick={() => {
+              setError(null);
+              setComment('');
+              setIsApproveModalOpen(true);
+            }}
             leftIcon={<Check className="h-4 w-4" />}>
 
             Approve Application

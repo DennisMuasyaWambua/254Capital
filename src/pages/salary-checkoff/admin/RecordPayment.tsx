@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { MoneyInput } from '@/components/salary-checkoff/ui/MoneyInput';
@@ -12,7 +12,6 @@ import {
   EarlyPaymentDiscountCalculation,
 } from '@/services/salary-checkoff/payment.service';
 import {
-  Search,
   Calculator,
   CheckCircle2,
   AlertCircle,
@@ -24,7 +23,7 @@ interface RecordPaymentProps {
 }
 
 export function RecordPayment({ onNavigate }: RecordPaymentProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [loans, setLoans] = useState<LoanSearchResult[]>([]);
   const [selectedLoan, setSelectedLoan] = useState<LoanSearchResult | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(
@@ -36,41 +35,38 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
   const [applyDiscount, setApplyDiscount] = useState(false);
   const [discountData, setDiscountData] =
     useState<EarlyPaymentDiscountCalculation | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingLoans, setIsLoadingLoans] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCalculatingDiscount, setIsCalculatingDiscount] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.length < 3) {
-      setError('Please enter at least 3 characters to search');
-      return;
-    }
+  useEffect(() => {
+    loadLoans();
+  }, []);
 
+  const loadLoans = async () => {
     try {
-      setIsSearching(true);
+      setIsLoadingLoans(true);
       setError(null);
-      const results = await paymentService.searchLoans(searchQuery);
+      // Search with empty query to get all active loans
+      const results = await paymentService.searchLoans('');
 
       if (results.length === 0) {
-        setError('No loans found matching your search');
-        setSelectedLoan(null);
-      } else if (results.length === 1) {
-        setSelectedLoan(results[0]);
-      } else {
-        // If multiple results, take the first one
-        // In a real app, you'd show a selection UI
-        setSelectedLoan(results[0]);
+        setError('No active loans found');
       }
+      setLoans(results);
     } catch (error: any) {
-      console.error('Error searching loans:', error);
-      setError(error.message || 'Failed to search loans');
-      setSelectedLoan(null);
+      console.error('Error loading loans:', error);
+      setError(error.message || 'Failed to load loans');
     } finally {
-      setIsSearching(false);
+      setIsLoadingLoans(false);
     }
+  };
+
+  const handleSelectLoan = (loan: LoanSearchResult) => {
+    setSelectedLoan(loan);
+    setError(null);
   };
 
   const handleApplyDiscountToggle = async (checked: boolean) => {
@@ -142,13 +138,14 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
         setShowSuccess(false);
         // Reset form
         setSelectedLoan(null);
-        setSearchQuery('');
         setPaymentAmount('');
         setPaymentMethod('');
         setReferenceNumber('');
         setNotes('');
         setApplyDiscount(false);
         setDiscountData(null);
+        // Reload loans to get updated balances
+        loadLoans();
       }, 3000);
     } catch (error: any) {
       console.error('Error recording payment:', error);
@@ -182,21 +179,65 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
         </div>
       )}
 
-      {/* Step 1: Search */}
+      {/* Step 1: Select Loan */}
       <Card title="Step 1: Select Loan">
-        <form onSubmit={handleSearch} className="flex gap-4">
-          <div className="flex-1">
-            <Input
-              placeholder="Search by employee name, ID, or mobile number..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              leftIcon={<Search className="h-4 w-4" />}
-            />
+        {isLoadingLoans ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+            <span className="ml-3 text-slate-600">Loading active loans...</span>
           </div>
-          <Button type="submit" isLoading={isSearching}>
-            Search
-          </Button>
-        </form>
+        ) : loans.length === 0 ? (
+          <div className="text-center py-12">
+            <AlertCircle className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-600">No active loans found</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 border-y border-slate-200">
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Employee</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Employer</th>
+                  <th className="text-right px-4 py-3 text-sm font-semibold text-slate-700">Outstanding</th>
+                  <th className="text-right px-4 py-3 text-sm font-semibold text-slate-700">Monthly</th>
+                  <th className="text-center px-4 py-3 text-sm font-semibold text-slate-700">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loans.map((loan) => (
+                  <tr
+                    key={loan.id}
+                    className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                      selectedLoan?.id === loan.id ? 'bg-[#E0F2F2]' : ''
+                    }`}
+                  >
+                    <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                      {loan.employee_name}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {loan.employer_name}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-900 text-right font-medium">
+                      KES {loan.outstanding_balance.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600 text-right">
+                      KES {loan.monthly_deduction.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <Button
+                        size="sm"
+                        variant={selectedLoan?.id === loan.id ? 'primary' : 'outline'}
+                        onClick={() => handleSelectLoan(loan)}
+                      >
+                        {selectedLoan?.id === loan.id ? 'Selected' : 'Select'}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {/* Step 2: Payment Details */}
