@@ -11,13 +11,13 @@ import { HRDashboard } from './hr/HRDashboard';
 import { ApplicationReview } from './hr/ApplicationReview';
 import { HRActiveLoans } from './hr/HRActiveLoans';
 import { PayrollDeductions } from './hr/PayrollDeductions';
+import { PendingApplications } from './hr/PendingApplications';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminLoanQueue } from './admin/AdminLoanQueue';
 import { DisbursementHistory } from './admin/DisbursementHistory';
 import { ExistingClients } from './admin/ExistingClients';
 import { PendingApprovals } from './admin/PendingApprovals';
 import { RecordPayment } from './admin/RecordPayment';
-import { MonthlyReconciliation } from './admin/MonthlyReconciliation';
 import { OnboardEmployer } from './admin/OnboardEmployer';
 import { Employers } from './admin/Employers';
 import { CollectionReport } from './admin/CollectionReport';
@@ -45,7 +45,6 @@ type Page =
   | 'existing-clients'
   | 'pending-approvals'
   | 'record-payment'
-  | 'monthly-reconciliation'
   | 'onboard-employer'
   | 'collection-report';
 
@@ -184,14 +183,7 @@ export function SalaryCheckOffApp() {
               <ApplicationReview onBack={() => handleNavigate('dashboard')} />
             );
           case 'pending-applications':
-            return (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <h2 className="text-xl font-semibold text-slate-900 mb-2">Pending Applications</h2>
-                  <p className="text-slate-600">This feature is coming soon. Please use the dashboard to review applications.</p>
-                </div>
-              </div>
-            );
+            return <PendingApplications onNavigate={handleNavigate} />;
           case 'active-loans':
             return <HRActiveLoans onNavigate={handleNavigate} />;
           case 'payroll':
@@ -213,8 +205,6 @@ export function SalaryCheckOffApp() {
             return <PendingApprovals onNavigate={handleNavigate} />;
           case 'record-payment':
             return <RecordPayment onNavigate={handleNavigate} />;
-          case 'monthly-reconciliation':
-            return <MonthlyReconciliation onNavigate={handleNavigate} />;
           case 'onboard-employer':
             return <OnboardEmployer onNavigate={handleNavigate} />;
           case 'employers':

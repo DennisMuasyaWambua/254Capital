@@ -143,9 +143,19 @@ export function PayrollDeductions() {
   // Filter loans based on selected month/year
   const filteredLoans = activeLoans.filter((app) => {
     if (!app.disbursement_date) return false;
+
     const disbDate = new Date(app.disbursement_date);
     const firstDeductionDate = getFirstDeductionDate(disbDate);
     const selectedDate = new Date(selectedYear, selectedMonth - 1, 25);
+
+    // Calculate loan end date (disbursement date + repayment months)
+    const loanEndDate = new Date(disbDate);
+    loanEndDate.setMonth(loanEndDate.getMonth() + app.repayment_months);
+
+    // Exclude if loan period has ended before the selected month
+    if (loanEndDate < selectedDate) {
+      return false;
+    }
 
     // Include if first deduction is on or before the selected month's deduction date
     return firstDeductionDate <= selectedDate;

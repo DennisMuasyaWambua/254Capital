@@ -16,7 +16,6 @@ import {
   UserPlus,
   CheckSquare,
   DollarSign,
-  GitCompare,
   Building } from
 'lucide-react';
 import { getInitials } from '@/utils/formatters';
@@ -112,11 +111,6 @@ export function Sidebar({
     id: 'record-payment',
     label: 'Record Payment',
     icon: DollarSign
-  },
-  {
-    id: 'monthly-reconciliation',
-    label: 'Monthly Reconciliation',
-    icon: GitCompare
   },
   {
     id: 'onboard-employer',

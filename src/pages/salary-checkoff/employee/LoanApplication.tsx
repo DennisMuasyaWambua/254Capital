@@ -6,8 +6,10 @@ import { Button } from '@/components/salary-checkoff/ui/Button';
 import { ProgressSteps } from '@/components/salary-checkoff/ui/ProgressSteps';
 import { FileUpload } from '@/components/salary-checkoff/ui/FileUpload';
 import { TermsModal } from './TermsModal';
+import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { loanService, LoanCalculatorResponse } from '@/services/salary-checkoff/loan.service';
 import { documentService, Document } from '@/services/salary-checkoff/document.service';
+import { authService } from '@/services/salary-checkoff/auth.service';
 import {
   getFirstDeductionDate,
   formatDeductionDate } from
@@ -41,6 +43,8 @@ export function LoanApplication({
   const [calculationResult, setCalculationResult] = useState<LoanCalculatorResponse | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [employeeSalary, setEmployeeSalary] = useState<number>(0);
+  const [showDisqualificationModal, setShowDisqualificationModal] = useState(false);
 
   // Disbursement details state
   const [disbursementMethod, setDisbursementMethod] = useState<'bank' | 'mpesa'>('mpesa');
@@ -87,6 +91,21 @@ export function LoanApplication({
     }
   }, [amount, period]);
 
+  // Fetch employee profile to get salary on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profile = await authService.getProfile();
+        if (profile.employee_profile?.monthly_salary) {
+          setEmployeeSalary(parseFloat(profile.employee_profile.monthly_salary));
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   // Debounced calculation - runs whenever amount or period changes
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -122,7 +141,7 @@ export function LoanApplication({
   const isSameMonth = today.getDate() <= 15;
   const firstDeductionLabel = formatDeductionDate(firstDeductionDate);
   const handleNext = async () => {
-    // Step 1: Validate disbursement details
+    // Step 1: Validate disbursement details and check salary eligibility
     if (step === 1) {
       if (disbursementMethod === 'bank') {
         if (!bankName.trim() || !bankBranch.trim() || !accountNumber.trim()) {
@@ -130,6 +149,16 @@ export function LoanApplication({
           return;
         }
       }
+
+      // Validate monthly deduction doesn't exceed 2/3 of salary
+      if (employeeSalary > 0) {
+        const maxAllowedDeduction = (employeeSalary * 2) / 3;
+        if (monthlyDeduction > maxAllowedDeduction) {
+          setShowDisqualificationModal(true);
+          return;
+        }
+      }
+
       setError(null);
     }
 
@@ -699,6 +728,59 @@ export function LoanApplication({
         isOpen={isTermsOpen}
         onClose={() => setIsTermsOpen(false)}
         onAccept={handleTermsAccept} />
+
+      {/* Disqualification Modal */}
+      <Modal
+        isOpen={showDisqualificationModal}
+        onClose={() => setShowDisqualificationModal(false)}
+        title="Loan Application - Not Eligible"
+        size="md">
+        <div className="space-y-4">
+          <div className="flex items-start space-x-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-800">
+                Monthly Deduction Exceeds Limit
+              </p>
+              <p className="text-xs text-red-700 mt-1">
+                Your requested loan amount would result in monthly deductions that exceed two-thirds (2/3) of your salary.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-600">Your Monthly Salary:</span>
+              <span className="font-semibold text-slate-900">
+                KES {employeeSalary.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">Maximum Allowed Deduction (2/3):</span>
+              <span className="font-semibold text-slate-900">
+                KES {Math.floor((employeeSalary * 2) / 3).toLocaleString()}
+              </span>
+            </div>
+            <div className="flex justify-between border-t border-slate-200 pt-2">
+              <span className="text-slate-600">Your Requested Monthly Deduction:</span>
+              <span className="font-semibold text-red-600">
+                KES {Math.round(monthlyDeduction).toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-sm text-slate-600">
+            Please reduce your loan amount or extend the repayment period to lower your monthly deduction.
+          </p>
+
+          <div className="flex justify-end pt-4 border-t">
+            <Button
+              onClick={() => setShowDisqualificationModal(false)}>
+              Adjust Loan Amount
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
     </div>);
 

@@ -240,7 +240,7 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
 
       // Reload data
       await loadAdminDashboardData();
-
+ 
       // Close modal
       setIsModalOpen(false);
       setSelectedApplication(null);

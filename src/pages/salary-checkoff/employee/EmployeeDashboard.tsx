@@ -61,30 +61,42 @@ export function EmployeeDashboard({ onNavigate, userName: propUserName }: Employ
       }));
       setRecentApplications(formattedApplications);
 
-      // Find active/disbursed loan for stats
+      // Find active/disbursed loans for stats
       const activeLoans = applicationsResponse.results.filter(
-        app => app.status === 'disbursed' || app.status === 'approved'
+        app => app.status === 'disbursed'
       );
 
       if (activeLoans.length > 0) {
+        // Use the most recent loan for display
         const loan = activeLoans[0];
         setActiveLoan(loan);
 
-        // Calculate remaining balance (simplified - would need repayment data from API)
-        const totalRepayment = parseFloat(loan.total_repayment);
-        const monthlyDeduction = parseFloat(loan.monthly_deduction);
+        // Calculate total unpaid amount across all disbursed loans
+        let totalActiveLoanAmount = 0;
+        let totalMonthlyDeduction = 0;
+        let totalRemainingBalance = 0;
 
-        // Estimate months elapsed (simplified calculation)
-        const disbursementDate = new Date(loan.disbursement_date || loan.created_at);
-        const today = new Date();
-        const monthsElapsed = Math.max(0,
-          (today.getFullYear() - disbursementDate.getFullYear()) * 12 +
-          (today.getMonth() - disbursementDate.getMonth())
-        );
-        const paidAmount = monthlyDeduction * monthsElapsed;
-        const remainingBalance = Math.max(0, totalRepayment - paidAmount);
+        activeLoans.forEach((app) => {
+          const totalRepayment = parseFloat(app.total_repayment);
+          const monthlyDeduction = parseFloat(app.monthly_deduction);
+
+          // Estimate months elapsed (simplified calculation)
+          const disbursementDate = new Date(app.disbursement_date || app.created_at);
+          const today = new Date();
+          const monthsElapsed = Math.max(0,
+            (today.getFullYear() - disbursementDate.getFullYear()) * 12 +
+            (today.getMonth() - disbursementDate.getMonth())
+          );
+          const paidAmount = monthlyDeduction * monthsElapsed;
+          const remainingBalance = Math.max(0, totalRepayment - paidAmount);
+
+          totalActiveLoanAmount += totalRepayment;
+          totalMonthlyDeduction += monthlyDeduction;
+          totalRemainingBalance += remainingBalance;
+        });
 
         // Calculate next deduction date (25th of current or next month)
+        const today = new Date();
         const nextDeduction = new Date();
         if (today.getDate() >= 25) {
           nextDeduction.setMonth(nextDeduction.getMonth() + 1);
@@ -92,9 +104,9 @@ export function EmployeeDashboard({ onNavigate, userName: propUserName }: Employ
         nextDeduction.setDate(25);
 
         setStats({
-          activeLoanAmount: parseFloat(loan.principal_amount),
-          monthlyDeduction: monthlyDeduction,
-          remainingBalance: remainingBalance,
+          activeLoanAmount: totalActiveLoanAmount,
+          monthlyDeduction: totalMonthlyDeduction,
+          remainingBalance: totalRemainingBalance,
           nextDeduction: nextDeduction.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }),
         });
       }
