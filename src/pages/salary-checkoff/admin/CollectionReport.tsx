@@ -64,11 +64,31 @@ export function CollectionReport({ role }: CollectionReportProps) {
         params.employer_id = selectedEmployerId;
       }
 
+      console.log('Loading preview with params:', params);
       const data = await clientService.getCollectionReportData(params);
+      console.log('Preview data loaded:', data);
       setPreviewData(data);
     } catch (error: any) {
       console.error('Failed to load preview:', error);
-      setError(error.message || 'Failed to load report data. Please check if there are active clients for the selected period.');
+      console.error('Preview error details:', {
+        message: error.message,
+        status: error.status,
+        data: error.data,
+        params: { month, year, employer_id: selectedEmployerId }
+      });
+
+      let errorMessage = 'Failed to load report data.';
+      if (error.status === 404) {
+        errorMessage = 'No active clients found for the selected period.';
+      } else if (error.status === 403) {
+        errorMessage = 'You do not have permission to view this report. Please contact your administrator.';
+      } else if (error.status === 500) {
+        errorMessage = 'Server error occurred while generating the report. Please try again or contact support.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setError(errorMessage);
       setPreviewData(null);
     } finally {
       setIsLoadingPreview(false);
@@ -111,7 +131,9 @@ export function CollectionReport({ role }: CollectionReportProps) {
         params.employer_id = selectedEmployerId;
       }
 
+      console.log('Downloading report with params:', params);
       const blob = await clientService.downloadCollectionReport(params);
+      console.log('Report blob received, size:', blob.size);
 
       // Generate filename
       const monthName = new Date(year, month - 1).toLocaleString('en-US', { month: 'long' });
@@ -119,6 +141,8 @@ export function CollectionReport({ role }: CollectionReportProps) {
         ? employers.find(e => e.id === selectedEmployerId)?.name || 'Report'
         : previewData?.employer_name || 'Report';
       const filename = `${employerName} ${monthName} ${year} Deductions.xlsx`;
+
+      console.log('Triggering download with filename:', filename);
 
       // Download file
       const url = window.URL.createObjectURL(blob);
@@ -134,7 +158,25 @@ export function CollectionReport({ role }: CollectionReportProps) {
       setTimeout(() => setSuccess(null), 3000);
     } catch (error: any) {
       console.error('Failed to download report:', error);
-      setError(error.message || 'Failed to download report. Please check if there are active clients for the selected period.');
+      console.error('Download error details:', {
+        message: error.message,
+        status: error.status,
+        data: error.data,
+        params: { month, year, employer_id: selectedEmployerId }
+      });
+
+      let errorMessage = 'Failed to download report.';
+      if (error.status === 404) {
+        errorMessage = 'No active clients found for the selected period.';
+      } else if (error.status === 403) {
+        errorMessage = 'You do not have permission to download this report. Please contact your administrator.';
+      } else if (error.status === 500) {
+        errorMessage = 'Server error occurred while generating the report. Please try again or contact support.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setError(errorMessage);
     } finally {
       setIsDownloading(false);
     }

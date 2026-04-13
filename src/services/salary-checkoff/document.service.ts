@@ -143,6 +143,9 @@ export const documentService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    console.log('Fetching documents for application:', applicationId);
+    console.log('Using endpoint:', API_ENDPOINTS.DOCUMENTS.APPLICATION_DOCUMENTS(applicationId));
+
     const response = await fetch(
       API_ENDPOINTS.DOCUMENTS.APPLICATION_DOCUMENTS(applicationId),
       {
@@ -151,8 +154,15 @@ export const documentService = {
       }
     );
 
+    console.log('Document fetch response status:', response.status);
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('Document fetch failed:', {
+        status: response.status,
+        errorData,
+        applicationId
+      });
       throw {
         message: errorData.detail || errorData.message || 'Request failed',
         status: response.status,
@@ -160,7 +170,9 @@ export const documentService = {
       };
     }
 
-    return await response.json();
+    const documents = await response.json();
+    console.log('Documents fetched successfully:', documents);
+    return documents;
   },
 
   /**

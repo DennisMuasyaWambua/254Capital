@@ -56,10 +56,17 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
       // Fetch documents for this application
       try {
         const docs = await documentService.listApplicationDocuments(applicationDetail.id);
-        setDocuments(docs || []);
-      } catch (docError) {
+        console.log('Documents loaded:', docs);
+        setDocuments(Array.isArray(docs) ? docs : []);
+      } catch (docError: any) {
         console.error('Error loading documents:', docError);
+        console.error('Document error details:', {
+          message: docError.message,
+          status: docError.status,
+          applicationId: applicationDetail.id
+        });
         // Don't fail the whole page if documents can't be loaded
+        setDocuments([]);
       }
     } catch (err: any) {
       console.error('Error loading application:', err);
@@ -76,16 +83,39 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
       setIsSubmitting(true);
       setError(null);
 
-      await loanService.hrReview(application.id, {
+      console.log('Attempting HR approval for application:', application.id);
+      console.log('Application current status:', application.status);
+
+      const result = await loanService.hrReview(application.id, {
         action: 'approve',
         comment: comment || 'Application approved',
       });
+
+      console.log('HR approval result:', result);
 
       setIsApproveModalOpen(false);
       onBack();
     } catch (err: any) {
       console.error('Error approving application:', err);
-      setError(err.message || 'Failed to approve application');
+      console.error('Approval error details:', {
+        message: err.message,
+        status: err.status,
+        data: err.data,
+        applicationId: application.id,
+        applicationStatus: application.status
+      });
+
+      // Provide more specific error messages
+      let errorMessage = err.message || 'Failed to approve application';
+      if (err.status === 403) {
+        errorMessage = 'You do not have permission to approve this application. Please contact your administrator.';
+      } else if (err.status === 404) {
+        errorMessage = 'Application not found. It may have already been processed.';
+      } else if (err.status === 400) {
+        errorMessage = err.data?.detail || err.message || 'Invalid application status. The application may have already been approved or processed.';
+      }
+
+      setError(errorMessage);
       setIsSubmitting(false);
     }
   };
@@ -102,16 +132,36 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
       setIsSubmitting(true);
       setError(null);
 
-      await loanService.hrReview(application.id, {
+      console.log('Attempting HR decline for application:', application.id);
+
+      const result = await loanService.hrReview(application.id, {
         action: 'decline',
         comment: comment,
       });
+
+      console.log('HR decline result:', result);
 
       setIsDeclineModalOpen(false);
       onBack();
     } catch (err: any) {
       console.error('Error declining application:', err);
-      setError(err.message || 'Failed to decline application');
+      console.error('Decline error details:', {
+        message: err.message,
+        status: err.status,
+        data: err.data
+      });
+
+      // Provide more specific error messages
+      let errorMessage = err.message || 'Failed to decline application';
+      if (err.status === 403) {
+        errorMessage = 'You do not have permission to decline this application. Please contact your administrator.';
+      } else if (err.status === 404) {
+        errorMessage = 'Application not found. It may have already been processed.';
+      } else if (err.status === 400) {
+        errorMessage = err.data?.detail || err.message || 'Invalid application status. The application may have already been processed.';
+      }
+
+      setError(errorMessage);
       setIsSubmitting(false);
     }
   };

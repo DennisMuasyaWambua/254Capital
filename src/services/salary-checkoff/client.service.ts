@@ -257,6 +257,9 @@ export const clientService = {
 
     const url = `${API_ENDPOINTS.CLIENTS.COLLECTION_REPORT}?${queryParams.toString()}`;
 
+    console.log('Downloading collection report with params:', params);
+    console.log('Collection report URL:', url);
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -264,8 +267,26 @@ export const clientService = {
       },
     });
 
+    console.log('Collection report response status:', response.status);
+    console.log('Collection report response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const contentType = response.headers.get('content-type');
+      let errorData: any = {};
+
+      if (contentType && contentType.includes('application/json')) {
+        errorData = await response.json().catch(() => ({}));
+      } else {
+        const text = await response.text().catch(() => '');
+        errorData = { detail: text || 'Failed to download report' };
+      }
+
+      console.error('Collection report download failed:', {
+        status: response.status,
+        errorData,
+        params
+      });
+
       throw {
         message: errorData.error || errorData.detail || 'Failed to download report',
         status: response.status,
@@ -273,7 +294,9 @@ export const clientService = {
       };
     }
 
-    return await response.blob();
+    const blob = await response.blob();
+    console.log('Collection report downloaded successfully, size:', blob.size);
+    return blob;
   },
 
   /**
@@ -291,9 +314,23 @@ export const clientService = {
 
     const url = `${API_ENDPOINTS.CLIENTS.COLLECTION_REPORT_DATA}?${queryParams.toString()}`;
 
-    return apiRequest<CollectionReportData>(url, {
-      method: 'GET',
-    });
+    console.log('Fetching collection report data with params:', params);
+    console.log('Collection report data URL:', url);
+
+    try {
+      const data = await apiRequest<CollectionReportData>(url, {
+        method: 'GET',
+      });
+      console.log('Collection report data fetched successfully:', data);
+      return data;
+    } catch (error: any) {
+      console.error('Collection report data fetch failed:', {
+        error,
+        params,
+        url
+      });
+      throw error;
+    }
   },
 };
 
