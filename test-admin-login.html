@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login Test - 254 Capital</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .icon {
+            font-size: 20px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #68d391;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .credentials {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .credentials strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .test-results {
+            margin-top: 20px;
+        }
+
+        .link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Admin Login Test Dashboard</h1>
+        <p class="subtitle">254 Capital - Authentication System Verification</p>
+
+        <div class="credentials">
+            <strong>Admin Credentials:</strong>
+            <div><strong>Email:</strong> muasyathegreat4@gmail.com</div>
+            <div><strong>Password:</strong> Muasya@2024</div>
+        </div>
+
+        <div class="section">
+            <h2>📊 System Status</h2>
+            <div id="systemStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>🧪 Quick Tests</h2>
+            <button onclick="checkAdminUser()">Check Admin User</button>
+            <button onclick="checkPasswordHash()">Verify Password Hash</button>
+            <button onclick="clearAllData()">Clear localStorage</button>
+            <button onclick="viewAllUsers()">View All Users</button>
+            <div class="test-results" id="testResults"></div>
+        </div>
+
+        <div class="section">
+            <h2>🚀 Login Actions</h2>
+            <button onclick="goToLogin()">Go to Login Page</button>
+            <button onclick="goToDashboard()">Go to Dashboard</button>
+            <button onclick="testLoginFlow()">Test Login Flow</button>
+        </div>
+
+        <div class="section">
+            <h2>📝 Console Commands</h2>
+            <p style="margin-bottom: 10px; color: #666;">Copy and paste these commands in the browser console:</p>
+
+            <div class="code-block">
+// View all users<br>
+console.table(JSON.parse(localStorage.getItem('254_capital_users') || '[]').map(u => ({
+  email: u.email,
+  id: u.id,
+  created: new Date(u.created_at).toLocaleString()
+})));
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_EMAIL = 'muasyathegreat4@gmail.com';
+        const ADMIN_PASSWORD = 'Muasya@2024';
+
+        function showStatus(message, type = 'info') {
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            return `<div class="status ${type}"><span class="icon">${icon}</span><span>${message}</span></div>`;
+        }
+
+        function checkAdminUser() {
+            const users = JSON.parse(localStorage.getItem('254_capital_users') || '[]');
+            const admin = users.find(u => u.email === ADMIN_EMAIL);
+
+            const resultsDiv = document.getElementById('testResults');
+
+            if (admin) {
+                resultsDiv.innerHTML = showStatus(`Admin user found! ID: ${admin.id}`, 'success') +
+                    showStatus(`Email: ${admin.email}`, 'info') +
+                    showStatus(`Created: ${new Date(admin.created_at).toLocaleString()}`, 'info') +
+                    showStatus(`Password hash length: ${admin.password.length} characters`, 'info');
+            } else {
+                resultsDiv.innerHTML = showStatus('Admin user not found in localStorage', 'error') +
+                    showStatus('The application should create it on startup. Try refreshing the page.', 'info');
+            }
+        }
+
+        function checkPasswordHash() {
+            const users = JSON.parse(localStorage.getItem('254_capital_users') || '[]');
+            const admin = users.find(u => u.email === ADMIN_EMAIL);
+
+            const resultsDiv = document.getElementById('testResults');
+
+            if (!admin) {
+                resultsDiv.innerHTML = showStatus('Admin user not found. Cannot check password.', 'error');
+                return;
+            }
+
+            // Check if password hash looks valid (bcrypt hashes are 60 chars)
+            const isValidLength = admin.password.length === 60;
+            const startsWithBcrypt = admin.password.startsWith('$2');
+
+            if (isValidLength && startsWithBcrypt) {
+                resultsDiv.innerHTML = showStatus('Password hash appears valid!', 'success') +
+                    showStatus(`Hash format: bcrypt (${admin.password.substring(0, 20)}...)`, 'info') +
+                    showStatus('The password should work with the login form.', 'success');
+            } else {
+                resultsDiv.innerHTML = showStatus('Password hash format issue detected', 'error') +
+                    showStatus(`Length: ${admin.password.length} (expected: 60)`, 'info') +
+                    showStatus(`Format: ${admin.password.substring(0, 10)}...`, 'info');
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('This will clear ALL localStorage data including the admin user. Continue?')) {
+                localStorage.clear();
+                sessionStorage.clear();
+                document.getElementById('testResults').innerHTML =
+                    showStatus('All data cleared!', 'success') +
+                    showStatus('Refresh the page to re-initialize the admin user.', 'info');
+                updateSystemStatus();
+            }
+        }
+
+        function viewAllUsers() {
+            const users = JSON.parse(localStorage.getItem('254_capital_users') || '[]');
+            const resultsDiv = document.getElementById('testResults');
+
+            if (users.length === 0) {
+                resultsDiv.innerHTML = showStatus('No users found in localStorage', 'info');
+                return;
+            }
+
+            let html = showStatus(`Found ${users.length} user(s)`, 'success');
+            users.forEach((user, index) => {
+                html += showStatus(
+                    `${index + 1}. ${user.email} (ID: ${user.id.substring(0, 8)}...) - Created: ${new Date(user.created_at).toLocaleString()}`,
+                    'info'
+                );
+            });
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function goToLogin() {
+            window.location.href = '/login';
+        }
+
+        function goToDashboard() {
+            window.location.href = '/dashboard';
+        }
+
+        function testLoginFlow() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = showStatus('Testing login flow...', 'info');
+
+            // Check if user exists
+            const users = JSON.parse(localStorage.getItem('254_capital_users') || '[]');
+            const admin = users.find(u => u.email === ADMIN_EMAIL);
+
+            if (!admin) {
+                resultsDiv.innerHTML = showStatus('❌ Admin user not found', 'error') +
+                    showStatus('Please refresh the page to initialize the admin user', 'info');
+                return;
+            }
+
+            resultsDiv.innerHTML = showStatus('✅ Admin user exists', 'success') +
+                showStatus('✅ Password hash is present', 'success') +
+                showStatus('Ready to test login!', 'success') +
+                showStatus('Click "Go to Login Page" to proceed with actual login', 'info');
+        }
+
+        function updateSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            const users = JSON.parse(localStorage.getItem('254_capital_users') || '[]');
+            const sessions = JSON.parse(localStorage.getItem('254_capital_sessions') || '[]');
+            const currentSession = localStorage.getItem('254_capital_current_session');
+            const admin = users.find(u => u.email === ADMIN_EMAIL);
+
+            let html = '';
+
+            // Check admin user
+            if (admin) {
+                html += showStatus(`Admin user initialized (${admin.email})`, 'success');
+            } else {
+                html += showStatus('Admin user not found - app should create on startup', 'error');
+            }
+
+            // Check users count
+            html += showStatus(`Total users in system: ${users.length}`, 'info');
+
+            // Check sessions
+            html += showStatus(`Active sessions: ${sessions.length}`, 'info');
+
+            // Check current session
+            if (currentSession) {
+                const session = JSON.parse(currentSession);
+                html += showStatus(`Currently logged in as: ${session.user.email}`, 'success');
+            } else {
+                html += showStatus('No active session (not logged in)', 'info');
+            }
+
+            statusDiv.innerHTML = html;
+        }
+
+        // Update status on load
+        updateSystemStatus();
+
+        // Auto-refresh status every 5 seconds
+        setInterval(updateSystemStatus, 5000);
+    </script>
+</body>
+</html>

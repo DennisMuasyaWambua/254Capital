@@ -318,7 +318,7 @@ export function onAuthStateChange(callback: (event: string, session: SessionWith
   // Initial session check
   const initialSession = getSession().data.session;
   callback('INITIAL_SESSION', initialSession);
-  
+
   // Listen for storage changes
   const handleStorageChange = (event: StorageEvent) => {
     if (event.key === CURRENT_SESSION_KEY || event.key === SESSIONS_KEY) {
@@ -326,18 +326,18 @@ export function onAuthStateChange(callback: (event: string, session: SessionWith
       callback(currentSession ? 'SIGNED_IN' : 'SIGNED_OUT', currentSession);
     }
   };
-  
+
   window.addEventListener('storage', handleStorageChange);
-  
+
   // Create a custom event for auth changes that can be triggered programmatically
   const checkAuthState = () => {
     const currentSession = getSession().data.session;
     callback(currentSession ? 'SIGNED_IN' : 'SIGNED_OUT', currentSession);
   };
-  
+
   // Check auth state every 5 seconds (for development purposes)
   const interval = setInterval(checkAuthState, 5000);
-  
+
   // Return unsubscribe function
   return {
     data: {
@@ -349,4 +349,59 @@ export function onAuthStateChange(callback: (event: string, session: SessionWith
       }
     }
   };
+}
+
+// Initialize default admin user
+export async function initializeDefaultAdmin() {
+  try {
+    const users = getUsers();
+    const adminEmail = 'muasyathegreat4@gmail.com';
+    const adminPassword = 'Muasya@2024';
+
+    // Check if admin user already exists
+    const existingAdmin = users.find(user => user.email === adminEmail);
+
+    if (!existingAdmin) {
+      console.log('Initializing default admin user...');
+
+      // Hash password
+      const hashedPassword = await bcryptjs.hash(adminPassword, 10);
+
+      // Create admin user
+      const adminUser: UserWithPassword = {
+        id: uuidv4(),
+        email: adminEmail,
+        password: hashedPassword,
+        created_at: new Date().toISOString()
+      };
+
+      // Save admin user
+      users.push(adminUser);
+      saveUsers(users);
+
+      console.log('Default admin user created successfully:', adminEmail);
+      return { success: true, message: 'Admin user created' };
+    } else {
+      // Admin exists, verify password can be authenticated
+      const isPasswordValid = await bcryptjs.compare(adminPassword, existingAdmin.password);
+
+      if (!isPasswordValid) {
+        console.warn('Admin user exists but password hash does not match. Updating password...');
+
+        // Update password hash
+        const hashedPassword = await bcryptjs.hash(adminPassword, 10);
+        existingAdmin.password = hashedPassword;
+        saveUsers(users);
+
+        console.log('Admin password updated successfully');
+        return { success: true, message: 'Admin password updated' };
+      }
+
+      console.log('Admin user already exists with correct credentials');
+      return { success: true, message: 'Admin user already exists' };
+    }
+  } catch (error: any) {
+    console.error('Error initializing admin user:', error);
+    return { success: false, message: error.message };
+  }
 }

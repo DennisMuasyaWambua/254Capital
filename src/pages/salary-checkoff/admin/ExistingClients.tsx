@@ -132,7 +132,7 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
         national_id: formData.nationalId,
         mobile: formData.mobile,
         email: formData.email || undefined,
-        employer_id: formData.employer,
+        employer: formData.employer,
         employee_id: formData.employeeId || undefined,
         loan_amount: loanAmountNum,
         interest_rate: interestRateNum,

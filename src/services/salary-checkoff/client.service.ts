@@ -37,7 +37,7 @@ export interface CreateClientRequest {
   national_id: string;
   mobile: string;
   email?: string;
-  employer_id: string;
+  employer: string;
   employee_id?: string;
   loan_amount: number;
   interest_rate: number;
