@@ -1,7 +1,7 @@
 /**
  * 254 Capital Deduction Date Logic
- * Rule: If disbursed on or before the 15th → first deduction on 25th of SAME month
- *       If disbursed after the 15th → first deduction on 25th of NEXT month
+ * Rule: If disbursed BEFORE the 15th → first deduction on 25th of SAME month
+ *       If disbursed ON OR AFTER the 15th → first deduction on 25th of NEXT month
  */
 
 export function getFirstDeductionDate(disbursementDate: Date): Date {
@@ -9,7 +9,7 @@ export function getFirstDeductionDate(disbursementDate: Date): Date {
   const month = disbursementDate.getMonth();
   const year = disbursementDate.getFullYear();
 
-  if (day <= 15) {
+  if (day < 15) {
     return new Date(year, month, 25);
   } else {
     return new Date(year, month + 1, 25);
@@ -19,7 +19,7 @@ export function getFirstDeductionDate(disbursementDate: Date): Date {
 export function getDeductionTag(
 disbursementDate: Date)
 : 'same-month' | 'next-month' {
-  return disbursementDate.getDate() <= 15 ? 'same-month' : 'next-month';
+  return disbursementDate.getDate() < 15 ? 'same-month' : 'next-month';
 }
 
 export function formatDeductionDate(date: Date): string {

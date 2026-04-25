@@ -16,6 +16,12 @@ export const API_ENDPOINTS = {
     VERIFY_LOGIN_OTP: `${API_BASE_URL}/api/v1/auth/verify-login-otp/`,
     ADMIN_VERIFY_2FA: `${API_BASE_URL}/api/v1/auth/admin/verify-2fa/`,
     PROFILE: `${API_BASE_URL}/api/v1/auth/profile/`,
+
+    // Password management endpoints
+    CHANGE_PASSWORD: `${API_BASE_URL}/api/v1/auth/change-password/`,
+    REQUEST_PASSWORD_RESET: `${API_BASE_URL}/api/v1/auth/request-password-reset/`,
+    RESET_PASSWORD: `${API_BASE_URL}/api/v1/auth/reset-password/`,
+    ADMIN_RESET_USER_PASSWORD: `${API_BASE_URL}/api/v1/auth/admin/reset-user-password/`,
   },
 
   // Loan endpoints
@@ -111,6 +117,16 @@ export const API_ENDPOINTS = {
   PAYMENTS: {
     RECORD: `${API_BASE_URL}/api/v1/payments/record/`,
     CALCULATE_DISCOUNT: `${API_BASE_URL}/api/v1/payments/calculate-discount/`,
+  },
+
+  // HR User Management endpoints (Admin only)
+  HR_USERS: {
+    LIST: `${API_BASE_URL}/api/v1/users/hr/`,
+    CREATE: `${API_BASE_URL}/api/v1/users/hr/create/`,
+    DETAIL: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
+    TOGGLE_ACTIVE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/toggle-active/`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
   },
 };
 
