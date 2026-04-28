@@ -42,6 +42,13 @@ export const API_ENDPOINTS = {
     ADMIN_QUEUE: `${API_BASE_URL}/api/v1/loans/admin/queue/`,
     ADMIN_ASSESS: (id: string) => `${API_BASE_URL}/api/v1/loans/admin/${id}/assess/`,
     ADMIN_DISBURSE: (id: string) => `${API_BASE_URL}/api/v1/loans/admin/${id}/disburse/`,
+    ADMIN_UPDATE: (id: string) => `${API_BASE_URL}/api/v1/loans/${id}/`,
+    ADMIN_DELETE: (id: string) => `${API_BASE_URL}/api/v1/loans/${id}/`,
+    ADMIN_DELETE_CHECK: (id: string) => `${API_BASE_URL}/api/v1/loans/${id}/delete-check/`,
+
+    // Repayment endpoints
+    REPAYMENTS: (loanId: string) => `${API_BASE_URL}/api/v1/loans/${loanId}/repayments/`,
+    MANUAL_REPAYMENT: (loanId: string) => `${API_BASE_URL}/api/v1/loans/${loanId}/repayments/manual/`,
   },
 
   // Employer endpoints
@@ -106,6 +113,9 @@ export const API_ENDPOINTS = {
     UPLOAD_TEMPLATE: `${API_BASE_URL}/api/v1/clients/template-download/`,
     PENDING_LIST: `${API_BASE_URL}/api/v1/clients/pending/`,
     CLIENT_DETAIL: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/`,
+    UPDATE_CLIENT: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/`,
+    DELETE_CLIENT: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/`,
+    DELETE_CHECK: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/delete-check/`,
     APPROVE_CLIENT: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/approve/`,
     REJECT_CLIENT: (id: string) => `${API_BASE_URL}/api/v1/clients/${id}/reject/`,
     BULK_APPROVE: `${API_BASE_URL}/api/v1/clients/bulk-approve/`,
@@ -117,6 +127,12 @@ export const API_ENDPOINTS = {
   PAYMENTS: {
     RECORD: `${API_BASE_URL}/api/v1/payments/record/`,
     CALCULATE_DISCOUNT: `${API_BASE_URL}/api/v1/payments/calculate-discount/`,
+  },
+
+  // Repayment management endpoints (Admin only)
+  REPAYMENTS: {
+    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/repayments/${id}/`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/v1/repayments/${id}/`,
   },
 
   // HR User Management endpoints (Admin only)

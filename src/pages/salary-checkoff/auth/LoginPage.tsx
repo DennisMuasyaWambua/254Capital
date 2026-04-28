@@ -16,10 +16,11 @@ import { ApiError } from '@/services/salary-checkoff/api';
 interface LoginPageProps {
   onLogin: (role: 'employee' | 'hr' | 'admin') => void;
   onRegisterClick: () => void;
+  onForgotPassword?: () => void;
 }
 type AuthStep = 'phone' | 'otp' | 'staff-otp';
 type LoginMode = 'employee' | 'staff';
-export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
+export function LoginPage({ onLogin, onRegisterClick, onForgotPassword }: LoginPageProps) {
   const [loginMode, setLoginMode] = useState<LoginMode>('employee');
   // Employee OTP state
   const [phone, setPhone] = useState('');
@@ -456,6 +457,18 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
                     leftIcon={<Lock className="h-5 w-5" />}
                     error={staffError}
                     required />
+
+                    {onForgotPassword && (
+                      <div className="text-right -mt-3">
+                        <button
+                          type="button"
+                          onClick={onForgotPassword}
+                          className="text-sm font-medium text-[#008080] hover:text-[#006666]"
+                        >
+                          Forgot Password?
+                        </button>
+                      </div>
+                    )}
 
                     <Button
                     type="submit"

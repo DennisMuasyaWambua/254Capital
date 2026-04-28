@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/salary-checkoff/layout/Sidebar';
 import { Header } from '@/components/salary-checkoff/layout/Header';
 import { LoginPage } from './auth/LoginPage';
 import { RegisterPage } from './auth/RegisterPage';
+import { ForgotPassword } from './auth/ForgotPassword';
 import { EmployeeDashboard } from './employee/EmployeeDashboard';
 import { LoanApplication } from './employee/LoanApplication';
 import { RepaymentSchedule } from './employee/RepaymentSchedule';
@@ -28,6 +29,7 @@ type Role = 'employee' | 'hr' | 'admin' | null;
 type Page =
   | 'login'
   | 'register'
+  | 'forgot-password'
   | 'dashboard'
   | 'apply-loan'
   | 'repayment'
@@ -146,10 +148,21 @@ export function SalaryCheckOffApp() {
           />
         );
       }
+      if (currentPage === 'forgot-password') {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+            <ForgotPassword
+              onBack={() => setCurrentPage('login')}
+              onSuccess={() => setCurrentPage('login')}
+            />
+          </div>
+        );
+      }
       return (
         <LoginPage
           onLogin={handleLogin}
           onRegisterClick={() => setCurrentPage('register')}
+          onForgotPassword={() => setCurrentPage('forgot-password')}
         />
       );
     }

@@ -119,6 +119,70 @@ export interface AdminDisbursementRequest {
   disbursement_reference: string;
 }
 
+export interface UpdateLoanRequest {
+  principal_amount?: number;
+  interest_rate?: number;
+  repayment_months?: number;
+  total_repayment?: number;
+  monthly_deduction?: number;
+  disbursement_date?: string;
+  disbursement_method?: 'mpesa' | 'bank';
+  reason?: string;
+  admin_notes?: string;
+}
+
+export interface DeleteLoanCheckResponse {
+  can_delete: boolean;
+  loan: {
+    id: string;
+    application_number: string;
+    employee_name: string;
+    principal_amount: string;
+    status: string;
+    outstanding_balance: string;
+  };
+  associated_data: {
+    total_repayments: number;
+    paid_repayments: number;
+    pending_repayments: number;
+  };
+  warning: string;
+}
+
+export interface DeleteLoanRequest {
+  confirm: boolean;
+  reason: string;
+}
+
+export interface Repayment {
+  id: string;
+  installment_number: number;
+  due_date: string;
+  amount: string;
+  paid: boolean;
+  payment_date?: string;
+  payment_method?: string;
+  reference?: string;
+}
+
+export interface LoanRepaymentsResponse {
+  loan_id: string;
+  loan_details: {
+    application_number: string;
+    employee_name: string;
+    total_repayment: string;
+    monthly_deduction: string;
+  };
+  repayments: Repayment[];
+  summary: {
+    total_installments: number;
+    paid_installments: number;
+    pending_installments: number;
+    total_paid: string;
+    outstanding_balance: string;
+  };
+}
+
 export interface HRDashboardStats {
   statistics: {
     pending_applications: number;
@@ -375,5 +439,96 @@ export const loanService = {
         body: JSON.stringify(data),
       }
     );
+  },
+
+  /**
+   * Update loan details (Admin only)
+   */
+  adminUpdateLoan: async (
+    id: string,
+    data: UpdateLoanRequest
+  ): Promise<{
+    detail: string;
+    loan: LoanApplication;
+    repayment_schedule_updated: boolean;
+    modification_logged: boolean;
+  }> => {
+    return apiRequest(API_ENDPOINTS.LOANS.ADMIN_UPDATE(id), {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Check if loan can be deleted (Admin only)
+   */
+  adminDeleteCheck: async (id: string): Promise<DeleteLoanCheckResponse> => {
+    return apiRequest<DeleteLoanCheckResponse>(
+      API_ENDPOINTS.LOANS.ADMIN_DELETE_CHECK(id),
+      {
+        method: 'GET',
+      }
+    );
+  },
+
+  /**
+   * Delete loan record (Admin only)
+   */
+  adminDeleteLoan: async (
+    id: string,
+    data: DeleteLoanRequest
+  ): Promise<{
+    detail: string;
+    deleted: {
+      loan_id: string;
+      application_number: string;
+      repayments_deleted: number;
+    };
+    archived: boolean;
+    archived_at: string;
+  }> => {
+    return apiRequest(API_ENDPOINTS.LOANS.ADMIN_DELETE(id), {
+      method: 'DELETE',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Get loan repayments (Admin/HR)
+   */
+  getLoanRepayments: async (loanId: string): Promise<LoanRepaymentsResponse> => {
+    return apiRequest<LoanRepaymentsResponse>(
+      API_ENDPOINTS.LOANS.REPAYMENTS(loanId),
+      {
+        method: 'GET',
+      }
+    );
+  },
+
+  /**
+   * Manually post repayment (Admin only)
+   */
+  manualRepayment: async (
+    loanId: string,
+    data: {
+      installment_number: number;
+      amount: number;
+      payment_date: string;
+      payment_method: string;
+      reference: string;
+      notes?: string;
+    }
+  ): Promise<{
+    detail: string;
+    repayment: Repayment;
+    loan_updated: {
+      amount_paid: string;
+      outstanding_balance: string;
+    };
+  }> => {
+    return apiRequest(API_ENDPOINTS.LOANS.MANUAL_REPAYMENT(loanId), {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 };

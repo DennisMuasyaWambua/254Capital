@@ -332,6 +332,51 @@ export const clientService = {
       throw error;
     }
   },
+
+  /**
+   * Update client record (Admin only)
+   */
+  updateClient: async (
+    id: string,
+    data: UpdateClientRequest
+  ): Promise<{ detail: string; client: ExistingClient; modification_logged: boolean }> => {
+    return apiRequest(API_ENDPOINTS.CLIENTS.UPDATE_CLIENT(id), {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Check if client can be deleted (Admin only)
+   */
+  deleteCheck: async (id: string): Promise<DeleteCheckResponse> => {
+    return apiRequest<DeleteCheckResponse>(API_ENDPOINTS.CLIENTS.DELETE_CHECK(id), {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Delete client record (Admin only)
+   */
+  deleteClient: async (
+    id: string,
+    data: DeleteClientRequest
+  ): Promise<{
+    detail: string;
+    deleted: {
+      client_id: string;
+      client_name: string;
+      loans_deleted: number;
+      repayments_deleted: number;
+    };
+    archived: boolean;
+    archived_at: string;
+  }> => {
+    return apiRequest(API_ENDPOINTS.CLIENTS.DELETE_CLIENT(id), {
+      method: 'DELETE',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 export interface CollectionReportItem {
@@ -348,4 +393,48 @@ export interface CollectionReportData {
   items: CollectionReportItem[];
   total_amount_borrowed: string;
   total_installment_due: string;
+}
+
+export interface UpdateClientRequest {
+  full_name?: string;
+  national_id?: string;
+  mobile?: string;
+  email?: string;
+  employer?: string;
+  employee_id?: string;
+  loan_amount?: number;
+  interest_rate?: number;
+  repayment_period?: number;
+  disbursement_date?: string;
+  disbursement_method?: 'mpesa' | 'bank' | 'cash';
+  amount_paid?: number;
+  loan_status?: 'Active' | 'Fully Paid' | 'Defaulted' | 'Restructured';
+  admin_notes?: string;
+}
+
+export interface DeleteCheckResponse {
+  can_delete: boolean;
+  client: {
+    id: string;
+    full_name: string;
+    employer_name: string;
+  };
+  associated_data: {
+    total_loans: number;
+    active_loans: number;
+    closed_loans: number;
+    total_repayments: number;
+  };
+  loans: Array<{
+    id: string;
+    loan_amount: string;
+    status: string;
+    outstanding_balance: string;
+  }>;
+  warning: string;
+}
+
+export interface DeleteClientRequest {
+  confirm: boolean;
+  reason: string;
 }

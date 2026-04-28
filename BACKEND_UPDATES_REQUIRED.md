@@ -1,8 +1,77 @@
 # Backend API Updates Required
 
-**Date:** April 25, 2026
+**Date:** April 28, 2026
 **Status:** Backend Changes Needed
 **Frontend:** Ready - waiting for backend implementation
+
+---
+
+## Issue #1: Loan Repayment Start Date Logic in Collection Sheets
+
+### Problem
+Loans disbursed on or after the 15th of any given month should have their first repayment scheduled for the following month (not the current month). While the system charges 5% interest for that month, the client gets the benefit of a longer first period (~6 weeks) while only paying one month's interest. However, these loans are currently appearing on the current month's collection sheet when they shouldn't.
+
+### Current Behavior
+The collection sheet endpoints currently return ALL active loans for a given month, regardless of when the loan was disbursed within that month.
+
+### Required Fix
+
+**Endpoint:** `GET /api/v1/clients/collection-report/` and `GET /api/v1/clients/collection-report-data/`
+
+**Business Rule:**
+- Loans disbursed **BEFORE the 15th** of month M → First repayment on 25th of month M (same month)
+- Loans disbursed **ON OR AFTER the 15th** of month M → First repayment on 25th of month M+1 (next month)
+
+**Filter Logic Needed:**
+```python
+from dateutil.relativedelta import relativedelta
+from django.utils import timezone
+
+def calculate_first_deduction_date(disbursement_date):
+    """
+    Calculate the first deduction date based on disbursement date.
+    Rule: Disbursed before 15th → deduct same month (25th)
+          Disbursed on/after 15th → deduct next month (25th)
+    """
+    if disbursement_date.day < 15:
+        # Deduction in same month
+        return disbursement_date.replace(day=25)
+    else:
+        # Deduction in next month
+        next_month = (disbursement_date.replace(day=1) + relativedelta(months=1))
+        return next_month.replace(day=25)
+
+def should_appear_in_collection_sheet(loan, report_month, report_year):
+    """
+    Determine if a loan should appear in the collection sheet for a given period.
+    """
+    disbursement_date = loan.disbursement_date
+    first_deduction_date = calculate_first_deduction_date(disbursement_date)
+
+    # Create report date (25th of the report month)
+    report_date = datetime(report_year, report_month, 25)
+
+    # Loan should only appear if report_date >= first_deduction_date
+    if report_date < first_deduction_date:
+        return False
+
+    return True
+```
+
+**Example Scenarios:**
+1. **Loan disbursed April 10, 2026 (before 15th)**:
+   - First deduction: April 25, 2026
+   - Should appear in: April 2026 collection sheet ✅
+
+2. **Loan disbursed April 15, 2026 (on 15th)**:
+   - First deduction: May 25, 2026
+   - Should NOT appear in: April 2026 collection sheet ❌
+   - Should appear in: May 2026 collection sheet ✅
+
+3. **Loan disbursed April 20, 2026 (after 15th)**:
+   - First deduction: May 25, 2026
+   - Should NOT appear in: April 2026 collection sheet ❌
+   - Should appear in: May 2026 collection sheet ✅
 
 ---
 
@@ -438,12 +507,125 @@ Admins cannot manage HR user accounts when HR employees leave the company. There
 
 ---
 
-## Admin Loan and Client Management
+## Issue #5: Admin CRUD - Granular Loan & Repayment Controls
 
-### Additional Endpoints Needed
+### Problem
+Admins need full granular control over all entities in the system with proper confirmation dialogs before any destructive action. Currently, there's no ability to edit or delete clients, loans, or individual repayments.
 
-#### Update Disbursed Loan Details
-**Endpoint:** `PATCH /api/v1/loans/admin/{loan_id}/modify/`
+### Required Endpoints
+
+---
+
+### 5.1 Client Management
+
+#### Edit Client Details
+**Endpoint:** `PATCH /api/v1/clients/{client_id}/`
+**Authentication:** Required (Admin only)
+
+**Request Body (all fields optional):**
+```json
+{
+  "full_name": "Updated Name",
+  "national_id": "12345678",
+  "mobile": "0744556677",
+  "email": "newemail@example.com",
+  "employer": "new-employer-uuid",
+  "employee_id": "EMP123",
+  "loan_amount": 60000,
+  "interest_rate": 5.0,
+  "repayment_period": 10,
+  "disbursement_date": "2026-04-10",
+  "disbursement_method": "mpesa",
+  "amount_paid": 30000,
+  "loan_status": "Active",
+  "admin_notes": "Updated contact information per client request"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "detail": "Client record updated successfully",
+  "client": {
+    "id": "client-uuid",
+    "full_name": "Updated Name",
+    "mobile": "0744556677",
+    "loan_amount": "60000.00",
+    "repayment_period": 10,
+    "updated_at": "2026-04-28T12:00:00Z"
+  },
+  "modification_logged": true
+}
+```
+
+#### Delete Client Record
+**Endpoint:** `DELETE /api/v1/clients/{client_id}/`
+**Authentication:** Required (Admin only)
+
+**Important:** Deleting a client cascades and removes ALL associated loans and repayments.
+
+**Request Body:**
+```json
+{
+  "confirm": true,
+  "reason": "Duplicate entry / Client requested removal / Data cleanup"
+}
+```
+
+**Pre-Delete Check - GET /api/v1/clients/{client_id}/delete-check/**
+```json
+{
+  "can_delete": true,
+  "client": {
+    "id": "client-uuid",
+    "full_name": "John Doe",
+    "employer_name": "ABC Company"
+  },
+  "associated_data": {
+    "total_loans": 2,
+    "active_loans": 1,
+    "closed_loans": 1,
+    "total_repayments": 15
+  },
+  "loans": [
+    {
+      "id": "loan-1",
+      "loan_amount": "50000.00",
+      "status": "Active",
+      "outstanding_balance": "25000.00"
+    },
+    {
+      "id": "loan-2",
+      "loan_amount": "30000.00",
+      "status": "Fully Paid",
+      "outstanding_balance": "0.00"
+    }
+  ],
+  "warning": "Deleting this client will permanently remove 2 loan(s) and 15 repayment record(s). This action cannot be undone."
+}
+```
+
+**Success Response (200) - after confirmation:**
+```json
+{
+  "detail": "Client and all associated data deleted successfully",
+  "deleted": {
+    "client_id": "client-uuid",
+    "client_name": "John Doe",
+    "loans_deleted": 2,
+    "repayments_deleted": 15
+  },
+  "archived": true,
+  "archived_at": "2026-04-28T12:00:00Z"
+}
+```
+
+---
+
+### 5.2 Loan Management (for both LoanApplication and ExistingClient models)
+
+#### Edit Loan Details
+**Endpoint:** `PATCH /api/v1/loans/{loan_id}/`
 **Authentication:** Required (Admin only)
 
 **Request Body (all fields optional):**
@@ -452,8 +634,10 @@ Admins cannot manage HR user accounts when HR employees leave the company. There
   "principal_amount": 50000,
   "interest_rate": 5.0,
   "repayment_months": 12,
+  "total_repayment": 52500,
   "monthly_deduction": 4375,
   "disbursement_date": "2026-04-10",
+  "disbursement_method": "mpesa",
   "reason": "Customer requested loan restructuring",
   "admin_notes": "Approved restructuring due to financial hardship"
 }
@@ -469,40 +653,210 @@ Admins cannot manage HR user accounts when HR employees leave the company. There
     "interest_rate": "5.00",
     "repayment_months": 12,
     "monthly_deduction": "4375.00",
-    "updated_at": "2026-04-25T12:00:00Z"
+    "updated_at": "2026-04-28T12:00:00Z"
   },
+  "repayment_schedule_updated": true,
   "modification_logged": true
 }
 ```
 
-#### Update Client Record
-**Endpoint:** `PATCH /api/v1/clients/{client_id}/`
+#### Delete Loan Record
+**Endpoint:** `DELETE /api/v1/loans/{loan_id}/`
 **Authentication:** Required (Admin only)
 
-**Request Body (all fields optional):**
+**Important:** Deleting a loan removes ALL associated repayments.
+
+**Request Body:**
 ```json
 {
-  "full_name": "Updated Name",
-  "mobile": "0744556677",
-  "email": "newemail@example.com",
-  "employer": "new-employer-uuid",
-  "loan_amount": 60000,
-  "repayment_period": 10,
-  "amount_paid": 30000,
-  "loan_status": "Active",
-  "admin_notes": "Updated contact information per client request"
+  "confirm": true,
+  "reason": "Duplicate loan / Error in disbursement / Client withdrawal"
+}
+```
+
+**Pre-Delete Check - GET /api/v1/loans/{loan_id}/delete-check/**
+```json
+{
+  "can_delete": true,
+  "loan": {
+    "id": "loan-uuid",
+    "application_number": "LN-2026-001234",
+    "employee_name": "John Doe",
+    "principal_amount": "50000.00",
+    "status": "disbursed",
+    "outstanding_balance": "25000.00"
+  },
+  "associated_data": {
+    "total_repayments": 8,
+    "paid_repayments": 3,
+    "pending_repayments": 5
+  },
+  "warning": "Deleting this loan will permanently remove 8 repayment record(s). This action cannot be undone."
 }
 ```
 
 **Success Response (200):**
 ```json
 {
-  "detail": "Client record updated successfully",
-  "client": {
-    "id": "client-uuid",
-    "full_name": "Updated Name",
-    "mobile": "0744556677",
-    "updated_at": "2026-04-25T12:00:00Z"
+  "detail": "Loan and all associated repayments deleted successfully",
+  "deleted": {
+    "loan_id": "loan-uuid",
+    "application_number": "LN-2026-001234",
+    "repayments_deleted": 8
+  },
+  "archived": true,
+  "archived_at": "2026-04-28T12:00:00Z"
+}
+```
+
+---
+
+### 5.3 Repayment Management
+
+#### Get Loan Repayments
+**Endpoint:** `GET /api/v1/loans/{loan_id}/repayments/`
+**Authentication:** Required (Admin/HR)
+
+**Success Response (200):**
+```json
+{
+  "loan_id": "loan-uuid",
+  "loan_details": {
+    "application_number": "LN-2026-001234",
+    "employee_name": "John Doe",
+    "total_repayment": "52500.00",
+    "monthly_deduction": "4375.00"
+  },
+  "repayments": [
+    {
+      "id": "repayment-1",
+      "installment_number": 1,
+      "due_date": "2026-05-25",
+      "amount": "4375.00",
+      "paid": true,
+      "payment_date": "2026-05-25",
+      "payment_method": "mpesa",
+      "reference": "REF123"
+    },
+    {
+      "id": "repayment-2",
+      "installment_number": 2,
+      "due_date": "2026-06-25",
+      "amount": "4375.00",
+      "paid": false,
+      "payment_date": null,
+      "payment_method": null,
+      "reference": null
+    }
+  ],
+  "summary": {
+    "total_installments": 12,
+    "paid_installments": 1,
+    "pending_installments": 11,
+    "total_paid": "4375.00",
+    "outstanding_balance": "48125.00"
+  }
+}
+```
+
+#### Edit Repayment Record
+**Endpoint:** `PATCH /api/v1/repayments/{repayment_id}/`
+**Authentication:** Required (Admin only)
+
+**Request Body (all fields optional):**
+```json
+{
+  "amount": 5000.00,
+  "due_date": "2026-06-25",
+  "paid": true,
+  "payment_date": "2026-06-26",
+  "payment_method": "mpesa",
+  "reference": "MPX123456",
+  "admin_notes": "Manual correction - updated payment amount"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "detail": "Repayment record updated successfully",
+  "repayment": {
+    "id": "repayment-id",
+    "installment_number": 2,
+    "amount": "5000.00",
+    "due_date": "2026-06-25",
+    "paid": true,
+    "payment_date": "2026-06-26",
+    "updated_at": "2026-04-28T12:00:00Z"
+  },
+  "loan_balance_updated": true,
+  "modification_logged": true
+}
+```
+
+#### Delete Repayment Record
+**Endpoint:** `DELETE /api/v1/repayments/{repayment_id}/`
+**Authentication:** Required (Admin only)
+
+**Request Body:**
+```json
+{
+  "confirm": true,
+  "reason": "Duplicate entry / Erroneous record / Correction needed"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "detail": "Repayment record deleted successfully",
+  "deleted": {
+    "repayment_id": "repayment-id",
+    "installment_number": 2,
+    "amount": "4375.00",
+    "loan_id": "loan-uuid"
+  },
+  "loan_balance_updated": true,
+  "archived": true,
+  "archived_at": "2026-04-28T12:00:00Z"
+}
+```
+
+#### Manually Post Repayment
+**Endpoint:** `POST /api/v1/loans/{loan_id}/repayments/manual/`
+**Authentication:** Required (Admin only)
+
+**Request Body:**
+```json
+{
+  "installment_number": 3,
+  "amount": 4375.00,
+  "payment_date": "2026-07-25",
+  "payment_method": "mpesa",
+  "reference": "MPX789012",
+  "notes": "Manual payment posted - received via M-Pesa"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "detail": "Repayment posted successfully",
+  "repayment": {
+    "id": "new-repayment-id",
+    "loan_id": "loan-uuid",
+    "installment_number": 3,
+    "amount": "4375.00",
+    "due_date": "2026-07-25",
+    "paid": true,
+    "payment_date": "2026-07-25",
+    "payment_method": "mpesa",
+    "reference": "MPX789012",
+    "created_at": "2026-04-28T12:00:00Z"
+  },
+  "loan_updated": {
+    "amount_paid": "13125.00",
+    "outstanding_balance": "39375.00"
   }
 }
 ```
@@ -511,21 +865,23 @@ Admins cannot manage HR user accounts when HR employees leave the company. There
 
 ## Implementation Priority
 
-### High Priority (Immediate)
-1. ✅ **Issue #1** - Already fixed in frontend
-2. **Issue #2** - Collection report matured loan filtering (critical for accuracy)
-3. **Issue #3.2 & 3.3** - Forgot password / password reset via OTP (user experience)
+### Critical Priority (Implement Immediately)
+1. **Issue #1** - Loan repayment start date logic in collection sheets (15th cutoff rule)
+2. **Issue #2** - Collection report matured loan filtering (loans dropping off after tenure)
+3. **Issue #3.2 & 3.3** - Forgot password / OTP-based password reset (user experience)
 
-### Medium Priority (This Week)
-4. **Issue #3.1** - Self-service password change
-5. **Issue #4.1, 4.2, 4.3** - View and edit HR users
-6. **Issue #4.4** - Deactivate/reactivate HR users
+### High Priority (This Week)
+4. **Issue #5.1** - Client CRUD (Edit & Delete with cascading)
+5. **Issue #5.2** - Loan CRUD (Edit & Delete)
+6. **Issue #5.3** - Repayment CRUD (Edit, Delete, Manual Post)
+7. **Issue #3.1** - Self-service password change
+8. **Issue #3.4** - Admin-triggered password reset for HR users
 
-### Lower Priority (When Needed)
-7. **Issue #3.4** - Admin password reset for users
-8. **Issue #4.5** - Create new HR users (can use existing onboarding)
-9. **Issue #4.6** - Delete HR users (use deactivate instead)
-10. **Admin loan/client modification** - Only if business requires
+### Medium Priority (Already Partially Implemented)
+9. **Issue #4.1, 4.2, 4.3** - View and edit HR users (some endpoints exist)
+10. **Issue #4.4** - Deactivate/reactivate HR users (toggle-active exists)
+11. **Issue #4.5** - Create new HR users (endpoint exists)
+12. **Issue #4.6** - Delete HR users with confirmation
 
 ---
 
@@ -533,16 +889,47 @@ Admins cannot manage HR user accounts when HR employees leave the company. There
 
 ### After Backend Implementation
 
+#### Collection Sheet Logic
+- [ ] Loans disbursed before 15th appear in same month's collection sheet
+- [ ] Loans disbursed on/after 15th do NOT appear in same month's collection sheet
+- [ ] Loans disbursed on/after 15th appear in next month's collection sheet
 - [ ] Collection reports exclude matured loans correctly
-- [ ] Day 15 disbursements appear in NEXT month's report (not same month)
+- [ ] 6-month loan only appears on 6 collection sheets (not month 7+)
+
+#### Password Management
 - [ ] HR users can change their own passwords
 - [ ] HR users can reset forgotten passwords via OTP
+- [ ] Admin can trigger password reset for any HR user via OTP
+- [ ] All password changes invalidate existing tokens (force re-login)
+
+#### Client CRUD
+- [ ] Admin can edit client details (name, phone, employer, etc.)
+- [ ] Admin can delete client record
+- [ ] Deleting client shows warning with list of associated loans
+- [ ] Deleting client requires explicit confirmation
+- [ ] Deleting client cascades to remove all loans and repayments
+
+#### Loan CRUD
+- [ ] Admin can edit individual loan details (amount, tenure, interest, etc.)
+- [ ] Admin can delete individual loan
+- [ ] Deleting loan shows warning with repayment count
+- [ ] Deleting loan requires explicit confirmation
+- [ ] Deleting loan removes all associated repayments
+
+#### Repayment CRUD
+- [ ] Admin can view all repayments for a loan
+- [ ] Admin can edit individual repayment record
+- [ ] Admin can delete individual repayment record
+- [ ] Admin can manually post a repayment for a specific loan
+- [ ] Manual repayment updates loan balance correctly
+- [ ] All repayment modifications require confirmation
+
+#### HR User Management
 - [ ] Admin can view list of all HR users
 - [ ] Admin can edit HR user details (email, phone, name, position)
 - [ ] Admin can reassign employer to different HR user
-- [ ] Admin can deactivate HR accounts
-- [ ] Admin can reset passwords for HR users
-- [ ] All password changes invalidate existing tokens (force re-login)
+- [ ] Admin can delete HR user account with confirmation
+- [ ] Admin can deactivate/reactivate HR accounts
 
 ---
 
