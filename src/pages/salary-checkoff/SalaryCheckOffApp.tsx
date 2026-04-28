@@ -22,6 +22,10 @@ import { RecordPayment } from './admin/RecordPayment';
 import { OnboardEmployer } from './admin/OnboardEmployer';
 import { Employers } from './admin/Employers';
 import { CollectionReport } from './admin/CollectionReport';
+import { RepaymentManagement } from './admin/RepaymentManagement';
+import { HRUserManagement } from './admin/HRUserManagement';
+import { MonthlyReconciliation } from './admin/MonthlyReconciliation';
+import { ChangePassword } from './settings/ChangePassword';
 import { authService } from '@/services/salary-checkoff/auth.service';
 import { Loader2 } from 'lucide-react';
 
@@ -48,7 +52,10 @@ type Page =
   | 'pending-approvals'
   | 'record-payment'
   | 'onboard-employer'
-  | 'collection-report';
+  | 'collection-report'
+  | 'repayment-management'
+  | 'change-password'
+  | 'hr-users';
 
 export function SalaryCheckOffApp() {
   const [role, setRole] = useState<Role>(null);
@@ -184,6 +191,13 @@ export function SalaryCheckOffApp() {
             return <RepaymentSchedule />;
           case 'help':
             return <HelpPage />;
+          case 'change-password':
+            return (
+              <ChangePassword
+                onClose={() => handleNavigate('dashboard')}
+                onSuccess={() => handleLogout()}
+              />
+            );
           default:
             return <EmployeeDashboard onNavigate={handleNavigate} userName={userName} />;
         }
@@ -203,6 +217,13 @@ export function SalaryCheckOffApp() {
             return <PayrollDeductions />;
           case 'disbursements':
             return <DisbursementHistory onBack={() => handleNavigate('dashboard')} role="hr" />;
+          case 'change-password':
+            return (
+              <ChangePassword
+                onClose={() => handleNavigate('dashboard')}
+                onSuccess={() => handleLogout()}
+              />
+            );
           default:
             return <HRDashboard onNavigate={handleNavigate} userName={userName} />;
         }
@@ -226,6 +247,19 @@ export function SalaryCheckOffApp() {
             return <CollectionReport role="admin" />;
           case 'disbursements':
             return <DisbursementHistory onBack={() => handleNavigate('dashboard')} role="admin" />;
+          case 'repayment-management':
+            return <RepaymentManagement onNavigate={handleNavigate} />;
+          case 'hr-users':
+            return <HRUserManagement onNavigate={handleNavigate} />;
+          case 'reconciliation':
+            return <MonthlyReconciliation onNavigate={handleNavigate} />;
+          case 'change-password':
+            return (
+              <ChangePassword
+                onClose={() => handleNavigate('dashboard')}
+                onSuccess={() => handleLogout()}
+              />
+            );
           default:
             return <AdminDashboard onNavigate={handleNavigate} userName={userName} />;
         }

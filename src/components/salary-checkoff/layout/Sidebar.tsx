@@ -16,7 +16,10 @@ import {
   UserPlus,
   CheckSquare,
   DollarSign,
-  Building } from
+  Building,
+  Lock,
+  Receipt,
+  UserCog } from
 'lucide-react';
 import { getInitials } from '@/utils/formatters';
 interface SidebarProps {
@@ -62,6 +65,11 @@ export function Sidebar({
     id: 'help',
     label: 'Help & Support',
     icon: HelpCircle
+  },
+  {
+    id: 'change-password',
+    label: 'Change Password',
+    icon: Lock
   }];
 
   const hrLinks = [
@@ -89,6 +97,11 @@ export function Sidebar({
     id: 'disbursements',
     label: 'Disbursements',
     icon: DollarSign
+  },
+  {
+    id: 'change-password',
+    label: 'Change Password',
+    icon: Lock
   }];
 
   const adminLinks = [
@@ -111,6 +124,11 @@ export function Sidebar({
     id: 'record-payment',
     label: 'Record Payment',
     icon: DollarSign
+  },
+  {
+    id: 'repayment-management',
+    label: 'Repayment Management',
+    icon: Receipt
   },
   {
     id: 'onboard-employer',
@@ -143,9 +161,14 @@ export function Sidebar({
     icon: BarChart
   },
   {
-    id: 'settings',
-    label: 'Settings',
-    icon: Settings
+    id: 'hr-users',
+    label: 'HR Users',
+    icon: UserCog
+  },
+  {
+    id: 'change-password',
+    label: 'Change Password',
+    icon: Lock
   }];
 
   const links =
