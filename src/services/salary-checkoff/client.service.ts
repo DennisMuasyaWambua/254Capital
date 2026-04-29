@@ -78,6 +78,29 @@ export interface BulkApproveRequest {
 
 export const clientService = {
   /**
+   * List all existing clients
+   */
+  listClients: async (
+    filters?: {
+      search?: string;
+      status?: string;
+      page?: number;
+    }
+  ): Promise<PaginatedResponse<ExistingClient>> => {
+    const params = new URLSearchParams();
+
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.page) params.append('page', filters.page.toString());
+
+    const url = `${API_ENDPOINTS.CLIENTS.LIST}?${params.toString()}`;
+
+    return apiRequest<PaginatedResponse<ExistingClient>>(url, {
+      method: 'GET',
+    });
+  },
+
+  /**
    * Create manual existing client entry
    */
   createManualClient: async (
@@ -87,6 +110,15 @@ export const clientService = {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  /**
+   * Alias for createManualClient
+   */
+  createClient: async (
+    data: CreateClientRequest
+  ): Promise<ExistingClient> => {
+    return clientService.createManualClient(data);
   },
 
   /**
@@ -145,6 +177,13 @@ export const clientService = {
     }
 
     return await response.json();
+  },
+
+  /**
+   * Alias for validateBulkData
+   */
+  validateBulkUpload: async (file: File): Promise<BulkUploadResponse> => {
+    return clientService.validateBulkData(file);
   },
 
   /**
@@ -385,6 +424,8 @@ export interface CollectionReportItem {
   loan_amount: string;
   monthly_deduction: string;
   outstanding_balance: string;
+  disbursement_date: string;
+  repayment_period: number;
 }
 
 export interface CollectionReportData {

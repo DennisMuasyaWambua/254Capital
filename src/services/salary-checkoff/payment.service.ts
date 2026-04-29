@@ -17,6 +17,7 @@ export interface LoanSearchResult {
   amount_paid: number;
   outstanding_balance: number;
   start_date: string;
+  disbursement_date: string;
   repayment_period: number;
   monthly_deduction: number;
   interest_rate: number;

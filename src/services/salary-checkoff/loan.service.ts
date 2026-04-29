@@ -217,6 +217,23 @@ export interface HRDashboardStats {
 
 export const loanService = {
   /**
+   * Search for loans by query (employee name, ID, loan number, etc.)
+   */
+  searchLoans: async (query: string, filters?: {
+    employer_id?: string;
+  }): Promise<PaginatedResponse<LoanApplication>> => {
+    const params = new URLSearchParams();
+    if (query) params.append('search', query);
+    if (filters?.employer_id) params.append('employer', filters.employer_id);
+
+    const url = `${API_ENDPOINTS.LOANS.SEARCH}?${params.toString()}`;
+
+    return apiRequest<PaginatedResponse<LoanApplication>>(url, {
+      method: 'GET',
+    });
+  },
+
+  /**
    * List employee's loan applications
    */
   listApplications: async (

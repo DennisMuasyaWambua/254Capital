@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Input } from '@/components/salary-checkoff/ui/Input';
@@ -13,7 +13,9 @@ import {
   LoanRepaymentsResponse,
 } from '@/services/salary-checkoff/loan.service';
 import { repaymentService } from '@/services/salary-checkoff/repayment.service';
+import { employerService, Employer } from '@/services/salary-checkoff/employer.service';
 import { formatNumberWithCommas, parseFormattedNumber } from '@/utils/formatters';
+import { isLoanMatured } from '@/utils/salary-checkoff/deductionDate';
 import {
   Search,
   Edit2,
@@ -33,6 +35,9 @@ interface RepaymentManagementProps {
 
 export function RepaymentManagement({ onBack }: RepaymentManagementProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [employerFilter, setEmployerFilter] = useState('');
+  const [employers, setEmployers] = useState<Employer[]>([]);
+  const [isLoadingEmployers, setIsLoadingEmployers] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [loanData, setLoanData] = useState<LoanRepaymentsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,10 +72,27 @@ export function RepaymentManagement({ onBack }: RepaymentManagementProps) {
   });
   const [isPostingPayment, setIsPostingPayment] = useState(false);
 
-  // Search for loan by application number
+  // Load employers on mount
+  useEffect(() => {
+    const loadEmployers = async () => {
+      try {
+        setIsLoadingEmployers(true);
+        const response = await employerService.listEmployers();
+        setEmployers(response.results.filter(e => e.is_active));
+      } catch (err: any) {
+        console.error('Error loading employers:', err);
+      } finally {
+        setIsLoadingEmployers(false);
+      }
+    };
+
+    loadEmployers();
+  }, []);
+
+  // Search for loan by application number or client name
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
-      setError('Please enter a loan application number');
+      setError('Please enter a loan application number or client name');
       return;
     }
 
@@ -79,15 +101,48 @@ export function RepaymentManagement({ onBack }: RepaymentManagementProps) {
     setLoanData(null);
 
     try {
-      // Search for loan by application number
-      const searchResponse = await loanService.searchLoans(searchTerm);
+      // Search for loan by application number or client name, with optional employer filter
+      const searchResponse = await loanService.searchLoans(searchTerm, {
+        employer_id: employerFilter || undefined,
+      });
 
       if (searchResponse.results.length === 0) {
-        setError('No loan found with that application number');
+        setError('No loan found matching your search criteria');
         return;
       }
 
-      const loan = searchResponse.results[0];
+      // Filter out matured loans
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+
+      const activeLoans = searchResponse.results.filter(loan => {
+        if (!loan.disbursement_date || !loan.repayment_months) {
+          console.warn('Loan missing disbursement_date or repayment_months:', loan);
+          return true; // Include loans without date info (safety fallback)
+        }
+
+        const disbursementDate = new Date(loan.disbursement_date);
+        const matured = isLoanMatured(
+          disbursementDate,
+          loan.repayment_months,
+          currentMonth,
+          currentYear
+        );
+
+        if (matured) {
+          console.log(`Filtering out matured loan for ${loan.employee?.first_name} ${loan.employee?.last_name}`);
+        }
+
+        return !matured;
+      });
+
+      if (activeLoans.length === 0) {
+        setError('No active loans found matching your search criteria. The loan may have matured.');
+        return;
+      }
+
+      const loan = activeLoans[0];
 
       // Get repayments for this loan
       const repaymentsResponse = await loanService.getLoanRepayments(loan.id);
@@ -283,23 +338,42 @@ export function RepaymentManagement({ onBack }: RepaymentManagementProps) {
       {/* Search Section */}
       <Card className="p-6">
         <h3 className="font-semibold text-slate-900 mb-4">Search for Loan</h3>
-        <div className="flex gap-4">
-          <div className="flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          <div className="md:col-span-6">
             <Input
-              placeholder="Enter loan application number (e.g., LN-2026-001234)"
+              label="Search by Loan Number or Client Name"
+              placeholder="e.g., LN-2026-001234 or John Doe"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <Button
-            onClick={handleSearch}
-            disabled={isSearching}
-            isLoading={isSearching}
-          >
-            <Search className="mr-2 h-4 w-4" />
-            Search
-          </Button>
+          <div className="md:col-span-4">
+            <Select
+              label="Filter by Employer (Optional)"
+              value={employerFilter}
+              onChange={(e) => setEmployerFilter(e.target.value)}
+              disabled={isLoadingEmployers}
+            >
+              <option value="">All Employers</option>
+              {employers.map((employer) => (
+                <option key={employer.id} value={employer.id}>
+                  {employer.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="md:col-span-2 flex items-end">
+            <Button
+              onClick={handleSearch}
+              disabled={isSearching}
+              isLoading={isSearching}
+              className="w-full"
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Search
+            </Button>
+          </div>
         </div>
       </Card>
 

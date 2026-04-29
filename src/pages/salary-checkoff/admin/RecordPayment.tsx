@@ -11,6 +11,7 @@ import {
   RecordPaymentRequest,
   EarlyPaymentDiscountCalculation,
 } from '@/services/salary-checkoff/payment.service';
+import { isLoanMatured } from '@/utils/salary-checkoff/deductionDate';
 import {
   Calculator,
   CheckCircle2,
@@ -25,6 +26,7 @@ interface RecordPaymentProps {
 export function RecordPayment({ onNavigate }: RecordPaymentProps) {
   const [loans, setLoans] = useState<LoanSearchResult[]>([]);
   const [selectedLoan, setSelectedLoan] = useState<LoanSearchResult | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().split('T')[0]
@@ -41,24 +43,52 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadLoans();
-  }, []);
-
   const loadLoans = async () => {
+    // Only search if query has at least 2 characters
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setError('Please enter at least 2 characters to search');
+      return;
+    }
+
     try {
       setIsLoadingLoans(true);
       setError(null);
-      // Search with empty query to get all active loans
-      const results = await paymentService.searchLoans('');
+      const results = await paymentService.searchLoans(searchQuery.trim());
 
-      if (results.length === 0) {
-        setError('No active loans found');
+      // Filter out matured loans
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+
+      const activeLoans = results.filter(loan => {
+        if (!loan.disbursement_date || !loan.repayment_period) {
+          console.warn('Loan missing disbursement_date or repayment_period:', loan);
+          return true; // Include loans without date info (safety fallback)
+        }
+
+        const disbursementDate = new Date(loan.disbursement_date);
+        const matured = isLoanMatured(
+          disbursementDate,
+          loan.repayment_period,
+          currentMonth,
+          currentYear
+        );
+
+        if (matured) {
+          console.log(`Filtering out matured loan for ${loan.employee_name}`);
+        }
+
+        return !matured;
+      });
+
+      if (activeLoans.length === 0) {
+        setError('No active loans found matching your search');
       }
-      setLoans(results);
+      setLoans(activeLoans);
     } catch (error: any) {
       console.error('Error loading loans:', error);
       setError(error.message || 'Failed to load loans');
+      setLoans([]);
     } finally {
       setIsLoadingLoans(false);
     }
@@ -181,6 +211,29 @@ export function RecordPayment({ onNavigate }: RecordPaymentProps) {
 
       {/* Step 1: Select Loan */}
       <Card title="Step 1: Select Loan">
+        {/* Search Input */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Search for Loan
+          </label>
+          <div className="flex gap-3">
+            <Input
+              placeholder="Search by employee name, ID, loan number, or mobile (min 2 characters)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && loadLoans()}
+              className="flex-1"
+            />
+            <Button
+              onClick={loadLoans}
+              disabled={isLoadingLoans || searchQuery.trim().length < 2}
+              isLoading={isLoadingLoans}
+            >
+              Search
+            </Button>
+          </div>
+        </div>
+
         {isLoadingLoans ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
