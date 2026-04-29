@@ -130,19 +130,21 @@ export const API_ENDPOINTS = {
   },
 
   // Repayment management endpoints (Admin only)
+  // Backend route: path('repayments/<uuid:repayment_id>/', ...) under path('api/v1/loans/', ...)
   REPAYMENTS: {
-    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/repayments/${id}/`,
-    DELETE: (id: string) => `${API_BASE_URL}/api/v1/repayments/${id}/`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/loans/repayments/${id}/`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/v1/loans/repayments/${id}/delete/`,
   },
 
   // HR User Management endpoints (Admin only)
+  // Backend route: path('users/hr/', ...) under path('api/v1/auth/', ...)
   HR_USERS: {
-    LIST: `${API_BASE_URL}/api/v1/users/hr/`,
-    CREATE: `${API_BASE_URL}/api/v1/users/hr/create/`,
-    DETAIL: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
-    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
-    TOGGLE_ACTIVE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/toggle-active/`,
-    DELETE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
+    LIST: `${API_BASE_URL}/api/v1/auth/users/hr/`,
+    CREATE: `${API_BASE_URL}/api/v1/auth/users/hr/create/`,
+    DETAIL: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/update/`,
+    TOGGLE_ACTIVE: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/toggle-active/`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/delete/`,
   },
 };
 
