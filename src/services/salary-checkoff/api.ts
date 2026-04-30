@@ -16,12 +16,6 @@ export const API_ENDPOINTS = {
     VERIFY_LOGIN_OTP: `${API_BASE_URL}/api/v1/auth/verify-login-otp/`,
     ADMIN_VERIFY_2FA: `${API_BASE_URL}/api/v1/auth/admin/verify-2fa/`,
     PROFILE: `${API_BASE_URL}/api/v1/auth/profile/`,
-
-    // Password management endpoints
-    CHANGE_PASSWORD: `${API_BASE_URL}/api/v1/auth/change-password/`,
-    REQUEST_PASSWORD_RESET: `${API_BASE_URL}/api/v1/auth/request-password-reset/`,
-    RESET_PASSWORD: `${API_BASE_URL}/api/v1/auth/reset-password/`,
-    ADMIN_RESET_USER_PASSWORD: `${API_BASE_URL}/api/v1/auth/admin/reset-user-password/`,
   },
 
   // Loan endpoints
