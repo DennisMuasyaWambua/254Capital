@@ -5,6 +5,7 @@ import { Select } from '@/components/salary-checkoff/ui/Select';
 import { Download, FileSpreadsheet, Loader2, AlertCircle, CheckCircle2, Eye, RefreshCw } from 'lucide-react';
 import { clientService, CollectionReportData } from '@/services/salary-checkoff/client.service';
 import { employerService, Employer } from '@/services/salary-checkoff/employer.service';
+import { shouldIncludeInCollectionReport } from '@/utils/salary-checkoff/deductionDate';
 
 interface CollectionReportProps {
   role: 'hr' | 'admin';
@@ -66,9 +67,45 @@ export function CollectionReport({ role }: CollectionReportProps) {
 
       console.log('Loading preview with params:', params);
       const data = await clientService.getCollectionReportData(params);
-      console.log('Preview data loaded:', data);
-      // Backend already applies 15th-day rule and maturity filtering
-      setPreviewData(data);
+      console.log('Preview data loaded (before filtering):', data);
+
+      // Apply 15th-day rule and maturity cutoff filter
+      const filteredItems = data.items.filter(item => {
+        if (!item.disbursement_date || !item.repayment_period) {
+          console.warn('Item missing disbursement_date or repayment_period:', item);
+          return true; // Include items without date info (safety fallback)
+        }
+
+        const disbursementDate = new Date(item.disbursement_date);
+        const shouldInclude = shouldIncludeInCollectionReport(
+          disbursementDate,
+          item.repayment_period,
+          month,
+          year
+        );
+
+        if (!shouldInclude) {
+          console.log(`Filtering out ${item.full_name}: disbursed ${item.disbursement_date}, tenure ${item.repayment_period} months`);
+        }
+
+        return shouldInclude;
+      });
+
+      console.log(`Filtered ${data.items.length - filteredItems.length} items. Remaining: ${filteredItems.length}`);
+
+      // Recalculate totals
+      const filteredTotalBorrowed = filteredItems.reduce((sum, item) => sum + parseFloat(item.loan_amount), 0);
+      const filteredTotalInstallment = filteredItems.reduce((sum, item) => sum + parseFloat(item.monthly_deduction), 0);
+
+      const filteredData: CollectionReportData = {
+        ...data,
+        items: filteredItems,
+        total_amount_borrowed: filteredTotalBorrowed.toString(),
+        total_installment_due: filteredTotalInstallment.toString(),
+      };
+
+      console.log('Preview data loaded (after filtering):', filteredData);
+      setPreviewData(filteredData);
     } catch (error: any) {
       console.error('Failed to load preview:', error);
       console.error('Preview error details:', {

@@ -528,6 +528,7 @@ export const loanService = {
   manualRepayment: async (
     loanId: string,
     data: {
+      installment_number: number;
       amount: number;
       payment_date: string;
       payment_method: string;
