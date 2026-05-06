@@ -455,6 +455,8 @@ export function ExistingClients({ onNavigate: _onNavigate }: ExistingClientsProp
                 </div>
               ) : clients.length === 0 ? (
                 <div className="text-center py-12 text-slate-500">
+
+                  
                   <p>No clients found</p>
                 </div>
               ) : (
