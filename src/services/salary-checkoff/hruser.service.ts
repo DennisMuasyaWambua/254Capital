@@ -26,18 +26,19 @@ export interface CreateHRUserRequest {
   first_name: string;
   last_name: string;
   email: string;
-  password: string;
   position: string;
   employer_id: string;
+  send_welcome_email?: boolean;
+  send_credentials_sms?: boolean;
 }
 
 export interface CreateHRUserResponse {
   detail: string;
   user: HRUser;
-  credentials: {
-    email: string;
-    temporary_password: string;
-  };
+  temporary_password: string;
+  welcome_email_sent: boolean;
+  credentials_sms_sent: boolean;
+  password_expires_in_hours: number;
 }
 
 export interface UpdateHRUserRequest {
@@ -122,18 +123,23 @@ export const hrUserService = {
   /**
    * Toggle HR user active status
    */
-  toggleActiveStatus: async (id: string): Promise<ToggleActiveResponse> => {
+  toggleActiveStatus: async (id: string, isActive: boolean): Promise<ToggleActiveResponse> => {
     return apiRequest<ToggleActiveResponse>(API_ENDPOINTS.HR_USERS.TOGGLE_ACTIVE(id), {
       method: 'POST',
+      body: JSON.stringify({ is_active: isActive }),
     });
   },
 
   /**
    * Delete HR user
    */
-  deleteHRUser: async (id: string): Promise<DeleteHRUserResponse> => {
+  deleteHRUser: async (id: string, reason?: string): Promise<DeleteHRUserResponse> => {
     return apiRequest<DeleteHRUserResponse>(API_ENDPOINTS.HR_USERS.DELETE(id), {
       method: 'DELETE',
+      body: JSON.stringify({
+        confirm: true,
+        reason: reason || 'Deleted by admin'
+      }),
     });
   },
 };

@@ -23,8 +23,6 @@ import {
   AlertCircle,
   RefreshCw,
   Power,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 
 interface HRUserManagementProps {
@@ -56,11 +54,9 @@ export function HRUserManagement({ onNavigate: _onNavigate }: HRUserManagementPr
     phone_number: '',
     position: '',
     employer_id: '',
-    password: '',
   });
 
   const [editFormData, setEditFormData] = useState<UpdateHRUserRequest>({});
-  const [showPassword, setShowPassword] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState<{
     email: string;
     password: string;
@@ -122,10 +118,8 @@ export function HRUserManagement({ onNavigate: _onNavigate }: HRUserManagementPr
       phone_number: '',
       position: '',
       employer_id: '',
-      password: '',
     });
     setGeneratedCredentials(null);
-    setShowPassword(false);
   };
 
   const handleAddUser = async () => {
@@ -143,12 +137,16 @@ export function HRUserManagement({ onNavigate: _onNavigate }: HRUserManagementPr
         phone_number: normalizedPhone,
         position: formData.position,
         employer_id: formData.employer_id,
-        password: formData.password,
+        send_welcome_email: true,
+        send_credentials_sms: true,
       };
 
       const response = await hrUserService.createHRUser(requestData);
 
-      setGeneratedCredentials(response.credentials);
+      setGeneratedCredentials({
+        email: response.user.email,
+        password: response.temporary_password
+      });
       setSuccessMessage('HR user created successfully!');
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
@@ -209,7 +207,9 @@ export function HRUserManagement({ onNavigate: _onNavigate }: HRUserManagementPr
 
   const handleToggleActive = async (user: HRUser) => {
     try {
-      await hrUserService.toggleActiveStatus(user.id);
+      // Toggle the current status
+      const newStatus = !user.is_active;
+      await hrUserService.toggleActiveStatus(user.id, newStatus);
 
       setSuccessMessage(`HR user ${user.is_active ? 'deactivated' : 'activated'} successfully!`);
       setShowSuccess(true);
@@ -545,36 +545,12 @@ export function HRUserManagement({ onNavigate: _onNavigate }: HRUserManagementPr
                         label: emp.name,
                       }))}
                     />
-                    <div className="relative">
-                      <Input
-                        label="Temporary Password *"
-                        name="password"
-                        type={showPassword ? 'text' : 'password'}
-                        value={formData.password}
-                        onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, password: e.target.value }))
-                        }
-                        required
-                        helperText="Minimum 8 characters"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-9 text-slate-400 hover:text-slate-600"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
                   </div>
 
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-800">
-                      <strong>Note:</strong> The HR manager will receive login credentials and
-                      should change their password after first login.
+                      <strong>Note:</strong> A temporary password will be automatically generated.
+                      The HR manager should change their password after first login.
                     </p>
                   </div>
 

@@ -131,12 +131,12 @@ export const API_ENDPOINTS = {
 
   // HR User Management endpoints (Admin only)
   HR_USERS: {
-    LIST: `${API_BASE_URL}/api/v1/users/hr/`,
-    CREATE: `${API_BASE_URL}/api/v1/users/hr/create/`,
-    DETAIL: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
-    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
-    TOGGLE_ACTIVE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/toggle-active/`,
-    DELETE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
+    LIST: `${API_BASE_URL}/api/v1/auth/users/hr/`,
+    CREATE: `${API_BASE_URL}/api/v1/auth/users/hr/create/`,
+    DETAIL: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/update/`,
+    TOGGLE_ACTIVE: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/toggle-active/`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/delete/`,
   },
 };
 
