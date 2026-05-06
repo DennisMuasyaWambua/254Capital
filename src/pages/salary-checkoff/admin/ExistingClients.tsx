@@ -20,11 +20,9 @@ import { employerService } from '@/services/salary-checkoff/employer.service';
 import { formatNumberWithCommas, parseFormattedNumber } from '@/utils/formatters';
 import {
   Save,
-  Send,
   Download,
   AlertCircle,
   CheckCircle2,
-  XCircle,
   Loader2,
   Edit2,
   Trash2,
@@ -32,11 +30,30 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
+type LoanStatus = 'Active' | 'Fully Paid' | 'Defaulted' | 'Restructured';
+
 interface ExistingClientsProps {
   onNavigate: (page: string) => void;
 }
 
-export function ExistingClients({ onNavigate }: ExistingClientsProps) {
+interface ManualFormData {
+  fullName: string;
+  nationalId: string;
+  mobile: string;
+  email: string;
+  employer: string;
+  employeeId: string;
+  loanAmount: string;
+  interestRate: string;
+  startDate: string;
+  repaymentPeriod: string;
+  disbursementDate: string;
+  disbursementMethod: string;
+  amountPaid: string;
+  loanStatus: LoanStatus;
+}
+
+export function ExistingClients({ onNavigate: _onNavigate }: ExistingClientsProps) {
   const [activeTab, setActiveTab] = useState('view');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -57,7 +74,7 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
   const [editFormData, setEditFormData] = useState<UpdateClientRequest>({});
 
   // Manual Form State
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ManualFormData>({
     fullName: '',
     nationalId: '',
     mobile: '',
@@ -183,7 +200,7 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
         start_date: formData.startDate,
         repayment_period: periodNum,
         disbursement_date: formData.disbursementDate,
-        disbursement_method: formData.disbursementMethod,
+        disbursement_method: formData.disbursementMethod as "mpesa" | "bank" | "cash",
         amount_paid: amountPaidNum,
         loan_status: formData.loanStatus,
       };
@@ -260,16 +277,16 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
     try {
       const response = await clientService.bulkUploadClients(uploadedFiles[0]);
 
-      if (response.successful > 0) {
+      if (response.valid_rows > 0) {
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 5000);
         setUploadedFiles([]);
         setPreviewData([]);
       }
 
-      if (response.failed > 0) {
+      if (response.invalid_rows > 0) {
         setError(
-          `${response.failed} row(s) failed to import. Please check the errors and try again.`
+          `${response.invalid_rows} row(s) failed to import. Please check the errors and try again.`
         );
       }
     } catch (error: any) {
@@ -297,14 +314,14 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
       national_id: client.national_id,
       mobile: client.mobile,
       email: client.email || '',
-      employer: client.employer?.id || '',
+      employer: client.employer || '',
       employee_id: client.employee_id || '',
-      loan_amount: client.loan_amount,
-      interest_rate: client.interest_rate,
+      loan_amount: parseFloat(client.loan_amount),
+      interest_rate: parseFloat(client.interest_rate),
       repayment_period: client.repayment_period,
       disbursement_date: client.disbursement_date,
       disbursement_method: client.disbursement_method,
-      amount_paid: client.amount_paid,
+      amount_paid: parseFloat(client.amount_paid),
       loan_status: client.loan_status,
     });
     setShowEditModal(true);
@@ -444,13 +461,13 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                 <div className="overflow-x-auto">
                   <Table
                     data={clients}
+                    keyExtractor={(client) => client.id}
                     columns={[
                       {
-                        key: 'full_name',
                         header: 'Client Name',
-                        render: (value, row) => (
+                        accessor: (row) => (
                           <div>
-                            <div className="font-medium text-slate-900">{value}</div>
+                            <div className="font-medium text-slate-900">{row.full_name}</div>
                             <div className="text-xs text-slate-500">
                               ID: {row.national_id}
                             </div>
@@ -458,11 +475,10 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                         ),
                       },
                       {
-                        key: 'mobile',
                         header: 'Contact',
-                        render: (value, row) => (
+                        accessor: (row) => (
                           <div>
-                            <div>{value}</div>
+                            <div>{row.mobile}</div>
                             {row.email && (
                               <div className="text-xs text-slate-500">{row.email}</div>
                             )}
@@ -470,54 +486,48 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                         ),
                       },
                       {
-                        key: 'employer',
                         header: 'Employer',
-                        render: (value) => value?.name || 'N/A',
+                        accessor: (row) => row.employer_name || 'N/A',
                       },
                       {
-                        key: 'loan_amount',
                         header: 'Loan Amount',
-                        render: (value) => `KES ${formatNumberWithCommas(value)}`,
+                        accessor: (row) => `KES ${formatNumberWithCommas(row.loan_amount)}`,
                       },
                       {
-                        key: 'monthly_deduction',
                         header: 'Monthly Deduction',
-                        render: (value) => `KES ${formatNumberWithCommas(value)}`,
+                        accessor: (row) => `KES ${formatNumberWithCommas(row.monthly_deduction)}`,
                       },
                       {
-                        key: 'outstanding_balance',
                         header: 'Outstanding',
-                        render: (value) => (
+                        accessor: (row) => (
                           <span
                             className={
-                              value > 0 ? 'text-orange-600' : 'text-emerald-600'
+                              parseFloat(row.outstanding_balance) > 0 ? 'text-orange-600' : 'text-emerald-600'
                             }
                           >
-                            KES {formatNumberWithCommas(value)}
+                            KES {formatNumberWithCommas(row.outstanding_balance)}
                           </span>
                         ),
                       },
                       {
-                        key: 'loan_status',
                         header: 'Status',
-                        render: (value) => (
+                        accessor: (row) => (
                           <Badge
                             variant={
-                              value === 'Active'
+                              row.loan_status === 'Active'
                                 ? 'success'
-                                : value === 'Fully Paid'
-                                ? 'info'
-                                : 'warning'
+                                : row.loan_status === 'Fully Paid'
+                                ? 'approved'
+                                : 'pending'
                             }
                           >
-                            {value}
+                            {row.loan_status}
                           </Badge>
                         ),
                       },
                       {
-                        key: 'id',
                         header: 'Actions',
-                        render: (value, row) => (
+                        accessor: (row) => (
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleEditClick(row)}
@@ -591,16 +601,11 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                     onChange={handleInputChange}
                     disabled={isLoadingEmployers}
                     required
-                  >
-                    <option value="">
-                      {isLoadingEmployers ? 'Loading...' : 'Select employer'}
-                    </option>
-                    {employers.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name}
-                      </option>
-                    ))}
-                  </Select>
+                    options={employers.map((emp) => ({
+                      value: emp.id,
+                      label: emp.name,
+                    }))}
+                  />
                   <Input
                     label="Employee ID (Optional)"
                     name="employeeId"
@@ -621,7 +626,7 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                     label="Loan Amount (KES) *"
                     name="loanAmount"
                     value={formData.loanAmount}
-                    onChange={(value) => handleMoneyInputChange('loanAmount', value)}
+                    onChange={(e) => handleMoneyInputChange('loanAmount', e.target.value)}
                     placeholder="e.g. 100,000"
                     required
                     helperText="Minimum KES 5,000"
@@ -649,12 +654,13 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                     value={formData.repaymentPeriod}
                     onChange={handleInputChange}
                     required
-                  >
-                    <option value="3">3 Months</option>
-                    <option value="6">6 Months</option>
-                    <option value="9">9 Months</option>
-                    <option value="12">12 Months</option>
-                  </Select>
+                    options={[
+                      { value: '3', label: '3 Months' },
+                      { value: '6', label: '6 Months' },
+                      { value: '9', label: '9 Months' },
+                      { value: '12', label: '12 Months' },
+                    ]}
+                  />
                   <Input
                     label="Disbursement Date *"
                     name="disbursementDate"
@@ -669,17 +675,17 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                     value={formData.disbursementMethod}
                     onChange={handleInputChange}
                     required
-                  >
-                    <option value="">Select method</option>
-                    <option value="mpesa">M-Pesa</option>
-                    <option value="bank">Bank Transfer</option>
-                    <option value="cash">Cash</option>
-                  </Select>
+                    options={[
+                      { value: 'mpesa', label: 'M-Pesa' },
+                      { value: 'bank', label: 'Bank Transfer' },
+                      { value: 'cash', label: 'Cash' },
+                    ]}
+                  />
                   <MoneyInput
                     label="Amount Paid to Date (KES)"
                     name="amountPaid"
                     value={formData.amountPaid}
-                    onChange={(value) => handleMoneyInputChange('amountPaid', value)}
+                    onChange={(e) => handleMoneyInputChange('amountPaid', e.target.value)}
                     placeholder="0"
                   />
                   <Select
@@ -687,12 +693,13 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                     name="loanStatus"
                     value={formData.loanStatus}
                     onChange={handleInputChange}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Fully Paid">Fully Paid</option>
-                    <option value="Defaulted">Defaulted</option>
-                    <option value="Restructured">Restructured</option>
-                  </Select>
+                    options={[
+                      { value: 'Active', label: 'Active' },
+                      { value: 'Fully Paid', label: 'Fully Paid' },
+                      { value: 'Defaulted', label: 'Defaulted' },
+                      { value: 'Restructured', label: 'Restructured' },
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -771,7 +778,7 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                   Upload Completed Template
                 </label>
                 <FileUpload
-                  onChange={handleFileChange}
+                  onFilesSelected={handleFileChange}
                   accept=".xlsx,.xls,.csv"
                   multiple={false}
                   maxSizeMB={10}
@@ -792,32 +799,30 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                   </h3>
                   <Table
                     data={previewData}
+                    keyExtractor={(row) => row.row_number.toString()}
                     columns={[
-                      { key: 'row_number', header: 'Row' },
-                      { key: 'name', header: 'Name' },
-                      { key: 'national_id', header: 'ID' },
-                      { key: 'mobile', header: 'Mobile' },
-                      { key: 'employer', header: 'Employer' },
+                      { header: 'Row', accessor: 'row_number' },
+                      { header: 'Name', accessor: 'name' },
+                      { header: 'ID', accessor: 'national_id' },
+                      { header: 'Mobile', accessor: 'mobile' },
+                      { header: 'Employer', accessor: 'employer' },
                       {
-                        key: 'loan_amount',
                         header: 'Amount',
-                        render: (value) => formatNumberWithCommas(value),
+                        accessor: (row) => formatNumberWithCommas(row.loan_amount),
                       },
                       {
-                        key: 'status',
                         header: 'Status',
-                        render: (value) => (
-                          <Badge variant={value === 'valid' ? 'success' : 'error'}>
-                            {value}
+                        accessor: (row) => (
+                          <Badge variant={row.status === 'valid' ? 'success' : 'declined'}>
+                            {row.status}
                           </Badge>
                         ),
                       },
                       {
-                        key: 'issue',
                         header: 'Issue',
-                        render: (value) =>
-                          value ? (
-                            <span className="text-xs text-red-600">{value}</span>
+                        accessor: (row) =>
+                          row.issue ? (
+                            <span className="text-xs text-red-600">{row.issue}</span>
                           ) : (
                             <span className="text-xs text-emerald-600">OK</span>
                           ),
@@ -894,14 +899,11 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                   name="employer"
                   value={editFormData.employer || ''}
                   onChange={handleEditFormChange}
-                >
-                  <option value="">Select employer</option>
-                  {employers.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name}
-                    </option>
-                  ))}
-                </Select>
+                  options={employers.map((emp) => ({
+                    value: emp.id,
+                    label: emp.name,
+                  }))}
+                />
                 <Input
                   label="Employee ID"
                   name="employee_id"
@@ -916,7 +918,7 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                       ? formatNumberWithCommas(editFormData.loan_amount)
                       : ''
                   }
-                  onChange={(value) => handleEditMoneyInputChange('loan_amount', value)}
+                  onChange={(e) => handleEditMoneyInputChange('loan_amount', e.target.value)}
                 />
                 <Input
                   label="Interest Rate (%)"
@@ -945,12 +947,12 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                   name="disbursement_method"
                   value={editFormData.disbursement_method || ''}
                   onChange={handleEditFormChange}
-                >
-                  <option value="">Select method</option>
-                  <option value="mpesa">M-Pesa</option>
-                  <option value="bank">Bank Transfer</option>
-                  <option value="cash">Cash</option>
-                </Select>
+                  options={[
+                    { value: 'mpesa', label: 'M-Pesa' },
+                    { value: 'bank', label: 'Bank Transfer' },
+                    { value: 'cash', label: 'Cash' },
+                  ]}
+                />
                 <MoneyInput
                   label="Amount Paid"
                   name="amount_paid"
@@ -959,19 +961,20 @@ export function ExistingClients({ onNavigate }: ExistingClientsProps) {
                       ? formatNumberWithCommas(editFormData.amount_paid)
                       : ''
                   }
-                  onChange={(value) => handleEditMoneyInputChange('amount_paid', value)}
+                  onChange={(e) => handleEditMoneyInputChange('amount_paid', e.target.value)}
                 />
                 <Select
                   label="Loan Status"
                   name="loan_status"
                   value={editFormData.loan_status || ''}
                   onChange={handleEditFormChange}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Fully Paid">Fully Paid</option>
-                  <option value="Defaulted">Defaulted</option>
-                  <option value="Restructured">Restructured</option>
-                </Select>
+                  options={[
+                    { value: 'Active', label: 'Active' },
+                    { value: 'Fully Paid', label: 'Fully Paid' },
+                    { value: 'Defaulted', label: 'Defaulted' },
+                    { value: 'Restructured', label: 'Restructured' },
+                  ]}
+                />
               </div>
             </div>
 
