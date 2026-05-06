@@ -58,6 +58,9 @@ export function OnboardEmployer({ onNavigate }: OnboardEmployerProps) {
     setIsSubmitting(true);
 
     try {
+      // Normalize phone number - remove spaces and special characters
+      const normalizedPhone = formData.hrMobile.replace(/\s+/g, '').replace(/[^\d+]/g, '');
+
       // Create employer data
       const employerData: CreateEmployerRequest = {
         name: formData.companyName,
@@ -66,7 +69,7 @@ export function OnboardEmployer({ onNavigate }: OnboardEmployerProps) {
         payroll_cycle_day: parseInt(formData.deductionDay),
         hr_contact_name: formData.hrName,
         hr_contact_email: formData.hrEmail,
-        hr_contact_phone: formData.hrMobile,
+        hr_contact_phone: normalizedPhone,
       };
 
       // Create the employer and get HR credentials from response
