@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { authService } from '@/services/salary-checkoff/auth.service';
 import Layout from '@/components/Layout';
 import { Button } from "@/components/ui/button";
 import { X, CheckCircle } from 'lucide-react';
@@ -11,57 +11,58 @@ const ResetPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const { updatePassword } = useAuth();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const token = searchParams.get('token');
 
-  // Check if we have a recovery token in the URL
+  // Check if we have a valid token in the URL
   useEffect(() => {
-    // The recovery token is automatically handled by Supabase Auth
-    const hash = window.location.hash;
-    if (!hash || !hash.includes('type=recovery')) {
-      setError('Invalid or expired password reset link');
+    if (!token) {
+      setError('Invalid or missing password reset token. Please request a new password reset link.');
     }
-  }, []);
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Reset messages
     setError(null);
     setSuccessMessage(null);
-    
+
+    // Validate token
+    if (!token) {
+      setError('Invalid or missing password reset token');
+      return;
+    }
+
     // Validate inputs
     if (!password || !confirmPassword) {
       setError('All fields are required');
       return;
     }
-    
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-    
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
-    
+
     try {
       setLoading(true);
-      const { error } = await updatePassword(password);
-      
-      if (error) {
-        throw error;
-      }
-      
-      setSuccessMessage('Password has been reset successfully');
-      
+      await authService.resetPassword(token, password);
+
+      setSuccessMessage('Password has been reset successfully! Redirecting to login...');
+
       // Redirect to login page after a short delay
       setTimeout(() => {
-        navigate('/login');
+        navigate('/salary-checkoff/login');
       }, 2000);
     } catch (err: any) {
-      setError(err.message || 'Failed to reset password');
+      setError(err.message || 'Failed to reset password. The link may have expired.');
     } finally {
       setLoading(false);
     }
@@ -77,7 +78,7 @@ const ResetPassword = () => {
               Enter your new password below
             </p>
           </div>
-          
+
           {error && (
             <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 rounded">
               <div className="flex items-start">
@@ -90,7 +91,7 @@ const ResetPassword = () => {
               </div>
             </div>
           )}
-          
+
           {successMessage && (
             <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4 rounded">
               <div className="flex items-start">
@@ -103,7 +104,7 @@ const ResetPassword = () => {
               </div>
             </div>
           )}
-          
+
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="rounded-md shadow-sm -space-y-px">
               <div className="mb-4">
@@ -119,7 +120,8 @@ const ResetPassword = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-[#48A7A7] focus:border-[#48A7A7] focus:z-10 sm:text-sm"
-                  placeholder="New password"
+                  placeholder="New password (min 8 characters)"
+                  disabled={!token}
                 />
               </div>
               <div>
@@ -136,6 +138,7 @@ const ResetPassword = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-[#48A7A7] focus:border-[#48A7A7] focus:z-10 sm:text-sm"
                   placeholder="Confirm new password"
+                  disabled={!token}
                 />
               </div>
             </div>
@@ -143,8 +146,8 @@ const ResetPassword = () => {
             <div>
               <Button
                 type="submit"
-                disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#48A7A7] hover:bg-[#48A7A7]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#48A7A7]"
+                disabled={loading || !token}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#48A7A7] hover:bg-[#48A7A7]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#48A7A7] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <span className="absolute left-0 inset-y-0 flex items-center pl-3">
@@ -154,6 +157,14 @@ const ResetPassword = () => {
                 Reset Password
               </Button>
             </div>
+
+            {!token && (
+              <div className="text-center">
+                <a href="/salary-checkoff/login" className="font-medium text-[#48A7A7] hover:text-[#48A7A7]/80">
+                  Back to login
+                </a>
+              </div>
+            )}
           </form>
         </div>
       </div>
