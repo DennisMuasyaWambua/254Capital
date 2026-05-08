@@ -34,15 +34,13 @@ export function PendingApplications({ onNavigate }: PendingApplicationsProps) {
           ? new Date(app.disbursement_date)
           : new Date(app.created_at);
 
-        // Handle employee name with fallback
-        const employeeName = app.employee?.first_name || app.employee?.last_name
-          ? `${app.employee.first_name || ''} ${app.employee.last_name || ''}`.trim()
-          : 'N/A';
+        // Use employee_name from API response
+        const employeeName = (app as any).employee_name || 'N/A';
 
         return {
           id: app.application_number,
           employee: employeeName,
-          empId: app.employee?.id || 'N/A',
+          empId: (app as any).employee || 'N/A',
           amount: `KES ${parseFloat(app.principal_amount).toLocaleString()}`,
           monthlyDeduction: `KES ${parseFloat(app.monthly_deduction).toLocaleString()}`,
           repaymentMonths: app.repayment_months,

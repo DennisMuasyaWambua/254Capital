@@ -53,9 +53,7 @@ export function HRDashboard({ onNavigate, userName }: HRDashboardProps) {
           : new Date(app.created_at);
 
         // Handle employee name with fallback
-        const employeeName = app.employee?.first_name || app.employee?.last_name
-          ? `${app.employee.first_name || ''} ${app.employee.last_name || ''}`.trim()
-          : 'N/A';
+        const employeeName = (app as any).employee_name || 'N/A';
 
         return {
           id: app.application_number,
