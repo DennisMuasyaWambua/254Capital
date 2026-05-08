@@ -3,6 +3,7 @@ import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { ArrowLeft, Mail, CheckCircle2 } from 'lucide-react';
+import { authService } from '@/services/salary-checkoff/auth.service';
 
 interface ForgotPasswordProps {
   onBack: () => void;
@@ -26,17 +27,12 @@ export function ForgotPassword({ onBack, onSuccess }: ForgotPasswordProps) {
     setError('');
 
     try {
-      // Since the backend endpoint doesn't exist yet in the provided API_ENDPOINTS,
-      // we'll simulate a success for now to allow the UI flow to work.
-      // In a real implementation, you would call:
-      // await authService.forgotPassword(email);
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await authService.forgotPassword(email);
       setIsSent(true);
-      setIsLoading(false);
     } catch (err: any) {
-      setIsLoading(false);
       setError(err.message || 'Failed to send reset link. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

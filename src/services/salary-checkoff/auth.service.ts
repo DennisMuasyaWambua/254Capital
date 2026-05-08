@@ -157,6 +157,23 @@ export interface ChangePasswordResponse {
   requires_relogin: boolean;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  detail: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
+export interface ResetPasswordResponse {
+  detail: string;
+}
+
 export const authService = {
   /**
    * Send OTP to phone number
@@ -354,5 +371,34 @@ export const authService = {
     }
 
     return response;
+  },
+
+  /**
+   * Request password reset - sends reset link to email
+   */
+  forgotPassword: async (email: string): Promise<ForgotPasswordResponse> => {
+    return apiRequest<ForgotPasswordResponse>(
+      API_ENDPOINTS.AUTH.PASSWORD_RESET_REQUEST,
+      {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }
+    );
+  },
+
+  /**
+   * Reset password using token from email
+   */
+  resetPassword: async (token: string, newPassword: string): Promise<ResetPasswordResponse> => {
+    return apiRequest<ResetPasswordResponse>(
+      API_ENDPOINTS.AUTH.PASSWORD_RESET_CONFIRM,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          new_password: newPassword,
+        }),
+      }
+    );
   },
 };

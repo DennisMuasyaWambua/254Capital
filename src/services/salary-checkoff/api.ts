@@ -17,6 +17,8 @@ export const API_ENDPOINTS = {
     ADMIN_VERIFY_2FA: `${API_BASE_URL}/api/v1/auth/admin/verify-2fa/`,
     PROFILE: `${API_BASE_URL}/api/v1/auth/profile/`,
     CHANGE_PASSWORD: `${API_BASE_URL}/api/v1/auth/change-password/`,
+    PASSWORD_RESET_REQUEST: `${API_BASE_URL}/api/v1/auth/password-reset/request/`,
+    PASSWORD_RESET_CONFIRM: `${API_BASE_URL}/api/v1/auth/password-reset/confirm/`,
   },
 
   // Loan endpoints
