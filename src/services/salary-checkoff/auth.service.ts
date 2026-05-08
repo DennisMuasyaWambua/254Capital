@@ -146,6 +146,17 @@ export interface UserProfile {
   };
 }
 
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export interface ChangePasswordResponse {
+  detail: string;
+  requires_relogin: boolean;
+}
+
 export const authService = {
   /**
    * Send OTP to phone number
@@ -323,5 +334,25 @@ export const authService = {
    */
   isAuthenticated: (): boolean => {
     return !!tokenManager.getAccessToken();
+  },
+
+  /**
+   * Change user password
+   */
+  changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
+    const response = await apiRequest<ChangePasswordResponse>(
+      API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+
+    // Clear tokens after successful password change to force re-login
+    if (response.requires_relogin) {
+      tokenManager.clearTokens();
+    }
+
+    return response;
   },
 };

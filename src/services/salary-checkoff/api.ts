@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
     VERIFY_LOGIN_OTP: `${API_BASE_URL}/api/v1/auth/verify-login-otp/`,
     ADMIN_VERIFY_2FA: `${API_BASE_URL}/api/v1/auth/admin/verify-2fa/`,
     PROFILE: `${API_BASE_URL}/api/v1/auth/profile/`,
+    CHANGE_PASSWORD: `${API_BASE_URL}/api/v1/auth/change-password/`,
   },
 
   // Loan endpoints

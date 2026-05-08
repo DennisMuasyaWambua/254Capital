@@ -3,6 +3,8 @@ import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Lock, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { authService } from '@/services/salary-checkoff/auth.service';
+import { ApiError } from '@/services/salary-checkoff/api';
 
 interface ChangePasswordProps {
   onClose: () => void;
@@ -38,17 +40,24 @@ export function ChangePassword({ onClose, onSuccess }: ChangePasswordProps) {
     setError('');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call real API
+      await authService.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
+
       setIsSuccess(true);
       setIsLoading(false);
-      // Wait a bit then logout
+
+      // Wait a bit then logout (tokens are already cleared by service)
       setTimeout(() => {
         onSuccess();
       }, 2000);
     } catch (err: any) {
       setIsLoading(false);
-      setError(err.message || 'Failed to change password. Please try again.');
+      const apiError = err as ApiError;
+      setError(apiError.message || 'Failed to change password. Please try again.');
     }
   };
 
