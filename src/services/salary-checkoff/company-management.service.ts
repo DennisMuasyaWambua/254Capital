@@ -139,7 +139,7 @@ export const organizationService = {
     if (params?.search) queryParams.append('search', params.search);
     if (params?.is_active !== undefined) queryParams.append('is_active', params.is_active.toString());
 
-    const url = `${API_BASE_URL}/company-management/organizations/?${queryParams}`;
+    const url = `${API_BASE_URL}/api/v1/company-management/organizations/?${queryParams}`;
     return apiRequest<PaginatedResponse<Organization>>(url);
   },
 
@@ -147,7 +147,7 @@ export const organizationService = {
    * Get organization by ID
    */
   async get(id: string): Promise<Organization> {
-    const url = `${API_BASE_URL}/company-management/organizations/${id}/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/organizations/${id}/`;
     return apiRequest<Organization>(url);
   },
 
@@ -155,7 +155,7 @@ export const organizationService = {
    * Create new organization
    */
   async create(data: Partial<Organization>): Promise<Organization> {
-    const url = `${API_BASE_URL}/company-management/organizations/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/organizations/`;
     return apiRequest<Organization>(url, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -166,7 +166,7 @@ export const organizationService = {
    * Update organization
    */
   async update(id: string, data: Partial<Organization>): Promise<Organization> {
-    const url = `${API_BASE_URL}/company-management/organizations/${id}/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/organizations/${id}/`;
     return apiRequest<Organization>(url, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -177,7 +177,7 @@ export const organizationService = {
    * Deactivate organization
    */
   async deactivate(id: string): Promise<Organization> {
-    const url = `${API_BASE_URL}/company-management/organizations/${id}/deactivate/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/organizations/${id}/deactivate/`;
     return apiRequest<Organization>(url, {
       method: 'PATCH',
     });
@@ -206,7 +206,7 @@ export const roleService = {
     if (params?.search) queryParams.append('search', params.search);
     if (params?.is_active !== undefined) queryParams.append('is_active', params.is_active.toString());
 
-    const url = `${API_BASE_URL}/company-management/roles/?${queryParams}`;
+    const url = `${API_BASE_URL}/api/v1/company-management/roles/?${queryParams}`;
     return apiRequest<PaginatedResponse<Role>>(url);
   },
 
@@ -214,7 +214,7 @@ export const roleService = {
    * Get role by ID
    */
   async get(id: string): Promise<Role> {
-    const url = `${API_BASE_URL}/company-management/roles/${id}/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/roles/${id}/`;
     return apiRequest<Role>(url);
   },
 
@@ -222,7 +222,7 @@ export const roleService = {
    * Create new role
    */
   async create(data: Partial<Role>): Promise<Role> {
-    const url = `${API_BASE_URL}/company-management/roles/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/roles/`;
     return apiRequest<Role>(url, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -233,7 +233,7 @@ export const roleService = {
    * Update role
    */
   async update(id: string, data: Partial<Role>): Promise<Role> {
-    const url = `${API_BASE_URL}/company-management/roles/${id}/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/roles/${id}/`;
     return apiRequest<Role>(url, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -244,7 +244,7 @@ export const roleService = {
    * Soft delete role (set is_active=false)
    */
   async delete(id: string): Promise<void> {
-    const url = `${API_BASE_URL}/company-management/roles/${id}/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/roles/${id}/`;
     return apiRequest<void>(url, {
       method: 'DELETE',
     });
@@ -275,7 +275,7 @@ export const organizationUserService = {
     if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
     if (params?.search) queryParams.append('search', params.search);
 
-    const url = `${API_BASE_URL}/company-management/organization-users/?${queryParams}`;
+    const url = `${API_BASE_URL}/api/v1/company-management/organization-users/?${queryParams}`;
     return apiRequest<PaginatedResponse<OrganizationUser>>(url);
   },
 
@@ -283,7 +283,7 @@ export const organizationUserService = {
    * Get organization user by ID
    */
   async get(id: string): Promise<OrganizationUser> {
-    const url = `${API_BASE_URL}/company-management/organization-users/${id}/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/organization-users/${id}/`;
     return apiRequest<OrganizationUser>(url);
   },
 
@@ -291,7 +291,7 @@ export const organizationUserService = {
    * Create new user with system-generated password and email delivery
    */
   async createWithEmail(data: CreateUserRequest): Promise<CreateUserResponse> {
-    const url = `${API_BASE_URL}/company-management/organization-users/create-with-email/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/organization-users/create-with-email/`;
     return apiRequest<CreateUserResponse>(url, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -302,7 +302,7 @@ export const organizationUserService = {
    * Deactivate organization user
    */
   async deactivate(id: string): Promise<OrganizationUser> {
-    const url = `${API_BASE_URL}/company-management/organization-users/${id}/deactivate/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/organization-users/${id}/deactivate/`;
     return apiRequest<OrganizationUser>(url, {
       method: 'PATCH',
     });
@@ -318,7 +318,7 @@ export const passwordService = {
    * Change current user's password
    */
   async changePassword(data: ChangePasswordRequest): Promise<{ message: string }> {
-    const url = `${API_BASE_URL}/company-management/change-password/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/change-password/`;
     return apiRequest<{ message: string }>(url, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -348,7 +348,7 @@ export const auditLogService = {
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
 
-    const url = `${API_BASE_URL}/company-management/audit-logs/?${queryParams}`;
+    const url = `${API_BASE_URL}/api/v1/company-management/audit-logs/?${queryParams}`;
     return apiRequest<PaginatedResponse<AuditLog>>(url);
   },
 
@@ -356,7 +356,7 @@ export const auditLogService = {
    * Get audit log by ID
    */
   async get(id: string): Promise<AuditLog> {
-    const url = `${API_BASE_URL}/company-management/audit-logs/${id}/`;
+    const url = `${API_BASE_URL}/api/v1/company-management/audit-logs/${id}/`;
     return apiRequest<AuditLog>(url);
   },
 };
