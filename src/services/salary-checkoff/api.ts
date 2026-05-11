@@ -2,7 +2,7 @@
  * Base API configuration for Salary Check-Off System
  */
 
-const API_BASE_URL = import.meta.env.VITE_SALARY_CHECKOFF_API_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_SALARY_CHECKOFF_API_URL || 'http://localhost:8000';
 
 export const API_ENDPOINTS = {
   // Authentication endpoints
