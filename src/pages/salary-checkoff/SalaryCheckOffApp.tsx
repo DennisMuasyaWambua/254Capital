@@ -27,6 +27,7 @@ import { HRUserManagement } from './admin/HRUserManagement';
 import { MonthlyReconciliation } from './admin/MonthlyReconciliation';
 import { ChangePassword } from './settings/ChangePassword';
 import { Organizations, Roles, UsersManagement, AuditLogs } from './hr/company-management';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { authService } from '@/services/salary-checkoff/auth.service';
 import { Loader2 } from 'lucide-react';
 
@@ -223,13 +224,29 @@ export function SalaryCheckOffApp() {
           case 'disbursements':
             return <DisbursementHistory onBack={() => handleNavigate('dashboard')} role="hr" />;
           case 'company-management-organizations':
-            return <Organizations onNavigate={handleNavigate} />;
+            return (
+              <ErrorBoundary>
+                <Organizations onNavigate={handleNavigate} />
+              </ErrorBoundary>
+            );
           case 'company-management-roles':
-            return <Roles onNavigate={handleNavigate} />;
+            return (
+              <ErrorBoundary>
+                <Roles onNavigate={handleNavigate} />
+              </ErrorBoundary>
+            );
           case 'company-management-users':
-            return <UsersManagement onNavigate={handleNavigate} />;
+            return (
+              <ErrorBoundary>
+                <UsersManagement onNavigate={handleNavigate} />
+              </ErrorBoundary>
+            );
           case 'company-management-audit-logs':
-            return <AuditLogs onNavigate={handleNavigate} />;
+            return (
+              <ErrorBoundary>
+                <AuditLogs onNavigate={handleNavigate} />
+              </ErrorBoundary>
+            );
           case 'change-password':
             return (
               <ChangePassword

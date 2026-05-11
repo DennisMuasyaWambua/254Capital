@@ -21,6 +21,7 @@ export function Organizations({ onNavigate }: OrganizationsProps) {
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
 
   useEffect(() => {
+    console.log('[Organizations] Component mounted, loading organizations...');
     loadOrganizations();
   }, []);
 
@@ -39,16 +40,33 @@ export function Organizations({ onNavigate }: OrganizationsProps) {
 
   const loadOrganizations = async () => {
     try {
+      console.log('[Organizations] Loading organizations...');
       setIsLoading(true);
       setError(null);
       const response = await organizationService.list({ page_size: 100 });
+      console.log('[Organizations] Response received:', response);
+
+      // Defensive: ensure response and results exist
+      if (!response || !Array.isArray(response.results)) {
+        console.error('[Organizations] Invalid response format:', response);
+        setError('Invalid data format received from server');
+        setOrganizations([]);
+        setFilteredOrganizations([]);
+        return;
+      }
+
+      console.log('[Organizations] Loaded', response.results.length, 'organizations');
       setOrganizations(response.results);
       setFilteredOrganizations(response.results);
     } catch (err: any) {
-      console.error('Error loading organizations:', err);
+      console.error('[Organizations] Error loading organizations:', err);
       setError(err.message || 'Failed to load organizations');
+      // Set empty arrays on error to prevent blank screen
+      setOrganizations([]);
+      setFilteredOrganizations([]);
     } finally {
       setIsLoading(false);
+      console.log('[Organizations] Loading complete');
     }
   };
 
@@ -120,11 +138,19 @@ export function Organizations({ onNavigate }: OrganizationsProps) {
     },
     {
       header: 'Created',
-      accessor: (item: Organization) => new Date(item.created_at).toLocaleDateString('en-KE', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      })
+      accessor: (item: Organization) => {
+        try {
+          if (!item.created_at) return '—';
+          return new Date(item.created_at).toLocaleDateString('en-KE', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+          });
+        } catch (e) {
+          console.error('Date formatting error:', e);
+          return '—';
+        }
+      }
     },
     {
       header: 'Actions',
@@ -150,6 +176,8 @@ export function Organizations({ onNavigate }: OrganizationsProps) {
       )
     }
   ];
+
+  console.log('[Organizations] Rendering:', { isLoading, organizationsCount: organizations.length, filteredCount: filteredOrganizations.length, error });
 
   if (isLoading) {
     return (

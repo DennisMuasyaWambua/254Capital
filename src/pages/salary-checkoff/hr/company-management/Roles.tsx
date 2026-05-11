@@ -55,12 +55,35 @@ export function Roles({ onNavigate }: RolesProps) {
         roleService.list({ page_size: 100 })
       ]);
 
+      // Defensive: ensure responses are valid
+      if (!orgsResponse || !Array.isArray(orgsResponse.results)) {
+        console.error('Invalid organizations response:', orgsResponse);
+        setError('Invalid data format received from server');
+        setOrganizations([]);
+        setRoles([]);
+        setFilteredRoles([]);
+        return;
+      }
+
+      if (!rolesResponse || !Array.isArray(rolesResponse.results)) {
+        console.error('Invalid roles response:', rolesResponse);
+        setError('Invalid data format received from server');
+        setOrganizations([]);
+        setRoles([]);
+        setFilteredRoles([]);
+        return;
+      }
+
       setOrganizations(orgsResponse.results);
       setRoles(rolesResponse.results);
       setFilteredRoles(rolesResponse.results);
     } catch (err: any) {
       console.error('Error loading data:', err);
       setError(err.message || 'Failed to load data');
+      // Set empty arrays on error to prevent blank screen
+      setOrganizations([]);
+      setRoles([]);
+      setFilteredRoles([]);
     } finally {
       setIsLoading(false);
     }
@@ -144,11 +167,19 @@ export function Roles({ onNavigate }: RolesProps) {
     },
     {
       header: 'Created',
-      accessor: (item: Role) => new Date(item.created_at).toLocaleDateString('en-KE', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      })
+      accessor: (item: Role) => {
+        try {
+          if (!item.created_at) return '—';
+          return new Date(item.created_at).toLocaleDateString('en-KE', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+          });
+        } catch (e) {
+          console.error('Date formatting error:', e);
+          return '—';
+        }
+      }
     },
     {
       header: 'Actions',
