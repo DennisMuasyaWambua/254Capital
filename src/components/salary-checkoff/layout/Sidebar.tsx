@@ -19,7 +19,9 @@ import {
   Building,
   Lock,
   Receipt,
-  UserCog } from
+  UserCog,
+  Shield,
+  Building2 } from
 'lucide-react';
 import { getInitials } from '@/utils/formatters';
 interface SidebarProps {
@@ -97,6 +99,26 @@ export function Sidebar({
     id: 'disbursements',
     label: 'Disbursements',
     icon: DollarSign
+  },
+  {
+    id: 'company-management-organizations',
+    label: 'Organizations',
+    icon: Building2
+  },
+  {
+    id: 'company-management-roles',
+    label: 'Roles & Permissions',
+    icon: Shield
+  },
+  {
+    id: 'company-management-users',
+    label: 'Users',
+    icon: UserPlus
+  },
+  {
+    id: 'company-management-audit-logs',
+    label: 'Audit Logs',
+    icon: FileText
   },
   {
     id: 'change-password',

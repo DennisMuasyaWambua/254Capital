@@ -26,6 +26,7 @@ import { RepaymentManagement } from './admin/RepaymentManagement';
 import { HRUserManagement } from './admin/HRUserManagement';
 import { MonthlyReconciliation } from './admin/MonthlyReconciliation';
 import { ChangePassword } from './settings/ChangePassword';
+import { Organizations, Roles, UsersManagement, AuditLogs } from './hr/company-management';
 import { authService } from '@/services/salary-checkoff/auth.service';
 import { Loader2 } from 'lucide-react';
 
@@ -55,7 +56,11 @@ type Page =
   | 'collection-report'
   | 'repayment-management'
   | 'change-password'
-  | 'hr-users';
+  | 'hr-users'
+  | 'company-management-organizations'
+  | 'company-management-roles'
+  | 'company-management-users'
+  | 'company-management-audit-logs';
 
 export function SalaryCheckOffApp() {
   const [role, setRole] = useState<Role>(null);
@@ -217,6 +222,14 @@ export function SalaryCheckOffApp() {
             return <PayrollDeductions />;
           case 'disbursements':
             return <DisbursementHistory onBack={() => handleNavigate('dashboard')} role="hr" />;
+          case 'company-management-organizations':
+            return <Organizations onNavigate={handleNavigate} />;
+          case 'company-management-roles':
+            return <Roles onNavigate={handleNavigate} />;
+          case 'company-management-users':
+            return <UsersManagement onNavigate={handleNavigate} />;
+          case 'company-management-audit-logs':
+            return <AuditLogs onNavigate={handleNavigate} />;
           case 'change-password':
             return (
               <ChangePassword
