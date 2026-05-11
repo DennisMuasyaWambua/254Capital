@@ -238,7 +238,11 @@ export function Organizations({ onNavigate }: OrganizationsProps) {
             )}
           </div>
         ) : (
-          <Table columns={columns} data={filteredOrganizations} />
+          <Table
+            columns={columns}
+            data={filteredOrganizations}
+            keyExtractor={(item) => item.id}
+          />
         )}
       </Card>
 

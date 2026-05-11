@@ -284,7 +284,11 @@ export function UsersManagement({ onNavigate }: UsersManagementProps) {
             )}
           </div>
         ) : (
-          <Table columns={columns} data={filteredUsers} />
+          <Table
+            columns={columns}
+            data={filteredUsers}
+            keyExtractor={(item) => item.id}
+          />
         )}
       </Card>
 

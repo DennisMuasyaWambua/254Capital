@@ -281,7 +281,11 @@ export function AuditLogs({ onNavigate }: AuditLogsProps) {
           </div>
         ) : (
           <div>
-            <Table columns={columns} data={logs} />
+            <Table
+              columns={columns}
+              data={logs}
+              keyExtractor={(item) => item.id}
+            />
 
             {/* Expanded Log Details */}
             {expandedLogId && logs.find(log => log.id === expandedLogId) && (

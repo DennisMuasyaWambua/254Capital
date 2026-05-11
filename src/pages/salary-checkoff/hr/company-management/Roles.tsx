@@ -303,7 +303,11 @@ export function Roles({ onNavigate }: RolesProps) {
             )}
           </div>
         ) : (
-          <Table columns={columns} data={filteredRoles} />
+          <Table
+            columns={columns}
+            data={filteredRoles}
+            keyExtractor={(item) => item.id}
+          />
         )}
       </Card>
 
