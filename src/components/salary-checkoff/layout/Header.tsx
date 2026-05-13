@@ -49,10 +49,10 @@ export function Header({
           )}
         </div>
 
-        <button className="relative p-2 text-white/70 hover:text-white transition-colors">
+        {/* <button className="relative p-2 text-white/70 hover:text-white transition-colors">
           <Bell className="h-6 w-6" />
           <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-red-400 rounded-full ring-2 ring-[#11103a]" />
-        </button>
+        </button> */}
 
         <div className="h-8 w-px bg-white/20 mx-2" />
 

@@ -147,11 +147,11 @@ export function Sidebar({
     label: 'Record Payment',
     icon: DollarSign
   },
-  {
-    id: 'repayment-management',
-    label: 'Repayment Management',
-    icon: Receipt
-  },
+  // {
+  //   id: 'repayment-management',
+  //   label: 'Repayment Management',
+  //   icon: Receipt
+  // },
   {
     id: 'onboard-employer',
     label: 'Onboard Employer',
@@ -177,11 +177,11 @@ export function Sidebar({
     label: 'Disbursements',
     icon: CreditCard
   },
-  {
-    id: 'reconciliation',
-    label: 'Reconciliation',
-    icon: BarChart
-  },
+  // {
+  //   id: 'reconciliation',
+  //   label: 'Reconciliation',
+  //   icon: BarChart
+  // },
   {
     id: 'hr-users',
     label: 'HR Users',
