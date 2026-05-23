@@ -10,7 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 // ============================================
 // MAINTENANCE MODE - Change to false to restore app
 // ============================================
-const MAINTENANCE_MODE = false;
+const MAINTENANCE_MODE = true;
 
 // Public pages
 import Index from "./pages/Index";
