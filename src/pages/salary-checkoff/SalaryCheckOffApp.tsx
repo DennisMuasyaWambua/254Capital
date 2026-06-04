@@ -26,6 +26,8 @@ import { RepaymentManagement } from './admin/RepaymentManagement';
 import { HRUserManagement } from './admin/HRUserManagement';
 import { MonthlyReconciliation } from './admin/MonthlyReconciliation';
 import { ChangePassword } from './settings/ChangePassword';
+import { Organizations, Roles, UsersManagement, AuditLogs } from './hr/company-management';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { authService } from '@/services/salary-checkoff/auth.service';
 import { Loader2 } from 'lucide-react';
 
@@ -55,7 +57,11 @@ type Page =
   | 'collection-report'
   | 'repayment-management'
   | 'change-password'
-  | 'hr-users';
+  | 'hr-users'
+  | 'company-management-organizations'
+  | 'company-management-roles'
+  | 'company-management-users'
+  | 'company-management-audit-logs';
 
 export function SalaryCheckOffApp() {
   const [role, setRole] = useState<Role>(null);
@@ -217,6 +223,30 @@ export function SalaryCheckOffApp() {
             return <PayrollDeductions />;
           case 'disbursements':
             return <DisbursementHistory onBack={() => handleNavigate('dashboard')} role="hr" />;
+          case 'company-management-organizations':
+            return (
+              <ErrorBoundary>
+                <Organizations onNavigate={handleNavigate} />
+              </ErrorBoundary>
+            );
+          case 'company-management-roles':
+            return (
+              <ErrorBoundary>
+                <Roles onNavigate={handleNavigate} />
+              </ErrorBoundary>
+            );
+          case 'company-management-users':
+            return (
+              <ErrorBoundary>
+                <UsersManagement onNavigate={handleNavigate} />
+              </ErrorBoundary>
+            );
+          case 'company-management-audit-logs':
+            return (
+              <ErrorBoundary>
+                <AuditLogs onNavigate={handleNavigate} />
+              </ErrorBoundary>
+            );
           case 'change-password':
             return (
               <ChangePassword

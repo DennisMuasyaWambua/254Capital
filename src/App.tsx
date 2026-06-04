@@ -7,6 +7,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// ============================================
+// MAINTENANCE MODE - Change to false to restore app
+// ============================================
+const MAINTENANCE_MODE = false;
+
 // Public pages
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -38,7 +43,22 @@ import { SalaryCheckOffApp } from "./pages/salary-checkoff/SalaryCheckOffApp";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  // Show white screen when maintenance mode is enabled
+  if (MAINTENANCE_MODE) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#ffffff'
+      }} />
+    );
+  }
+
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
@@ -82,6 +102,7 @@ const App = () => (
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

@@ -146,6 +146,34 @@ export interface UserProfile {
   };
 }
 
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export interface ChangePasswordResponse {
+  detail: string;
+  requires_relogin: boolean;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  detail: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
+export interface ResetPasswordResponse {
+  detail: string;
+}
+
 export const authService = {
   /**
    * Send OTP to phone number
@@ -326,22 +354,18 @@ export const authService = {
   },
 
   /**
-   * Change password (self-service)
+   * Change user password
    */
-  changePassword: async (data: {
-    current_password: string;
-    new_password: string;
-    confirm_password: string;
-  }): Promise<{ detail: string; requires_relogin: boolean }> => {
-    const response = await apiRequest<{
-      detail: string;
-      requires_relogin: boolean;
-    }>(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
+    const response = await apiRequest<ChangePasswordResponse>(
+      API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
 
-    // Clear tokens if re-login is required
+    // Clear tokens after successful password change to force re-login
     if (response.requires_relogin) {
       tokenManager.clearTokens();
     }
@@ -350,71 +374,31 @@ export const authService = {
   },
 
   /**
-   * Request password reset (forgot password)
+   * Request password reset - sends reset link to email
    */
-  requestPasswordReset: async (
-    email: string
-  ): Promise<{
-    detail: string;
-    masked_phone: string;
-    temp_token: string;
-    expires_in: number;
-  }> => {
-    return apiRequest(API_ENDPOINTS.AUTH.REQUEST_PASSWORD_RESET, {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    });
+  forgotPassword: async (email: string): Promise<ForgotPasswordResponse> => {
+    return apiRequest<ForgotPasswordResponse>(
+      API_ENDPOINTS.AUTH.PASSWORD_RESET_REQUEST,
+      {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }
+    );
   },
 
   /**
-   * Reset password with OTP
+   * Reset password using token from email
    */
-  resetPassword: async (data: {
-    temp_token: string;
-    otp: string;
-    new_password: string;
-    confirm_password: string;
-  }): Promise<{
-    detail: string;
-    tokens: {
-      access: string;
-      refresh: string;
-    };
-  }> => {
-    const response = await apiRequest<{
-      detail: string;
-      tokens: {
-        access: string;
-        refresh: string;
-      };
-    }>(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-
-    // Store new tokens
-    tokenManager.setTokens(response.tokens.access, response.tokens.refresh);
-
-    return response;
-  },
-
-  /**
-   * Admin reset user password
-   */
-  adminResetUserPassword: async (data: {
-    user_id: string;
-    send_otp: boolean;
-    temporary_password?: string;
-  }): Promise<{
-    detail: string;
-    masked_phone?: string;
-    temporary_password?: string;
-    user_email: string;
-    user_name: string;
-  }> => {
-    return apiRequest(API_ENDPOINTS.AUTH.ADMIN_RESET_USER_PASSWORD, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  resetPassword: async (token: string, newPassword: string): Promise<ResetPasswordResponse> => {
+    return apiRequest<ResetPasswordResponse>(
+      API_ENDPOINTS.AUTH.PASSWORD_RESET_CONFIRM,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          new_password: newPassword,
+        }),
+      }
+    );
   },
 };

@@ -189,7 +189,7 @@ export const clientService = {
   /**
    * Download Excel template for bulk upload
    */
-  downloadTemplate: async (): Promise<Blob> => {
+  downloadTemplate: async (): Promise<void> => {
     const token = localStorage.getItem('salary_checkoff_access_token');
 
     const response = await fetch(API_ENDPOINTS.CLIENTS.UPLOAD_TEMPLATE, {
@@ -203,7 +203,30 @@ export const clientService = {
       throw new Error('Template download failed');
     }
 
-    return await response.blob();
+    const blob = await response.blob();
+
+    // Get filename from Content-Disposition header or use default
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'existing_clients_template.xlsx';
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].replace(/['"]/g, '');
+      }
+    }
+
+    // Create a blob URL and trigger download
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 
   /**

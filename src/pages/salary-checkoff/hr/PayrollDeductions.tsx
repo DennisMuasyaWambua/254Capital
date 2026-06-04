@@ -165,10 +165,7 @@ export function PayrollDeductions() {
     {
       header: 'Employee Name',
       accessor: (item: LoanApplication) => {
-        if (!item.employee || (!item.employee.first_name && !item.employee.last_name)) {
-          return 'N/A';
-        }
-        return `${item.employee.first_name || ''} ${item.employee.last_name || ''}`.trim();
+        return (item as any).employee_name || 'N/A';
       },
     },
     {

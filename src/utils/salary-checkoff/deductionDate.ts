@@ -1,7 +1,7 @@
 /**
  * 254 Capital Deduction Date Logic
- * Rule: If disbursed BEFORE the 15th → first deduction on 25th of SAME month
- *       If disbursed ON OR AFTER the 15th → first deduction on 25th of NEXT month
+ * Rule: If disbursed on or before the 15th → first deduction on 25th of SAME month
+ *       If disbursed after the 15th → first deduction on 25th of NEXT month
  */
 
 export function getFirstDeductionDate(disbursementDate: Date): Date {

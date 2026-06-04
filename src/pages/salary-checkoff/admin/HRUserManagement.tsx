@@ -1,82 +1,90 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
-import { Table } from '@/components/salary-checkoff/ui/Table';
-import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Input } from '@/components/salary-checkoff/ui/Input';
+import { Select } from '@/components/salary-checkoff/ui/Select';
+import { Table } from '@/components/salary-checkoff/ui/Table';
+import { Badge } from '@/components/salary-checkoff/ui/Badge';
+import { ConfirmDialog } from '@/components/salary-checkoff/ui/ConfirmDialog';
 import {
   hrUserService,
   HRUser,
   CreateHRUserRequest,
   UpdateHRUserRequest,
-} from '@/services/salary-checkoff/hr-user.service';
+} from '@/services/salary-checkoff/hruser.service';
+import { employerService } from '@/services/salary-checkoff/employer.service';
 import {
-  employerService,
-  Employer,
-} from '@/services/salary-checkoff/employer.service';
-import { authService } from '@/services/salary-checkoff/auth.service';
-import { formatDate } from '@/utils/formatters';
-import {
-  Loader2,
-  AlertCircle,
-  X,
-  Users,
-  Search,
-  Plus,
-  Edit,
-  Power,
+  UserPlus,
+  Edit2,
   Trash2,
-  Eye,
-  KeyRound,
-  CheckCircle,
+  X,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Power,
 } from 'lucide-react';
 
 interface HRUserManagementProps {
-  onNavigate?: (page: string) => void;
+  onNavigate: (page: string) => void;
 }
 
-type ModalType = 'create' | 'edit' | 'view' | 'deactivate' | 'delete' | 'reset-password' | null;
-
-export function HRUserManagement({ onNavigate }: HRUserManagementProps) {
-  const [hrUsers, setHRUsers] = useState<HRUser[]>([]);
-  const [employers, setEmployers] = useState<Employer[]>([]);
+export function HRUserManagement({ onNavigate: _onNavigate }: HRUserManagementProps) {
+  const [hrUsers, setHrUsers] = useState<HRUser[]>([]);
+  const [employers, setEmployers] = useState<Array<{ id: string; name: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingEmployers, setIsLoadingEmployers] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const [modalType, setModalType] = useState<ModalType>(null);
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<HRUser | null>(null);
-  const [formData, setFormData] = useState<CreateHRUserRequest | UpdateHRUserRequest>({
-    email: '',
-    phone_number: '',
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Form states
+  const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
-    employer_id: '',
+    email: '',
+    phone_number: '',
     position: '',
+    employer_id: '',
   });
-  const [deactivationReason, setDeactivationReason] = useState('');
-  const [deletionReason, setDeletionReason] = useState('');
-  const [tempPassword, setTempPassword] = useState('');
+
+  const [editFormData, setEditFormData] = useState<UpdateHRUserRequest>({});
+  const [generatedCredentials, setGeneratedCredentials] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
+
+  // Search and filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterEmployer, setFilterEmployer] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
   useEffect(() => {
     loadHRUsers();
     loadEmployers();
   }, []);
 
-  const loadHRUsers = async (search?: string, isActive?: boolean) => {
+  const loadHRUsers = async () => {
     try {
       setIsLoading(true);
       setError(null);
       const response = await hrUserService.listHRUsers({
-        search,
-        is_active: isActive,
+        search: searchQuery || undefined,
+        employer_id: filterEmployer || undefined,
+        is_active: filterStatus ? filterStatus === 'active' : undefined,
       });
-      setHRUsers(response.results);
+      setHrUsers(response.results || []);
     } catch (error: any) {
       console.error('Error loading HR users:', error);
-      setError(error.message || 'Failed to load HR users');
+      setError('Failed to load HR users: ' + (error.message || 'Unknown error'));
     } finally {
       setIsLoading(false);
     }
@@ -84,725 +92,623 @@ export function HRUserManagement({ onNavigate }: HRUserManagementProps) {
 
   const loadEmployers = async () => {
     try {
-      const response = await employerService.listEmployers();
-      setEmployers(response.results);
+      setIsLoadingEmployers(true);
+      const employerResponse = await employerService.listEmployers();
+      setEmployers(
+        employerResponse.results
+          .filter((emp) => emp.is_active)
+          .map((emp) => ({ id: emp.id, name: emp.name }))
+      );
     } catch (error: any) {
       console.error('Error loading employers:', error);
+    } finally {
+      setIsLoadingEmployers(false);
     }
   };
 
   const handleSearch = () => {
-    loadHRUsers(searchQuery, filterActive);
-  };
-
-  const handleClearSearch = () => {
-    setSearchQuery('');
-    setFilterActive(undefined);
     loadHRUsers();
   };
 
-  const handleCreateUser = async () => {
+  const resetForm = () => {
+    setFormData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone_number: '',
+      position: '',
+      employer_id: '',
+    });
+    setGeneratedCredentials(null);
+  };
+
+  const handleAddUser = async () => {
+    setIsSubmitting(true);
+    setError(null);
+
     try {
-      setIsLoading(true);
-      setError(null);
+      // Normalize phone number
+      const normalizedPhone = formData.phone_number.replace(/\s+/g, '').replace(/[^\d+]/g, '');
 
-      const response = await hrUserService.createHRUser(formData as CreateHRUserRequest);
+      const requestData: CreateHRUserRequest = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone_number: normalizedPhone,
+        position: formData.position,
+        employer_id: formData.employer_id,
+        send_welcome_email: true,
+        send_credentials_sms: true,
+      };
 
-      setTempPassword(response.temporary_password);
-      setSuccess(`HR user created successfully! Temporary password: ${response.temporary_password}`);
+      const response = await hrUserService.createHRUser(requestData);
+
+      setGeneratedCredentials({
+        email: response.user.email,
+        password: response.temporary_password
+      });
+      setSuccessMessage('HR user created successfully!');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 5000);
 
       loadHRUsers();
-      setTimeout(() => {
-        setModalType(null);
-        setFormData({
-          email: '',
-          phone_number: '',
-          first_name: '',
-          last_name: '',
-          employer_id: '',
-          position: '',
-        });
-      }, 5000);
+
+      // Keep modal open to show credentials
     } catch (error: any) {
       console.error('Error creating HR user:', error);
       setError(error.message || 'Failed to create HR user');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
+  };
+
+  const handleEditClick = (user: HRUser) => {
+    setSelectedUser(user);
+    setEditFormData({
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      phone_number: user.phone_number,
+      position: user.position,
+      employer_id: user.employer.id,
+    });
+    setShowEditModal(true);
   };
 
   const handleUpdateUser = async () => {
     if (!selectedUser) return;
 
+    setIsSubmitting(true);
+    setError(null);
+
     try {
-      setIsLoading(true);
-      setError(null);
+      // Normalize phone number if changed
+      const updateData: UpdateHRUserRequest = { ...editFormData };
+      if (updateData.phone_number) {
+        updateData.phone_number = updateData.phone_number.replace(/\s+/g, '').replace(/[^\d+]/g, '');
+      }
 
-      await hrUserService.updateHRUser(selectedUser.id, formData as UpdateHRUserRequest);
+      await hrUserService.updateHRUser(selectedUser.id, updateData);
 
-      setSuccess('HR user updated successfully');
+      setSuccessMessage('HR user updated successfully!');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+
+      setShowEditModal(false);
+      setSelectedUser(null);
       loadHRUsers();
-      setTimeout(() => {
-        setModalType(null);
-        setSelectedUser(null);
-      }, 2000);
     } catch (error: any) {
       console.error('Error updating HR user:', error);
       setError(error.message || 'Failed to update HR user');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleToggleActive = async (activate: boolean) => {
-    if (!selectedUser) return;
-
+  const handleToggleActive = async (user: HRUser) => {
     try {
-      setIsLoading(true);
-      setError(null);
+      // Toggle the current status
+      const newStatus = !user.is_active;
+      await hrUserService.toggleActiveStatus(user.id, newStatus);
 
-      await hrUserService.toggleHRUserActive(selectedUser.id, {
-        is_active: activate,
-        reason: deactivationReason,
-      });
+      setSuccessMessage(`HR user ${user.is_active ? 'deactivated' : 'activated'} successfully!`);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
 
-      setSuccess(
-        `HR user ${activate ? 'activated' : 'deactivated'} successfully`
-      );
-      setDeactivationReason('');
       loadHRUsers();
-      setTimeout(() => {
-        setModalType(null);
-        setSelectedUser(null);
-      }, 2000);
     } catch (error: any) {
-      console.error('Error toggling HR user status:', error);
-      setError(error.message || 'Failed to update HR user status');
-    } finally {
-      setIsLoading(false);
+      console.error('Error toggling user status:', error);
+      setError(error.message || 'Failed to toggle user status');
     }
   };
 
-  const handleDeleteUser = async () => {
+  const handleDeleteClick = (user: HRUser) => {
+    setSelectedUser(user);
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
     if (!selectedUser) return;
 
+    setIsDeleting(true);
+    setError(null);
+
     try {
-      setIsLoading(true);
-      setError(null);
+      await hrUserService.deleteHRUser(selectedUser.id);
 
-      await hrUserService.deleteHRUser(selectedUser.id, {
-        confirm: true,
-        reason: deletionReason,
-      });
+      setSuccessMessage('HR user deleted successfully!');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
 
-      setSuccess('HR user deleted successfully');
-      setDeletionReason('');
+      setShowDeleteDialog(false);
+      setSelectedUser(null);
       loadHRUsers();
-      setTimeout(() => {
-        setModalType(null);
-        setSelectedUser(null);
-      }, 2000);
     } catch (error: any) {
       console.error('Error deleting HR user:', error);
       setError(error.message || 'Failed to delete HR user');
     } finally {
-      setIsLoading(false);
+      setIsDeleting(false);
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!selectedUser) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await authService.adminResetUserPassword({
-        user_id: selectedUser.id,
-        send_otp: true,
-      });
-
-      setSuccess(`Password reset OTP sent to ${response.masked_phone}`);
-      setTimeout(() => {
-        setModalType(null);
-        setSelectedUser(null);
-      }, 3000);
-    } catch (error: any) {
-      console.error('Error resetting password:', error);
-      setError(error.message || 'Failed to reset password');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const openModal = (type: ModalType, user?: HRUser) => {
-    setModalType(type);
-    setSelectedUser(user || null);
+  const handleCloseAddModal = () => {
+    setShowAddModal(false);
+    resetForm();
     setError(null);
-    setSuccess(null);
-
-    if (type === 'edit' && user) {
-      setFormData({
-        email: user.email,
-        phone_number: user.phone_number,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        employer_id: user.employer.id,
-        position: user.position,
-      });
-    } else if (type === 'create') {
-      setFormData({
-        email: '',
-        phone_number: '',
-        first_name: '',
-        last_name: '',
-        employer_id: '',
-        position: '',
-      });
-    }
   };
 
-  const columns = [
-    {
-      header: 'Name',
-      accessor: (item: HRUser) => `${item.first_name} ${item.last_name}`,
-      className: 'font-medium',
-    },
-    {
-      header: 'Email',
-      accessor: 'email',
-    },
-    {
-      header: 'Phone',
-      accessor: 'phone_number',
-    },
-    {
-      header: 'Employer',
-      accessor: (item: HRUser) => item.employer.name,
-    },
-    {
-      header: 'Position',
-      accessor: 'position',
-    },
-    {
-      header: 'Status',
-      accessor: (item: HRUser) => (
-        <Badge variant={item.is_active ? 'approved' : 'rejected'}>
-          {item.is_active ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Last Login',
-      accessor: (item: HRUser) =>
-        item.last_login ? formatDate(item.last_login) : 'Never',
-    },
-    {
-      header: 'Actions',
-      accessor: (item: HRUser) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => openModal('view', item)}
-            className="text-slate-600 hover:text-[#008080]"
-            title="View Details"
-          >
-            <Eye className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => openModal('edit', item)}
-            className="text-slate-600 hover:text-[#008080]"
-            title="Edit"
-          >
-            <Edit className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => openModal('reset-password', item)}
-            className="text-slate-600 hover:text-[#008080]"
-            title="Reset Password"
-          >
-            <KeyRound className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => openModal('deactivate', item)}
-            className={`${
-              item.is_active
-                ? 'text-yellow-600 hover:text-yellow-700'
-                : 'text-green-600 hover:text-green-700'
-            }`}
-            title={item.is_active ? 'Deactivate' : 'Activate'}
-          >
-            <Power className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => openModal('delete', item)}
-            className="text-red-600 hover:text-red-700"
-            title="Delete"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">HR User Management</h1>
+          <p className="text-slate-600 mt-1">
+            Manage HR manager accounts and permissions
+          </p>
         </div>
-      ),
-    },
-  ];
+        <Button onClick={() => setShowAddModal(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add HR User
+        </Button>
+      </div>
 
-  const renderModal = () => {
-    if (!modalType) return null;
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-800">
+          <AlertCircle className="h-5 w-5 mr-2 text-red-600 flex-shrink-0" />
+          {error}
+        </div>
+      )}
 
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-slate-900">
-                {modalType === 'create' && 'Create New HR User'}
-                {modalType === 'edit' && 'Edit HR User'}
-                {modalType === 'view' && 'HR User Details'}
-                {modalType === 'deactivate' &&
-                  (selectedUser?.is_active ? 'Deactivate HR User' : 'Activate HR User')}
-                {modalType === 'delete' && 'Delete HR User'}
-                {modalType === 'reset-password' && 'Reset Password'}
-              </h3>
+      {showSuccess && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center text-emerald-800 animate-fade-in">
+          <CheckCircle2 className="h-5 w-5 mr-2 text-emerald-600" />
+          {successMessage}
+        </div>
+      )}
+
+      {/* Search and Filter */}
+      <Card>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Input
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            <Select
+              value={filterEmployer}
+              onChange={(e) => setFilterEmployer(e.target.value)}
+              options={employers.map((emp) => ({ value: emp.id, label: emp.name }))}
+            />
+            <Select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              options={[
+                { value: 'active', label: 'Active Only' },
+                { value: 'inactive', label: 'Inactive Only' },
+              ]}
+            />
+            <Button onClick={handleSearch} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Search
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* HR Users Table */}
+      <Card>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-sm text-slate-600">
+              Total HR users: {hrUsers.length}
+            </p>
+            <Button
+              variant="outline"
+              onClick={loadHRUsers}
+              disabled={isLoading}
+              size="sm"
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`}
+              />
+              Refresh
+            </Button>
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+            </div>
+          ) : hrUsers.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <p>No HR users found</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table
+                data={hrUsers}
+                keyExtractor={(user) => user.id}
+                columns={[
+                  {
+                    header: 'Name',
+                    accessor: (user) => (
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {user.first_name} {user.last_name}
+                        </div>
+                        <div className="text-xs text-slate-500">{user.position}</div>
+                      </div>
+                    ),
+                  },
+                  {
+                    header: 'Contact',
+                    accessor: (user) => (
+                      <div>
+                        <div className="text-sm">{user.email}</div>
+                        <div className="text-xs text-slate-500">{user.phone_number}</div>
+                      </div>
+                    ),
+                  },
+                  {
+                    header: 'Employer',
+                    accessor: (user) => user.employer.name,
+                  },
+                  {
+                    header: 'Status',
+                    accessor: (user) => (
+                      <Badge variant={user.is_active ? 'success' : 'declined'}>
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    header: 'Last Login',
+                    accessor: (user) => (
+                      <span className="text-sm text-slate-600">
+                        {user.last_login
+                          ? new Date(user.last_login).toLocaleDateString()
+                          : 'Never'}
+                      </span>
+                    ),
+                  },
+                  {
+                    header: 'Actions',
+                    accessor: (user) => (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditClick(user)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Edit user"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleActive(user)}
+                          className={`p-1 rounded transition-colors ${
+                            user.is_active
+                              ? 'text-orange-600 hover:bg-orange-50'
+                              : 'text-green-600 hover:bg-green-50'
+                          }`}
+                          title={user.is_active ? 'Deactivate' : 'Activate'}
+                        >
+                          <Power className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(user)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete user"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Add HR User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slide-in-up">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 sticky top-0 bg-white">
+              <h3 className="text-lg font-semibold text-slate-900">Add New HR User</h3>
               <button
-                onClick={() => setModalType(null)}
-                className="text-slate-400 hover:text-slate-600"
+                onClick={handleCloseAddModal}
+                disabled={isSubmitting}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-800">
-                <AlertCircle className="h-5 w-5 mr-2 text-red-600 flex-shrink-0" />
-                {error}
-              </div>
-            )}
-
-            {success && (
-              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center text-green-800">
-                <CheckCircle className="h-5 w-5 mr-2 text-green-600 flex-shrink-0" />
-                {success}
-              </div>
-            )}
-
-            {(modalType === 'create' || modalType === 'edit') && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      First Name
-                    </label>
+            <div className="p-6 space-y-6">
+              {generatedCredentials ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <h4 className="font-semibold text-emerald-900 mb-2">
+                      HR User Created Successfully!
+                    </h4>
+                    <p className="text-sm text-emerald-700 mb-4">
+                      Please save these credentials securely. The HR manager should change
+                      the password after first login.
+                    </p>
+                    <div className="bg-white rounded border border-emerald-200 p-4 space-y-2">
+                      <div>
+                        <span className="text-xs text-emerald-700 font-medium">Email:</span>
+                        <div className="font-mono text-sm bg-emerald-50 px-2 py-1 rounded mt-1">
+                          {generatedCredentials.email}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-xs text-emerald-700 font-medium">
+                          Temporary Password:
+                        </span>
+                        <div className="font-mono text-sm bg-emerald-50 px-2 py-1 rounded mt-1">
+                          {generatedCredentials.password}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={handleCloseAddModal}>Close</Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
-                      type="text"
-                      value={(formData as CreateHRUserRequest).first_name || ''}
+                      label="First Name *"
+                      name="first_name"
+                      value={formData.first_name}
                       onChange={(e) =>
-                        setFormData({ ...formData, first_name: e.target.value })
+                        setFormData((prev) => ({ ...prev, first_name: e.target.value }))
                       }
                       required
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Last Name
-                    </label>
                     <Input
-                      type="text"
-                      value={(formData as CreateHRUserRequest).last_name || ''}
+                      label="Last Name *"
+                      name="last_name"
+                      value={formData.last_name}
                       onChange={(e) =>
-                        setFormData({ ...formData, last_name: e.target.value })
+                        setFormData((prev) => ({ ...prev, last_name: e.target.value }))
                       }
                       required
                     />
+                    <Input
+                      label="Email Address (Login ID) *"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, email: e.target.value }))
+                      }
+                      required
+                      helperText="Will be used for HR portal login"
+                    />
+                    <Input
+                      label="Phone Number *"
+                      name="phone_number"
+                      value={formData.phone_number}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, phone_number: e.target.value }))
+                      }
+                      required
+                      placeholder="+254712345678"
+                    />
+                    <Input
+                      label="Position/Title *"
+                      name="position"
+                      value={formData.position}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, position: e.target.value }))
+                      }
+                      required
+                      placeholder="e.g. HR Manager"
+                    />
+                    <Select
+                      label="Employer *"
+                      name="employer_id"
+                      value={formData.employer_id}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, employer_id: e.target.value }))
+                      }
+                      disabled={isLoadingEmployers}
+                      required
+                      options={employers.map((emp) => ({
+                        value: emp.id,
+                        label: emp.name,
+                      }))}
+                    />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Email
-                  </label>
-                  <Input
-                    type="email"
-                    value={(formData as CreateHRUserRequest).email || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Phone Number
-                  </label>
-                  <Input
-                    type="tel"
-                    value={(formData as CreateHRUserRequest).phone_number || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone_number: e.target.value })
-                    }
-                    placeholder="0712345678"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Employer
-                  </label>
-                  <select
-                    value={(formData as CreateHRUserRequest).employer_id || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, employer_id: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008080]"
-                    required
-                  >
-                    <option value="">Select Employer</option>
-                    {employers.map((employer) => (
-                      <option key={employer.id} value={employer.id}>
-                        {employer.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Position
-                  </label>
-                  <Input
-                    type="text"
-                    value={(formData as CreateHRUserRequest).position || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, position: e.target.value })
-                    }
-                    placeholder="HR Manager"
-                    required
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setModalType(null)}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={modalType === 'create' ? handleCreateUser : handleUpdateUser}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {modalType === 'create' ? 'Creating...' : 'Updating...'}
-                      </>
-                    ) : modalType === 'create' ? (
-                      'Create HR User'
-                    ) : (
-                      'Update HR User'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {modalType === 'view' && selectedUser && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500">Name</p>
-                    <p className="font-medium">
-                      {selectedUser.first_name} {selectedUser.last_name}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> A temporary password will be automatically generated.
+                      The HR manager should change their password after first login.
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Email</p>
-                    <p className="font-medium">{selectedUser.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Phone</p>
-                    <p className="font-medium">{selectedUser.phone_number}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Position</p>
-                    <p className="font-medium">{selectedUser.position}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Employer</p>
-                    <p className="font-medium">{selectedUser.employer.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Status</p>
-                    <Badge variant={selectedUser.is_active ? 'approved' : 'rejected'}>
-                      {selectedUser.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Created</p>
-                    <p className="font-medium">{formatDate(selectedUser.created_at)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Last Login</p>
-                    <p className="font-medium">
-                      {selectedUser.last_login
-                        ? formatDate(selectedUser.last_login)
-                        : 'Never'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {modalType === 'deactivate' && selectedUser && (
-              <div className="space-y-4">
-                <p className="text-slate-600">
-                  {selectedUser.is_active
-                    ? 'Are you sure you want to deactivate this HR user? They will no longer be able to log in to the system.'
-                    : 'Are you sure you want to activate this HR user? They will be able to log in to the system.'}
-                </p>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Reason (Optional)
-                  </label>
-                  <textarea
-                    value={deactivationReason}
-                    onChange={(e) => setDeactivationReason(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008080]"
-                    rows={3}
-                    placeholder="Enter reason for status change..."
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setModalType(null)}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => handleToggleActive(!selectedUser.is_active)}
-                    disabled={isLoading}
-                    variant={selectedUser.is_active ? 'destructive' : 'default'}
-                    className="flex-1"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : selectedUser.is_active ? (
-                      'Deactivate'
-                    ) : (
-                      'Activate'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {modalType === 'delete' && selectedUser && (
-              <div className="space-y-4">
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-800 font-medium">Warning: This action cannot be undone!</p>
-                  <p className="text-red-700 text-sm mt-1">
-                    Deleting this HR user will permanently remove their account and all associated data.
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Reason for Deletion (Required)
-                  </label>
-                  <textarea
-                    value={deletionReason}
-                    onChange={(e) => setDeletionReason(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008080]"
-                    rows={3}
-                    placeholder="Enter reason for deletion..."
-                    required
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setModalType(null)}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleDeleteUser}
-                    disabled={isLoading || !deletionReason}
-                    variant="destructive"
-                    className="flex-1"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      'Delete Permanently'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {modalType === 'reset-password' && selectedUser && (
-              <div className="space-y-4">
-                <p className="text-slate-600">
-                  Send a password reset OTP to {selectedUser.first_name} {selectedUser.last_name}?
-                  <br />
-                  <span className="text-sm text-slate-500">
-                    The OTP will be sent to their registered phone number.
-                  </span>
-                </p>
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setModalType(null)}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleResetPassword}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sending OTP...
-                      </>
-                    ) : (
-                      'Send Reset OTP'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={handleCloseAddModal}
+                      disabled={isSubmitting}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddUser}
+                      disabled={isSubmitting}
+                      isLoading={isSubmitting}
+                      className="flex-1"
+                    >
+                      Create HR User
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
-    );
-  };
-
-  if (isLoading && hrUsers.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Users className="h-6 w-6 text-[#008080]" />
-            HR User Management
-          </h1>
-          <p className="text-slate-500">
-            Manage HR user accounts and permissions
-          </p>
-        </div>
-        <Button onClick={() => openModal('create')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create HR User
-        </Button>
-      </div>
-
-      {error && !modalType && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-800">
-          <AlertCircle className="h-5 w-5 mr-2 text-red-600" />
-          {error}
-          <button
-            onClick={() => setError(null)}
-            className="ml-auto text-red-600 hover:text-red-800"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
       )}
 
-      {success && !modalType && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center text-green-800">
-          <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
-          {success}
-          <button
-            onClick={() => setSuccess(null)}
-            className="ml-auto text-green-600 hover:text-green-800"
-          >
-            <X className="h-4 w-4" />
-          </button>
+      {/* Edit HR User Modal */}
+      {showEditModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slide-in-up">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 sticky top-0 bg-white">
+              <h3 className="text-lg font-semibold text-slate-900">
+                Edit HR User: {selectedUser.first_name} {selectedUser.last_name}
+              </h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                disabled={isSubmitting}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="First Name"
+                  name="first_name"
+                  value={editFormData.first_name || ''}
+                  onChange={(e) =>
+                    setEditFormData((prev) => ({ ...prev, first_name: e.target.value }))
+                  }
+                />
+                <Input
+                  label="Last Name"
+                  name="last_name"
+                  value={editFormData.last_name || ''}
+                  onChange={(e) =>
+                    setEditFormData((prev) => ({ ...prev, last_name: e.target.value }))
+                  }
+                />
+                <Input
+                  label="Email Address"
+                  name="email"
+                  type="email"
+                  value={editFormData.email || ''}
+                  onChange={(e) =>
+                    setEditFormData((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                />
+                <Input
+                  label="Phone Number"
+                  name="phone_number"
+                  value={editFormData.phone_number || ''}
+                  onChange={(e) =>
+                    setEditFormData((prev) => ({ ...prev, phone_number: e.target.value }))
+                  }
+                />
+                <Input
+                  label="Position/Title"
+                  name="position"
+                  value={editFormData.position || ''}
+                  onChange={(e) =>
+                    setEditFormData((prev) => ({ ...prev, position: e.target.value }))
+                  }
+                />
+                <Select
+                  label="Employer"
+                  name="employer_id"
+                  value={editFormData.employer_id || ''}
+                  onChange={(e) =>
+                    setEditFormData((prev) => ({ ...prev, employer_id: e.target.value }))
+                  }
+                  options={employers.map((emp) => ({
+                    value: emp.id,
+                    label: emp.name,
+                  }))}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditModal(false)}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateUser}
+                  disabled={isSubmitting}
+                  isLoading={isSubmitting}
+                  className="flex-1"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      <Card>
-        <div className="mb-4 flex justify-between items-center gap-4">
-          <div className="flex gap-2 flex-1 max-w-md">
-            <Input
-              type="text"
-              placeholder="Search by name, email, or phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              className="flex-1"
-            />
-            <Button onClick={handleSearch} variant="outline" size="sm">
-              <Search className="h-4 w-4" />
-            </Button>
-            {searchQuery && (
-              <Button onClick={handleClearSearch} variant="outline" size="sm">
-                Clear
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <select
-              value={filterActive === undefined ? 'all' : filterActive ? 'active' : 'inactive'}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFilterActive(
-                  value === 'all' ? undefined : value === 'active'
-                );
-                loadHRUsers(searchQuery, value === 'all' ? undefined : value === 'active');
-              }}
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008080]"
-            >
-              <option value="all">All Users</option>
-              <option value="active">Active Only</option>
-              <option value="inactive">Inactive Only</option>
-            </select>
-            <Badge variant="default">{hrUsers.length} HR Users</Badge>
-          </div>
-        </div>
-
-        {hrUsers.length === 0 ? (
-          <div className="p-8 text-center text-slate-400">
-            {searchQuery || filterActive !== undefined
-              ? 'No HR users found matching your filters'
-              : 'No HR users in the system yet'}
-          </div>
-        ) : (
-          <Table
-            data={hrUsers}
-            columns={columns}
-            keyExtractor={(item) => item.id}
-          />
-        )}
-      </Card>
-
-      {renderModal()}
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete HR User"
+        description={
+          selectedUser ? (
+            <div>
+              <p className="mb-4">
+                Are you sure you want to delete{' '}
+                <strong>
+                  {selectedUser.first_name} {selectedUser.last_name}
+                </strong>
+                ?
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded p-3 text-sm">
+                <p className="font-semibold text-red-900 mb-2">This action will:</p>
+                <ul className="list-disc list-inside text-red-800 space-y-1">
+                  <li>Permanently remove this HR user account</li>
+                  <li>Revoke their access to the HR portal</li>
+                  <li>Cannot be undone</li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            'Are you sure you want to delete this HR user?'
+          )
+        }
+        confirmText="Delete HR User"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

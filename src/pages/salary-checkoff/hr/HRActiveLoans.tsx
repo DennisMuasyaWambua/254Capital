@@ -107,7 +107,7 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
   };
 
   const getEmployeeName = (loan: LoanApplication) => {
-    return `${loan.employee.first_name} ${loan.employee.last_name}`;
+    return (loan as any).employee_name || 'N/A';
   };
 
   return (

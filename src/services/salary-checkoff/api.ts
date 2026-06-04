@@ -2,7 +2,7 @@
  * Base API configuration for Salary Check-Off System
  */
 
-const API_BASE_URL = import.meta.env.VITE_SALARY_CHECKOFF_API_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_SALARY_CHECKOFF_API_URL || 'http://localhost:8000';
 
 export const API_ENDPOINTS = {
   // Authentication endpoints
@@ -16,12 +16,9 @@ export const API_ENDPOINTS = {
     VERIFY_LOGIN_OTP: `${API_BASE_URL}/api/v1/auth/verify-login-otp/`,
     ADMIN_VERIFY_2FA: `${API_BASE_URL}/api/v1/auth/admin/verify-2fa/`,
     PROFILE: `${API_BASE_URL}/api/v1/auth/profile/`,
-
-    // Password management endpoints
     CHANGE_PASSWORD: `${API_BASE_URL}/api/v1/auth/change-password/`,
-    REQUEST_PASSWORD_RESET: `${API_BASE_URL}/api/v1/auth/request-password-reset/`,
-    RESET_PASSWORD: `${API_BASE_URL}/api/v1/auth/reset-password/`,
-    ADMIN_RESET_USER_PASSWORD: `${API_BASE_URL}/api/v1/auth/admin/reset-user-password/`,
+    PASSWORD_RESET_REQUEST: `${API_BASE_URL}/api/v1/auth/password-reset/request/`,
+    PASSWORD_RESET_CONFIRM: `${API_BASE_URL}/api/v1/auth/password-reset/confirm/`,
   },
 
   // Loan endpoints
@@ -137,12 +134,12 @@ export const API_ENDPOINTS = {
 
   // HR User Management endpoints (Admin only)
   HR_USERS: {
-    LIST: `${API_BASE_URL}/api/v1/users/hr/`,
-    CREATE: `${API_BASE_URL}/api/v1/users/hr/create/`,
-    DETAIL: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
-    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
-    TOGGLE_ACTIVE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/toggle-active/`,
-    DELETE: (id: string) => `${API_BASE_URL}/api/v1/users/hr/${id}/`,
+    LIST: `${API_BASE_URL}/api/v1/auth/users/hr/`,
+    CREATE: `${API_BASE_URL}/api/v1/auth/users/hr/create/`,
+    DETAIL: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/update/`,
+    TOGGLE_ACTIVE: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/toggle-active/`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/v1/auth/users/hr/${id}/delete/`,
   },
 };
 

@@ -222,7 +222,7 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
   }
 
   const employee = {
-    name: `${application.employee.first_name} ${application.employee.last_name}`,
+    name: (application as any).employee_name || 'N/A',
     id: application.employee.employee_profile?.employee_id || 'N/A',
     department: application.employee.employee_profile?.department || 'N/A',
     salary: application.employee.employee_profile?.monthly_gross_salary

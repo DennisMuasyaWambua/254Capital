@@ -197,7 +197,7 @@ export function LoanApplication({
         if (disbursementMethod === 'bank') {
           applicationData.bank_name = bankName;
           applicationData.bank_branch = bankBranch;
-          applicationData.account_number = accountNumber;
+          applicationData.bank_account_number = accountNumber;
         }
 
         await loanService.createApplication(applicationData);
