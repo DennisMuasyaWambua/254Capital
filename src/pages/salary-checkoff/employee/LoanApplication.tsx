@@ -10,6 +10,8 @@ import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { loanService, LoanCalculatorResponse } from '@/services/salary-checkoff/loan.service';
 import { documentService, Document } from '@/services/salary-checkoff/document.service';
 import { authService } from '@/services/salary-checkoff/auth.service';
+import { hrNotificationService } from '@/services/salary-checkoff/hrNotification.service';
+import { employerService, loanCalculationUtils, InterestMethod } from '@/services/salary-checkoff/employer.service';
 import {
   getFirstDeductionDate,
   formatDeductionDate } from
@@ -45,6 +47,9 @@ export function LoanApplication({
   const [error, setError] = useState<string | null>(null);
   const [employeeSalary, setEmployeeSalary] = useState<number>(0);
   const [showDisqualificationModal, setShowDisqualificationModal] = useState(false);
+  const [employeeProfile, setEmployeeProfile] = useState<any>(null);
+  const [employerInterestMethod, setEmployerInterestMethod] = useState<InterestMethod>('flat');
+  const [employerInterestRate, setEmployerInterestRate] = useState<number>(0.05); // Default 5%
 
   // Disbursement details state
   const [disbursementMethod, setDisbursementMethod] = useState<'bank' | 'mpesa'>('mpesa');
@@ -91,13 +96,27 @@ export function LoanApplication({
     }
   }, [amount, period]);
 
-  // Fetch employee profile to get salary on mount
+  // Fetch employee profile to get salary and employer's interest method on mount
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const profile = await authService.getProfile();
+        setEmployeeProfile(profile);
         if (profile.employee_profile?.monthly_salary) {
           setEmployeeSalary(parseFloat(profile.employee_profile.monthly_salary));
+        }
+
+        // Fetch employer's interest method and rate
+        if (profile.employee_profile?.employer?.id) {
+          try {
+            const employer = await employerService.getEmployer(profile.employee_profile.employer.id);
+            setEmployerInterestMethod(employer.interest_method || 'flat');
+            setEmployerInterestRate(employer.interest_rate ? Number(employer.interest_rate) : 0.05);
+          } catch (employerErr) {
+            console.warn('Could not fetch employer details, using flat rate:', employerErr);
+            setEmployerInterestMethod('flat');
+            setEmployerInterestRate(0.05);
+          }
         }
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -116,25 +135,35 @@ export function LoanApplication({
   }, [calculateLoan]);
 
   // Calculate loan details - these update dynamically when amount/period changes
+  // Use employer's interest method for calculation
   const amountNum = parseFloat(amount.replace(/,/g, '')) || 0;
-  const interestRate = calculationResult ? parseFloat(calculationResult.interest_rate) : 0.05;
 
-  // For flat rate: 5% interest on principal for the entire loan (not per month)
-  // Total interest = principal * 5%
+  // Calculate using employer's interest method and rate
+  const localCalculation = React.useMemo(() => {
+    if (amountNum <= 0 || period <= 0) {
+      return null;
+    }
+    return loanCalculationUtils.calculateLoanForEmployer(amountNum, period, employerInterestMethod, employerInterestRate);
+  }, [amountNum, period, employerInterestMethod, employerInterestRate]);
+
+  const interestRate = calculationResult
+    ? parseFloat(calculationResult.interest_rate)
+    : localCalculation ? parseFloat(localCalculation.interest_rate) / 100 : 0.05;
+
+  // Total interest based on calculation method
   const totalInterest = calculationResult
     ? parseFloat(calculationResult.interest_amount)
-    : amountNum * interestRate;
+    : localCalculation ? parseFloat(localCalculation.interest_amount) : 0;
 
   // Total repayment = principal + total interest
   const totalRepayment = calculationResult
     ? parseFloat(calculationResult.total_repayment)
-    : amountNum + totalInterest;
+    : localCalculation ? parseFloat(localCalculation.total_repayment) : 0;
 
-  // Monthly deduction = total repayment / number of months
-  // This changes dynamically as amount or period changes
+  // Monthly deduction (EMI for reducing balance, flat rate otherwise)
   const monthlyDeduction = calculationResult
     ? parseFloat(calculationResult.monthly_deduction)
-    : period > 0 ? totalRepayment / period : 0;
+    : localCalculation ? parseFloat(localCalculation.monthly_deduction) : 0;
   // Deduction date logic — assume disbursement today for projection
   const today = new Date();
   const firstDeductionDate = getFirstDeductionDate(today);
@@ -200,7 +229,22 @@ export function LoanApplication({
           applicationData.bank_account_number = accountNumber;
         }
 
-        await loanService.createApplication(applicationData);
+        const createdApplication = await loanService.createApplication(applicationData);
+
+        // Send notification to HR about new application pending approval
+        if (employeeProfile?.employee_profile?.employer?.id) {
+          try {
+            await hrNotificationService.sendNewApplicationNotificationToHR({
+              employeeFullName: `${employeeProfile.first_name || ''} ${employeeProfile.last_name || ''}`,
+              loanAmount: amountNum,
+              applicationDate: new Date().toISOString(),
+              applicationNumber: createdApplication.application_number || 'N/A',
+              employerId: employeeProfile.employee_profile.employer.id,
+            });
+          } catch (notificationError) {
+            console.warn('Failed to send HR notification (non-critical):', notificationError);
+          }
+        }
 
         onSubmitSuccess();
       } catch (err: any) {
