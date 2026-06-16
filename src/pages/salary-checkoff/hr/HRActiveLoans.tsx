@@ -3,6 +3,7 @@ import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
+import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import {
   Search,
   Loader2,
@@ -15,8 +16,9 @@ import {
   ChevronRight,
   FileText,
   Upload,
+  Eye,
 } from 'lucide-react';
-import { loanService, LoanApplication, PaginatedResponse } from '@/services/salary-checkoff/loan.service';
+import { loanService, LoanApplication, PaginatedResponse, Repayment } from '@/services/salary-checkoff/loan.service';
 import { clientService, ExistingClient, CollectionReportData } from '@/services/salary-checkoff/client.service';
 import { authService } from '@/services/salary-checkoff/auth.service';
 
@@ -53,6 +55,13 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
   const [totalCount, setTotalCount] = useState(0);
   const [employerId, setEmployerId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'portal' | 'bulk'>('all');
+
+  // Repayment history modal state
+  const [historyLoan, setHistoryLoan] = useState<CombinedLoan | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [repaymentHistory, setRepaymentHistory] = useState<Repayment[]>([]);
+  const [historyUnavailable, setHistoryUnavailable] = useState(false);
 
   // Summary stats
   const [stats, setStats] = useState({
@@ -217,6 +226,27 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
 
   const getEmployeeName = (loan: LoanApplication) => {
     return (loan as any).employee_name || 'N/A';
+  };
+
+  // Load repayment history for a loan (portal application or bulk-uploaded client).
+  // Bulk-uploaded clients don't always have a repayment ledger, so this degrades
+  // gracefully rather than showing an error.
+  const handleViewHistory = async (loan: CombinedLoan) => {
+    setHistoryLoan(loan);
+    setIsHistoryModalOpen(true);
+    setRepaymentHistory([]);
+    setHistoryUnavailable(false);
+    setIsLoadingHistory(true);
+
+    try {
+      const response = await loanService.getLoanRepayments(loan.id);
+      setRepaymentHistory(response.repayments || []);
+    } catch (err) {
+      console.warn(`Repayment history not available for ${loan.type} loan ${loan.id}:`, err);
+      setHistoryUnavailable(true);
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
   return (
@@ -398,6 +428,7 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
                     <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Disbursement Date</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-slate-700">Outstanding</th>
                     <th className="text-center px-4 py-3 text-sm font-semibold text-slate-700">Status</th>
+                    <th className="text-center px-4 py-3 text-sm font-semibold text-slate-700">Repayments</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -439,11 +470,21 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
                           variant={
                             loan.loanStatus === 'Active' ? 'success' :
                             loan.loanStatus === 'Fully Paid' ? 'approved' :
-                            loan.loanStatus === 'Defaulted' ? 'rejected' : 'default'
+                            loan.loanStatus === 'Defaulted' ? 'declined' : 'default'
                           }
                         >
                           {loan.loanStatus}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewHistory(loan)}
+                          leftIcon={<Eye className="h-4 w-4" />}
+                        >
+                          View
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -509,6 +550,64 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
           </div>
         </Card>
       )}
+
+      {/* Repayment History Modal */}
+      <Modal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        title={historyLoan ? `Repayment History - ${historyLoan.employeeName}` : 'Repayment History'}
+        size="lg"
+      >
+        {isLoadingHistory ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+          </div>
+        ) : historyUnavailable || repaymentHistory.length === 0 ? (
+          <div className="text-center py-8">
+            <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-600">
+              {historyLoan?.type === 'bulk_upload'
+                ? 'No repayment history is available for this bulk-uploaded client yet.'
+                : 'No repayment history is available for this loan yet.'}
+            </p>
+            {historyLoan && (
+              <p className="text-sm text-slate-500 mt-2">
+                Outstanding balance:{' '}
+                <span className="font-medium text-slate-700">
+                  {formatCurrency(historyLoan.outstandingBalance)}
+                </span>
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 border-y border-slate-200">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-700">#</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-700">Due Date</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-slate-700">Amount</th>
+                  <th className="text-center px-3 py-2 text-xs font-semibold text-slate-700">Status</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-700">Paid On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repaymentHistory.map((r) => (
+                  <tr key={r.id} className="border-b border-slate-100">
+                    <td className="px-3 py-2 text-sm text-slate-600">{r.installment_number}</td>
+                    <td className="px-3 py-2 text-sm text-slate-600">{formatDate(r.due_date)}</td>
+                    <td className="px-3 py-2 text-sm text-slate-700 text-right">{formatCurrency(r.amount)}</td>
+                    <td className="px-3 py-2 text-center">
+                      <Badge variant={r.paid ? 'success' : 'pending'}>{r.paid ? 'Paid' : 'Pending'}</Badge>
+                    </td>
+                    <td className="px-3 py-2 text-sm text-slate-600">{r.payment_date ? formatDate(r.payment_date) : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
