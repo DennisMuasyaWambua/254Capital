@@ -9,9 +9,10 @@ import { Loader2, FileText } from 'lucide-react';
 
 interface PendingApplicationsProps {
   onNavigate: (page: string) => void;
+  onReviewApplication?: (applicationId: string) => void;
 }
 
-export function PendingApplications({ onNavigate }: PendingApplicationsProps) {
+export function PendingApplications({ onNavigate, onReviewApplication }: PendingApplicationsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [pendingApplications, setPendingApplications] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -110,11 +111,17 @@ export function PendingApplications({ onNavigate }: PendingApplicationsProps) {
     },
     {
       header: 'Action',
-      accessor: () =>
+      accessor: (item: any) =>
         <Button
           size="sm"
           variant="outline"
-          onClick={() => onNavigate('application-review')}>
+          onClick={() => {
+            if (onReviewApplication && item.fullApplication?.id) {
+              onReviewApplication(item.fullApplication.id);
+            } else {
+              onNavigate('application-review');
+            }
+          }}>
           Review
         </Button>
     }

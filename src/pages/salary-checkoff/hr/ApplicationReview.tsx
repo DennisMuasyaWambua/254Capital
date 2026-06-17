@@ -19,8 +19,9 @@ import {
 'lucide-react';
 interface ApplicationReviewProps {
   onBack: () => void;
+  applicationId?: string;
 }
-export function ApplicationReview({ onBack }: ApplicationReviewProps) {
+export function ApplicationReview({ onBack, applicationId }: ApplicationReviewProps) {
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
   const [comment, setComment] = useState('');
@@ -34,41 +35,38 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
 
   useEffect(() => {
     loadApplication();
-  }, []);
+  }, [applicationId]);
 
   const loadApplication = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Fetch pending applications
-      const pendingResponse = await loanService.hrListPending();
+      let targetId: string;
 
-      if (pendingResponse.results.length === 0) {
-        setError('No pending applications found.');
-        setIsLoading(false);
-        return;
+      if (applicationId) {
+        // Load the specific application passed by the caller
+        targetId = applicationId;
+      } else {
+        // Fallback: load the first pending application
+        const pendingResponse = await loanService.hrListPending();
+        if (pendingResponse.results.length === 0) {
+          setError('No pending applications found.');
+          setIsLoading(false);
+          return;
+        }
+        targetId = pendingResponse.results[0].id;
       }
 
-      // Get the first pending application's details
-      const firstPending = pendingResponse.results[0];
-      const applicationDetail = await loanService.getApplication(firstPending.id);
-
+      const applicationDetail = await loanService.getApplication(targetId);
       setApplication(applicationDetail);
 
       // Fetch documents for this application
       try {
         const docs = await documentService.listApplicationDocuments(applicationDetail.id);
-        console.log('Documents loaded:', docs);
         setDocuments(Array.isArray(docs) ? docs : []);
       } catch (docError: any) {
         console.error('Error loading documents:', docError);
-        console.error('Document error details:', {
-          message: docError.message,
-          status: docError.status,
-          applicationId: applicationDetail.id
-        });
-        // Don't fail the whole page if documents can't be loaded
         setDocuments([]);
       }
     } catch (err: any) {
