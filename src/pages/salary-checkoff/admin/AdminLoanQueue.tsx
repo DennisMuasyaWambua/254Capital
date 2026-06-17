@@ -177,7 +177,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
       await loadApplications();
     } catch (err: any) {
       console.error('Error approving application:', err);
-      setError(err.message || 'Failed to approve application');
+      setError(err.data?.comment || err.data?.detail || err.message || 'Failed to approve application');
       setIsSubmitting(false);
     }
   };
@@ -862,6 +862,102 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
               </div>
             )}
 
+            {/* Uploaded Documents Section */}
+            <div className="border-t border-slate-200 pt-4">
+              <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Uploaded Documents
+                {documents.length > 0 && (
+                  <span className="ml-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">
+                    {documents.length}
+                  </span>
+                )}
+              </h4>
+              {loadingDocuments ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                  <span className="ml-2 text-sm text-slate-500">Loading documents...</span>
+                </div>
+              ) : documents.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {documents.map((doc) => {
+                    const isImage = doc.is_image || doc.mime_type?.startsWith('image/');
+                    const isPdf = doc.is_pdf || doc.mime_type === 'application/pdf';
+                    return (
+                      <div
+                        key={doc.id}
+                        className="border border-slate-200 rounded-lg overflow-hidden hover:border-slate-300 transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        {isImage ? (
+                          <div
+                            className="h-28 bg-slate-100 overflow-hidden cursor-pointer"
+                            onClick={() => handlePreviewDocument(doc)}
+                            title="Click to preview"
+                          >
+                            <img
+                              src={doc.file}
+                              alt={doc.original_filename}
+                              className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                            />
+                          </div>
+                        ) : isPdf ? (
+                          <div
+                            className="h-28 bg-red-50 flex flex-col items-center justify-center cursor-pointer hover:bg-red-100 transition-colors"
+                            onClick={() => handlePreviewDocument(doc)}
+                            title="Click to preview"
+                          >
+                            <FileText className="h-10 w-10 text-red-400" />
+                            <span className="text-xs text-red-500 mt-1.5 font-semibold uppercase tracking-wide">PDF</span>
+                          </div>
+                        ) : (
+                          <div className="h-28 bg-slate-50 flex flex-col items-center justify-center">
+                            <FileText className="h-10 w-10 text-slate-300" />
+                          </div>
+                        )}
+                        {/* Info + actions */}
+                        <div className="p-2.5">
+                          <p className="text-xs font-medium text-slate-900 leading-snug">
+                            {getDocumentTypeLabel(doc.document_type)}
+                          </p>
+                          <p className="text-xs text-slate-400 truncate mt-0.5">{doc.original_filename}</p>
+                          <div className="flex items-center gap-1 mt-2">
+                            {(isImage || isPdf) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handlePreviewDocument(doc)}
+                                leftIcon={<Eye className="h-3.5 w-3.5" />}
+                              >
+                                View
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDownloadDocument(doc.id, doc.original_filename)}
+                              disabled={downloadingDoc === doc.id}
+                            >
+                              {downloadingDoc === doc.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Download className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                  <FileText className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">No documents uploaded for this application</p>
+                </div>
+              )}
+            </div>
+
             {/* Purpose */}
             <div>
               <h4 className="text-sm font-semibold text-slate-900 mb-2">
@@ -870,77 +966,6 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
               <p className="text-sm text-slate-600 p-3 bg-slate-50 rounded-lg">
                 {selectedApplication.purpose || 'Not specified'}
               </p>
-            </div>
-
-            {/* Uploaded Documents Section */}
-            <div className="border-t border-slate-200 pt-4 mt-4">
-              <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Uploaded Documents
-              </h4>
-              {loadingDocuments ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                  <span className="ml-2 text-sm text-slate-500">Loading documents...</span>
-                </div>
-              ) : documents.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="border border-slate-200 rounded-lg p-3 hover:bg-slate-50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {doc.is_image || doc.mime_type?.startsWith('image/') ? (
-                            <Image className="h-5 w-5 text-blue-500 flex-shrink-0" />
-                          ) : (
-                            <FileText className="h-5 w-5 text-slate-500 flex-shrink-0" />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-slate-900">
-                              {getDocumentTypeLabel(doc.document_type)}
-                            </p>
-                            <p className="text-xs text-slate-500 truncate">
-                              {doc.original_filename}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 ml-2">
-                          {(doc.is_image || doc.mime_type?.startsWith('image/') || doc.is_pdf || doc.mime_type === 'application/pdf') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handlePreviewDocument(doc)}
-                              title="Preview"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDownloadDocument(doc.id, doc.original_filename)}
-                            disabled={downloadingDoc === doc.id}
-                            title="Download"
-                          >
-                            {downloadingDoc === doc.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Download className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-                  <FileText className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No documents uploaded for this application</p>
-                </div>
-              )}
             </div>
           </div>
         )}

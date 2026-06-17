@@ -107,13 +107,13 @@ export function ApplicationReview({ onBack, applicationId }: ApplicationReviewPr
       });
 
       // Provide more specific error messages
-      let errorMessage = err.message || 'Failed to approve application';
+      let errorMessage = err.data?.comment || err.message || 'Failed to approve application';
       if (err.status === 403) {
         errorMessage = 'You do not have permission to approve this application. Please contact your administrator.';
       } else if (err.status === 404) {
         errorMessage = 'Application not found. It may have already been processed.';
       } else if (err.status === 400) {
-        errorMessage = err.data?.detail || err.message || 'Invalid application status. The application may have already been approved or processed.';
+        errorMessage = err.data?.comment || err.data?.detail || err.message || 'Invalid application status. The application may have already been approved or processed.';
       }
 
       setError(errorMessage);
