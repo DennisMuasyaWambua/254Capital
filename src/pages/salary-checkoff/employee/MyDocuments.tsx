@@ -4,7 +4,13 @@ import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
-import { documentService, Document } from '@/services/salary-checkoff/document.service';
+import {
+  documentService,
+  Document,
+  isImageDocument,
+  isPdfDocument,
+  isViewableDocument,
+} from '@/services/salary-checkoff/document.service';
 import {
   FileText,
   Image,
@@ -42,6 +48,9 @@ export function MyDocuments() {
   const [groups, setGroups] = useState<ApplicationGroup[]>([]);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     loadDocuments();
@@ -93,17 +102,37 @@ export function MyDocuments() {
     }
   };
 
-  const handlePreview = (doc: Document) => {
-    if (
-      doc.is_image ||
-      doc.is_pdf ||
-      doc.mime_type?.startsWith('image/') ||
-      doc.mime_type === 'application/pdf'
-    ) {
-      setPreviewDocument(doc);
-    } else {
+  const handlePreview = async (doc: Document) => {
+    if (!isViewableDocument(doc)) {
       handleDownload(doc.id, doc.original_filename);
+      return;
     }
+
+    setPreviewDocument(doc);
+    setPreviewError(null);
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+
+    try {
+      // Fetch the file through the authenticated path and render it as a blob
+      // object URL, so preview works regardless of storage backend (local/S3).
+      const objectUrl = await documentService.getDocumentObjectUrl(doc.id);
+      setPreviewUrl(objectUrl);
+    } catch (err) {
+      console.error('Error loading document preview:', err);
+      setPreviewError('Unable to load preview. Try downloading the file instead.');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleClosePreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setPreviewDocument(null);
+    setPreviewError(null);
   };
 
   if (isLoading) {
@@ -165,11 +194,8 @@ export function MyDocuments() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {documents.map((doc) => {
-              const isImage =
-                doc.is_image || doc.mime_type?.startsWith('image/');
-              const isPdf =
-                doc.is_pdf || doc.mime_type === 'application/pdf';
-              const canPreview = isImage || isPdf;
+              const isImage = isImageDocument(doc);
+              const canPreview = isViewableDocument(doc);
 
               return (
                 <div
@@ -236,7 +262,7 @@ export function MyDocuments() {
       {/* Document Preview Modal */}
       <Modal
         isOpen={previewDocument !== null}
-        onClose={() => setPreviewDocument(null)}
+        onClose={handleClosePreview}
         title={
           previewDocument
             ? getDocumentTypeLabel(previewDocument.document_type)
@@ -246,20 +272,27 @@ export function MyDocuments() {
       >
         {previewDocument && (
           <div className="space-y-4">
-            {previewDocument.is_image ||
-            previewDocument.mime_type?.startsWith('image/') ? (
+            {previewLoading ? (
+              <div className="flex items-center justify-center h-[60vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+              </div>
+            ) : previewError ? (
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-3" />
+                <p className="text-slate-600">{previewError}</p>
+              </div>
+            ) : previewUrl && isImageDocument(previewDocument) ? (
               <div className="flex justify-center">
                 <img
-                  src={previewDocument.file}
+                  src={previewUrl}
                   alt={previewDocument.original_filename}
                   className="max-w-full max-h-[60vh] object-contain rounded-lg border border-slate-200"
                 />
               </div>
-            ) : previewDocument.is_pdf ||
-              previewDocument.mime_type === 'application/pdf' ? (
+            ) : previewUrl && isPdfDocument(previewDocument) ? (
               <div className="w-full h-[60vh]">
                 <iframe
-                  src={previewDocument.file}
+                  src={previewUrl}
                   className="w-full h-full rounded-lg border border-slate-200"
                   title={previewDocument.original_filename}
                 />

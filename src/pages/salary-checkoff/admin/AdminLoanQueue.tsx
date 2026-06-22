@@ -7,7 +7,13 @@ import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Checkbox } from '@/components/salary-checkoff/ui/Checkbox';
 import { loanService, LoanApplication, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
-import { documentService, Document } from '@/services/salary-checkoff/document.service';
+import {
+  documentService,
+  Document,
+  isImageDocument,
+  isPdfDocument,
+  isViewableDocument,
+} from '@/services/salary-checkoff/document.service';
 import { hrNotificationService } from '@/services/salary-checkoff/hrNotification.service';
 import {
   ArrowLeft,
@@ -51,6 +57,9 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Disbursement fields
   const [disbursementDate, setDisbursementDate] = useState(
@@ -133,13 +142,37 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
   };
 
   const handlePreviewDocument = async (doc: Document) => {
-    // For images and PDFs, we can preview them
-    if (doc.is_image || doc.is_pdf || doc.mime_type?.startsWith('image/') || doc.mime_type === 'application/pdf') {
-      setPreviewDocument(doc);
-    } else {
-      // For other files, just download
+    // Non-previewable types fall back to a download.
+    if (!isViewableDocument(doc)) {
       handleDownloadDocument(doc.id, doc.original_filename);
+      return;
     }
+
+    setPreviewDocument(doc);
+    setPreviewError(null);
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+
+    try {
+      // Fetch the file through the authenticated path and render it as a blob
+      // object URL, so preview works regardless of storage backend (local/S3).
+      const objectUrl = await documentService.getDocumentObjectUrl(doc.id);
+      setPreviewUrl(objectUrl);
+    } catch (err) {
+      console.error('Error loading document preview:', err);
+      setPreviewError('Unable to load preview. Try downloading the file instead.');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleClosePreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setPreviewDocument(null);
+    setPreviewError(null);
   };
 
   const getDocumentTypeLabel = (type: string): string => {
@@ -881,8 +914,8 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
               ) : documents.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {documents.map((doc) => {
-                    const isImage = doc.is_image || doc.mime_type?.startsWith('image/');
-                    const isPdf = doc.is_pdf || doc.mime_type === 'application/pdf';
+                    const isImage = isImageDocument(doc);
+                    const isPdf = isPdfDocument(doc);
                     return (
                       <div
                         key={doc.id}
@@ -896,7 +929,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                             title="Click to preview"
                           >
                             <img
-                              src={doc.file}
+                              src={doc.file_url || doc.file}
                               alt={doc.original_filename}
                               className="w-full h-full object-cover hover:opacity-90 transition-opacity"
                             />
@@ -974,24 +1007,33 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
       {/* Document Preview Modal */}
       <Modal
         isOpen={previewDocument !== null}
-        onClose={() => setPreviewDocument(null)}
+        onClose={handleClosePreview}
         title={previewDocument ? getDocumentTypeLabel(previewDocument.document_type) : 'Document Preview'}
         size="xl"
       >
         {previewDocument && (
           <div className="space-y-4">
-            {previewDocument.is_image || previewDocument.mime_type?.startsWith('image/') ? (
+            {previewLoading ? (
+              <div className="flex items-center justify-center h-[60vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+              </div>
+            ) : previewError ? (
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-3" />
+                <p className="text-slate-600">{previewError}</p>
+              </div>
+            ) : previewUrl && isImageDocument(previewDocument) ? (
               <div className="flex justify-center">
                 <img
-                  src={previewDocument.file}
+                  src={previewUrl}
                   alt={previewDocument.original_filename}
                   className="max-w-full max-h-[60vh] object-contain rounded-lg border border-slate-200"
                 />
               </div>
-            ) : previewDocument.is_pdf || previewDocument.mime_type === 'application/pdf' ? (
+            ) : previewUrl && isPdfDocument(previewDocument) ? (
               <div className="w-full h-[60vh]">
                 <iframe
-                  src={previewDocument.file}
+                  src={previewUrl}
                   className="w-full h-full rounded-lg border border-slate-200"
                   title={previewDocument.original_filename}
                 />
