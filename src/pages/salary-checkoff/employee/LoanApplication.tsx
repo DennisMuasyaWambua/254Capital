@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Input } from '@/components/salary-checkoff/ui/Input';
+import { Select } from '@/components/salary-checkoff/ui/Select';
 import { MoneyInput } from '@/components/salary-checkoff/ui/MoneyInput';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { ProgressSteps } from '@/components/salary-checkoff/ui/ProgressSteps';
@@ -25,6 +26,10 @@ import {
   AlertCircle,
   Loader2 } from
 'lucide-react';
+// Allowed repayment terms must match the backend (settings.LOAN_REPAYMENT_TERMS).
+// Submitting any other term (e.g. 5 months) is rejected with a validation error.
+const REPAYMENT_TERMS = [3, 6, 9, 12];
+
 interface LoanApplicationProps {
   onCancel: () => void;
   onSubmitSuccess: () => void;
@@ -249,7 +254,18 @@ export function LoanApplication({
         onSubmitSuccess();
       } catch (err: any) {
         console.error('Error submitting loan application:', err);
-        setError(err.message || 'Failed to submit loan application. Please try again.');
+        // Surface the specific field/validation messages from the backend
+        // instead of the generic "Validation error" wrapper.
+        const fieldErrors = err.data?.errors;
+        let message = err.message || 'Failed to submit loan application. Please try again.';
+        if (fieldErrors && typeof fieldErrors === 'object') {
+          const details = Object.values(fieldErrors)
+            .flat()
+            .filter(Boolean)
+            .join(' ');
+          if (details) message = details;
+        }
+        setError(message);
         setIsLoading(false);
       }
     }
@@ -353,14 +369,12 @@ export function LoanApplication({
                 placeholder="50,000"
                 helperText="Minimum amount: KES 1,000" />
 
-                <Input
+                <Select
                 label="Repayment Period (Months)"
-                type="number"
-                value={period}
-                onChange={(e) => setPeriod(Number(e.target.value) || 1)}
-                min={1}
-                max={60}
-                helperText="Enter the number of months (e.g. 3, 6, 12)" />
+                value={String(period)}
+                onChange={(e) => setPeriod(Number(e.target.value))}
+                options={REPAYMENT_TERMS.map((m) => ({ value: String(m), label: `${m} Months` }))}
+                helperText="Choose an available repayment period" />
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
