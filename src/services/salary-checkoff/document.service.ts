@@ -20,6 +20,7 @@ export interface Document {
     | 'remittance_proof'
     | 'other';
   file: string;
+  file_url?: string;
   original_filename: string;
   file_size: number;
   mime_type: string;
@@ -28,6 +29,32 @@ export interface Document {
   is_image?: boolean;
   is_pdf?: boolean;
 }
+
+/**
+ * Resolve a document's file type from the backend flags when present, falling
+ * back to the MIME type and finally the filename extension. This keeps preview
+ * working even when the list endpoint does not return is_image/is_pdf/mime_type.
+ */
+export const getDocumentExtension = (doc: Pick<Document, 'original_filename'>): string => {
+  const name = doc.original_filename || '';
+  const dot = name.lastIndexOf('.');
+  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
+};
+
+export const isImageDocument = (doc: Document): boolean => {
+  if (doc.is_image) return true;
+  if (doc.mime_type?.startsWith('image/')) return true;
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(getDocumentExtension(doc));
+};
+
+export const isPdfDocument = (doc: Document): boolean => {
+  if (doc.is_pdf) return true;
+  if (doc.mime_type === 'application/pdf') return true;
+  return getDocumentExtension(doc) === 'pdf';
+};
+
+export const isViewableDocument = (doc: Document): boolean =>
+  isImageDocument(doc) || isPdfDocument(doc);
 
 export interface UploadDocumentRequest {
   file: File;
@@ -176,28 +203,50 @@ export const documentService = {
   },
 
   /**
-   * Download document file
+   * Fetch a document's file as a Blob.
+   *
+   * Resolves the file URL from the detail endpoint (which always returns it),
+   * preferring file_url (presigned for S3). Only attaches the auth header for
+   * same-origin/API URLs - presigned S3 URLs already carry their own signature
+   * and must not receive an Authorization header.
    */
-  downloadDocument: async (id: string): Promise<Blob> => {
+  fetchDocumentBlob: async (id: string): Promise<Blob> => {
     const document = await documentService.getDocument(id);
+    const fileUrl = document.file_url || document.file;
+
+    if (!fileUrl) {
+      throw { message: 'Document file URL is not available', status: 0 };
+    }
+
+    const isPresigned = /[?&](X-Amz-Signature|Signature|AWSAccessKeyId)=/.test(fileUrl);
     const token = tokenManager.getAccessToken();
     const headers: HeadersInit = {};
-    if (token) {
+    if (token && !isPresigned) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(document.file, {
-      method: 'GET',
-      headers,
-    });
+    const response = await fetch(fileUrl, { method: 'GET', headers });
 
     if (!response.ok) {
-      throw {
-        message: 'Download failed',
-        status: response.status,
-      };
+      throw { message: 'Download failed', status: response.status };
     }
 
     return await response.blob();
+  },
+
+  /**
+   * Download document file (alias kept for existing callers).
+   */
+  downloadDocument: async (id: string): Promise<Blob> => {
+    return documentService.fetchDocumentBlob(id);
+  },
+
+  /**
+   * Get a browser object URL for previewing a document inline.
+   * Caller is responsible for revoking the URL with URL.revokeObjectURL().
+   */
+  getDocumentObjectUrl: async (id: string): Promise<string> => {
+    const blob = await documentService.fetchDocumentBlob(id);
+    return URL.createObjectURL(blob);
   },
 };

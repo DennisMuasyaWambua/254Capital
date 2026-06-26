@@ -16,11 +16,29 @@ import {
 } from 'lucide-react';
 import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
 import { exportService } from '@/services/salary-checkoff/export.service';
+import { clientService, ExistingClient } from '@/services/salary-checkoff/client.service';
+import { authService } from '@/services/salary-checkoff/auth.service';
+
+// Unified shape covering both portal-originated loan applications and
+// bulk-uploaded existing clients, so HR sees deductions for everyone under
+// their employer regardless of how the loan was entered into the system.
+interface DeductionRow {
+  id: string;
+  source: 'portal' | 'bulk_upload';
+  employeeName: string;
+  employeeIdLabel: string;
+  applicationNumber: string;
+  principalAmount: number;
+  monthlyDeduction: number;
+  disbursementDate: string | null;
+  repaymentMonths: number;
+}
 
 export function PayrollDeductions() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [activeLoans, setActiveLoans] = useState<LoanApplication[]>([]);
+  const [deductionRows, setDeductionRows] = useState<DeductionRow[]>([]);
+  const [employerId, setEmployerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Filters
@@ -36,9 +54,26 @@ export function PayrollDeductions() {
     nextMonthDeductions: 0,
   });
 
+  // Resolve the HR user's employer once, so bulk-uploaded clients for that
+  // employer can be merged into the deduction view.
+  useEffect(() => {
+    const fetchEmployerId = async () => {
+      try {
+        const profile = await authService.getProfile();
+        if (profile.hr_profile?.employer?.id) {
+          setEmployerId(profile.hr_profile.employer.id);
+        }
+      } catch (err) {
+        console.error('Failed to fetch employer ID:', err);
+      }
+    };
+    fetchEmployerId();
+  }, []);
+
   useEffect(() => {
     loadPayrollDeductions();
-  }, [selectedMonth, selectedYear]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMonth, selectedYear, employerId]);
 
   const loadPayrollDeductions = async () => {
     try {
@@ -53,45 +88,74 @@ export function PayrollDeductions() {
         (app: LoanApplication) => app.status === 'disbursed'
       );
 
-      setActiveLoans(activeLoansList);
+      // Fetch bulk-uploaded clients for this employer so HR's deduction
+      // view covers everyone, not just loans applied through the portal.
+      let bulkClients: ExistingClient[] = [];
+      if (employerId) {
+        try {
+          const clientResponse = await clientService.listClientsByEmployer(employerId, {
+            status: 'Active',
+          });
+          bulkClients = clientResponse.results;
+        } catch (clientErr) {
+          console.warn('Could not fetch bulk-uploaded clients for payroll deductions:', clientErr);
+        }
+      }
+
+      const combined: DeductionRow[] = [
+        ...activeLoansList.map((app) => ({
+          id: app.id,
+          source: 'portal' as const,
+          employeeName: (app as any).employee_name || 'N/A',
+          employeeIdLabel: app.employee?.id || 'N/A',
+          applicationNumber: app.application_number,
+          principalAmount: parseFloat(app.principal_amount),
+          monthlyDeduction: parseFloat(app.monthly_deduction),
+          disbursementDate: app.disbursement_date || null,
+          repaymentMonths: app.repayment_months,
+        })),
+        ...bulkClients.map((client) => ({
+          id: client.id,
+          source: 'bulk_upload' as const,
+          employeeName: client.full_name,
+          employeeIdLabel: client.employee_id || 'N/A',
+          applicationNumber: `BULK-${client.id.slice(0, 8).toUpperCase()}`,
+          principalAmount: parseFloat(client.loan_amount),
+          monthlyDeduction: parseFloat(client.monthly_deduction),
+          disbursementDate: client.disbursement_date || null,
+          repaymentMonths: client.repayment_period,
+        })),
+      ];
+
+      setDeductionRows(combined);
 
       // Calculate stats
-      const totalEmployees = activeLoansList.length;
-      const totalDeductions = activeLoansList.reduce(
-        (sum, app) => sum + parseFloat(app.monthly_deduction),
-        0
-      );
+      const totalEmployees = combined.length;
+      const totalDeductions = combined.reduce((sum, row) => sum + row.monthlyDeduction, 0);
 
       // Calculate deductions for selected month
-      const selectedDate = new Date(selectedYear, selectedMonth - 1, 1);
       const now = new Date();
 
       // Deductions for this month
-      const thisMonthLoans = activeLoansList.filter((app) => {
-        if (!app.disbursement_date) return false;
-        const disbDate = new Date(app.disbursement_date);
+      const thisMonthRows = combined.filter((row) => {
+        if (!row.disbursementDate) return false;
+        const disbDate = new Date(row.disbursementDate);
         const firstDeductionDate = getFirstDeductionDate(disbDate);
         return firstDeductionDate <= now;
       });
 
-      const thisMonthTotal = thisMonthLoans.reduce(
-        (sum, app) => sum + parseFloat(app.monthly_deduction),
-        0
-      );
+      const thisMonthTotal = thisMonthRows.reduce((sum, row) => sum + row.monthlyDeduction, 0);
 
       // Deductions for next month
       const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const nextMonthLoans = activeLoansList.filter((app) => {
-        if (!app.disbursement_date) return false;
-        const disbDate = new Date(app.disbursement_date);
+      const nextMonthRows = combined.filter((row) => {
+        if (!row.disbursementDate) return false;
+        const disbDate = new Date(row.disbursementDate);
         const firstDeductionDate = getFirstDeductionDate(disbDate);
         return firstDeductionDate <= nextMonth;
       });
 
-      const nextMonthTotal = nextMonthLoans.reduce(
-        (sum, app) => sum + parseFloat(app.monthly_deduction),
-        0
-      );
+      const nextMonthTotal = nextMonthRows.reduce((sum, row) => sum + row.monthlyDeduction, 0);
 
       setStats({
         totalEmployees,
@@ -123,6 +187,10 @@ export function PayrollDeductions() {
   const handleExport = async () => {
     try {
       setIsExporting(true);
+      // Note: this calls the server-generated export. The on-screen table
+      // above already merges bulk-uploaded clients into the deduction view;
+      // confirm with backend that this export endpoint does the same so the
+      // downloaded file matches what HR sees on screen.
       const blob = await exportService.exportDeductions({
         month: selectedMonth,
         year: selectedYear,
@@ -140,17 +208,17 @@ export function PayrollDeductions() {
     }
   };
 
-  // Filter loans based on selected month/year
-  const filteredLoans = activeLoans.filter((app) => {
-    if (!app.disbursement_date) return false;
+  // Filter loans based on selected month/year (covers portal + bulk-uploaded)
+  const filteredLoans = deductionRows.filter((row) => {
+    if (!row.disbursementDate) return false;
 
-    const disbDate = new Date(app.disbursement_date);
+    const disbDate = new Date(row.disbursementDate);
     const firstDeductionDate = getFirstDeductionDate(disbDate);
     const selectedDate = new Date(selectedYear, selectedMonth - 1, 25);
 
     // Calculate loan end date (disbursement date + repayment months)
     const loanEndDate = new Date(disbDate);
-    loanEndDate.setMonth(loanEndDate.getMonth() + app.repayment_months);
+    loanEndDate.setMonth(loanEndDate.getMonth() + row.repaymentMonths);
 
     // Exclude if loan period has ended before the selected month
     if (loanEndDate < selectedDate) {
@@ -164,33 +232,37 @@ export function PayrollDeductions() {
   const columns = [
     {
       header: 'Employee Name',
-      accessor: (item: LoanApplication) => {
-        return (item as any).employee_name || 'N/A';
-      },
+      accessor: (item: DeductionRow) => item.employeeName,
     },
     {
       header: 'Employee ID',
-      accessor: (item: LoanApplication) => item.employee?.id || 'N/A',
+      accessor: (item: DeductionRow) => item.employeeIdLabel,
     },
     {
       header: 'Loan #',
-      accessor: 'application_number',
+      accessor: (item: DeductionRow) => item.applicationNumber,
+    },
+    {
+      header: 'Source',
+      accessor: (item: DeductionRow) => (
+        <Badge variant={item.source === 'portal' ? 'default' : 'pending'}>
+          {item.source === 'portal' ? 'Portal' : 'Bulk Upload'}
+        </Badge>
+      ),
     },
     {
       header: 'Loan Amount',
-      accessor: (item: LoanApplication) =>
-        `KES ${parseFloat(item.principal_amount).toLocaleString()}`,
+      accessor: (item: DeductionRow) => `KES ${item.principalAmount.toLocaleString()}`,
     },
     {
       header: 'Monthly Deduction',
-      accessor: (item: LoanApplication) =>
-        `KES ${parseFloat(item.monthly_deduction).toLocaleString()}`,
+      accessor: (item: DeductionRow) => `KES ${item.monthlyDeduction.toLocaleString()}`,
     },
     {
       header: 'Disbursement Date',
-      accessor: (item: LoanApplication) =>
-        item.disbursement_date
-          ? new Date(item.disbursement_date).toLocaleDateString('en-KE', {
+      accessor: (item: DeductionRow) =>
+        item.disbursementDate
+          ? new Date(item.disbursementDate).toLocaleDateString('en-KE', {
               day: 'numeric',
               month: 'short',
               year: 'numeric',
@@ -199,9 +271,9 @@ export function PayrollDeductions() {
     },
     {
       header: 'First Deduction',
-      accessor: (item: LoanApplication) => {
-        if (!item.disbursement_date) return 'N/A';
-        const disbDate = new Date(item.disbursement_date);
+      accessor: (item: DeductionRow) => {
+        if (!item.disbursementDate) return 'N/A';
+        const disbDate = new Date(item.disbursementDate);
         const firstDeduction = getFirstDeductionDate(disbDate);
         return firstDeduction.toLocaleDateString('en-KE', {
           day: 'numeric',
@@ -212,7 +284,7 @@ export function PayrollDeductions() {
     },
     {
       header: 'Status',
-      accessor: (item: LoanApplication) => (
+      accessor: (item: DeductionRow) => (
         <Badge variant="approved">Active</Badge>
       ),
     },
@@ -387,7 +459,7 @@ export function PayrollDeductions() {
                 <strong>
                   KES{' '}
                   {filteredLoans
-                    .reduce((sum, app) => sum + parseFloat(app.monthly_deduction), 0)
+                    .reduce((sum, row) => sum + row.monthlyDeduction, 0)
                     .toLocaleString()}
                 </strong>
               </p>

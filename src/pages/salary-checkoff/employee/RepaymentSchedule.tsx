@@ -6,6 +6,7 @@ import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Download, Calendar, Info, Loader2 } from 'lucide-react';
 import { loanService, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
 import { exportService } from '@/services/salary-checkoff/export.service';
+import { employerService, loanCalculationUtils, InterestMethod } from '@/services/salary-checkoff/employer.service';
 import {
   getFirstDeductionDate,
   formatDeductionDate } from
@@ -75,6 +76,32 @@ export function RepaymentSchedule() {
         firstDeduction: formatDeductionDate(firstDedDate)
       });
 
+      // Determine the employer's interest method/rate so the fallback schedule
+      // (used when the API doesn't return a pre-built repayment_schedule)
+      // reflects the correct flat vs reducing-balance split.
+      let interestMethod: InterestMethod = 'flat';
+      let monthlyRate = 0.05;
+      if (loanDetail.employer?.id) {
+        try {
+          const employer = await employerService.getEmployer(loanDetail.employer.id);
+          interestMethod = employer.interest_method || 'flat';
+          monthlyRate = employer.interest_rate ? Number(employer.interest_rate) : 0.05;
+        } catch (employerErr) {
+          console.warn('Could not fetch employer interest method, defaulting to flat:', employerErr);
+        }
+      }
+
+      // Locally-derived amortisation breakdown (principal/interest split and
+      // running balance) using the employer's configured interest method.
+      // This is used to show the correct per-month split even when the API
+      // only returns the due dates/amounts and not the breakdown itself.
+      const localAmortisation = loanCalculationUtils.calculateLoanForEmployer(
+        principalAmount,
+        loanDetail.repayment_months,
+        interestMethod,
+        monthlyRate
+      ).schedule;
+
       // Use the repayment schedule from API if available
       if (loanDetail.repayment_schedule && loanDetail.repayment_schedule.length > 0) {
         const formattedSchedule = loanDetail.repayment_schedule.map((installment, index) => {
@@ -90,8 +117,7 @@ export function RepaymentSchedule() {
             status = 'current';
           }
 
-          // Calculate remaining balance
-          const balance = totalRepayment - (monthlyDeduction * (installment.installment_number));
+          const breakdown = localAmortisation[installment.installment_number - 1];
 
           return {
             month: installment.installment_number,
@@ -101,17 +127,17 @@ export function RepaymentSchedule() {
               year: 'numeric'
             }),
             amount: parseFloat(installment.amount),
-            principal: Math.round(principalAmount / loanDetail.repayment_months),
-            interest: Math.round(interestAmount / loanDetail.repayment_months),
+            principal: breakdown ? Math.round(parseFloat(breakdown.principal_portion)) : Math.round(principalAmount / loanDetail.repayment_months),
+            interest: breakdown ? Math.round(parseFloat(breakdown.interest_portion)) : Math.round(interestAmount / loanDetail.repayment_months),
             status,
-            balance: Math.max(0, balance),
+            balance: breakdown ? Math.max(0, parseFloat(breakdown.running_balance)) : Math.max(0, totalRepayment - (monthlyDeduction * installment.installment_number)),
             isFirst: installment.installment_number === 1
           };
         });
         setScheduleData(formattedSchedule);
       } else {
         // Fallback: Generate schedule if not available from API
-        generateSchedule(firstDedDate, loanDetail.repayment_months, principalAmount, interestAmount, totalRepayment, monthlyDeduction);
+        generateSchedule(firstDedDate, loanDetail.repayment_months, principalAmount, interestAmount, totalRepayment, monthlyDeduction, localAmortisation);
       }
     } catch (error) {
       console.error('Error loading repayment schedule:', error);
@@ -126,7 +152,8 @@ export function RepaymentSchedule() {
     principalAmount: number,
     interestAmount: number,
     totalRepayment: number,
-    monthlyDeduction: number
+    monthlyDeduction: number,
+    localAmortisation?: Array<{ amount: string; principal_portion: string; interest_portion: string; running_balance: string }>
   ) => {
     const schedule = Array.from({ length: totalMonths }, (_, i) => {
       const dueDate = new Date(
@@ -134,7 +161,6 @@ export function RepaymentSchedule() {
         firstDedDate.getMonth() + i,
         25
       );
-      const balance = Math.max(0, totalRepayment - monthlyDeduction * (i + 1));
 
       const today = new Date();
       let status = 'upcoming';
@@ -144,6 +170,8 @@ export function RepaymentSchedule() {
         status = 'current';
       }
 
+      const breakdown = localAmortisation?.[i];
+
       return {
         month: i + 1,
         dueDate: dueDate.toLocaleDateString('en-KE', {
@@ -151,11 +179,11 @@ export function RepaymentSchedule() {
           month: 'short',
           year: 'numeric'
         }),
-        amount: monthlyDeduction,
-        principal: Math.round(principalAmount / totalMonths),
-        interest: Math.round(interestAmount / totalMonths),
+        amount: breakdown ? parseFloat(breakdown.amount) : monthlyDeduction,
+        principal: breakdown ? Math.round(parseFloat(breakdown.principal_portion)) : Math.round(principalAmount / totalMonths),
+        interest: breakdown ? Math.round(parseFloat(breakdown.interest_portion)) : Math.round(interestAmount / totalMonths),
         status,
-        balance,
+        balance: breakdown ? Math.max(0, parseFloat(breakdown.running_balance)) : Math.max(0, totalRepayment - monthlyDeduction * (i + 1)),
         isFirst: i === 0
       };
     });

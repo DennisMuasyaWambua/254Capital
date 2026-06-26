@@ -21,7 +21,8 @@ import {
   Receipt,
   UserCog,
   Shield,
-  Building2 } from
+  Building2,
+  FolderOpen } from
 'lucide-react';
 import { getInitials } from '@/utils/formatters';
 interface SidebarProps {
@@ -57,6 +58,11 @@ export function Sidebar({
     id: 'repayment',
     label: 'Repayment Schedule',
     icon: Calendar
+  },
+  {
+    id: 'my-documents',
+    label: 'My Documents',
+    icon: FolderOpen
   },
   {
     id: 'notifications',

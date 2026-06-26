@@ -4,7 +4,13 @@ import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { loanService, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
-import { documentService, Document } from '@/services/salary-checkoff/document.service';
+import {
+  documentService,
+  Document,
+  isImageDocument,
+  isPdfDocument,
+  isViewableDocument,
+} from '@/services/salary-checkoff/document.service';
 import {
   ArrowLeft,
   Check,
@@ -13,12 +19,15 @@ import {
   Download,
   UserCheck,
   Loader2,
-  AlertCircle } from
+  AlertCircle,
+  Eye,
+  Image } from
 'lucide-react';
 interface ApplicationReviewProps {
   onBack: () => void;
+  applicationId?: string;
 }
-export function ApplicationReview({ onBack }: ApplicationReviewProps) {
+export function ApplicationReview({ onBack, applicationId }: ApplicationReviewProps) {
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
   const [comment, setComment] = useState('');
@@ -28,44 +37,45 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
   const [error, setError] = useState<string | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     loadApplication();
-  }, []);
+  }, [applicationId]);
 
   const loadApplication = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Fetch pending applications
-      const pendingResponse = await loanService.hrListPending();
+      let targetId: string;
 
-      if (pendingResponse.results.length === 0) {
-        setError('No pending applications found.');
-        setIsLoading(false);
-        return;
+      if (applicationId) {
+        // Load the specific application passed by the caller
+        targetId = applicationId;
+      } else {
+        // Fallback: load the first pending application
+        const pendingResponse = await loanService.hrListPending();
+        if (pendingResponse.results.length === 0) {
+          setError('No pending applications found.');
+          setIsLoading(false);
+          return;
+        }
+        targetId = pendingResponse.results[0].id;
       }
 
-      // Get the first pending application's details
-      const firstPending = pendingResponse.results[0];
-      const applicationDetail = await loanService.getApplication(firstPending.id);
-
+      const applicationDetail = await loanService.getApplication(targetId);
       setApplication(applicationDetail);
 
       // Fetch documents for this application
       try {
         const docs = await documentService.listApplicationDocuments(applicationDetail.id);
-        console.log('Documents loaded:', docs);
         setDocuments(Array.isArray(docs) ? docs : []);
       } catch (docError: any) {
         console.error('Error loading documents:', docError);
-        console.error('Document error details:', {
-          message: docError.message,
-          status: docError.status,
-          applicationId: applicationDetail.id
-        });
-        // Don't fail the whole page if documents can't be loaded
         setDocuments([]);
       }
     } catch (err: any) {
@@ -106,13 +116,13 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
       });
 
       // Provide more specific error messages
-      let errorMessage = err.message || 'Failed to approve application';
+      let errorMessage = err.data?.comment || err.message || 'Failed to approve application';
       if (err.status === 403) {
         errorMessage = 'You do not have permission to approve this application. Please contact your administrator.';
       } else if (err.status === 404) {
         errorMessage = 'Application not found. It may have already been processed.';
       } else if (err.status === 400) {
-        errorMessage = err.data?.detail || err.message || 'Invalid application status. The application may have already been approved or processed.';
+        errorMessage = err.data?.comment || err.data?.detail || err.message || 'Invalid application status. The application may have already been approved or processed.';
       }
 
       setError(errorMessage);
@@ -189,6 +199,55 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
     }
   };
 
+  const handlePreviewDocument = async (doc: Document) => {
+    // Non-previewable types fall back to a download.
+    if (!isViewableDocument(doc)) {
+      handleDownloadDocument(doc.id, doc.original_filename);
+      return;
+    }
+
+    setPreviewDocument(doc);
+    setPreviewError(null);
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+
+    try {
+      // Fetch the file through the authenticated path and render it as a blob
+      // object URL, so preview works regardless of storage backend (local/S3).
+      const objectUrl = await documentService.getDocumentObjectUrl(doc.id);
+      setPreviewUrl(objectUrl);
+    } catch (err: any) {
+      console.error('Error loading document preview:', err);
+      setPreviewError('Unable to load preview. Try downloading the file instead.');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleClosePreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setPreviewDocument(null);
+    setPreviewError(null);
+  };
+
+  const getDocumentTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      national_id_front: 'National ID (Front)',
+      national_id_back: 'National ID (Back)',
+      payslip_1: 'Payslip 1',
+      payslip_2: 'Payslip 2',
+      payslip_3: 'Payslip 3',
+      check_off_agreement: 'Check-off Agreement',
+      disbursement_receipt: 'Disbursement Receipt',
+      remittance_proof: 'Remittance Proof',
+      other: 'Other Document',
+    };
+    return labels[type] || type.replace(/_/g, ' ').toUpperCase();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -237,8 +296,14 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
     period: application.repayment_months,
     monthly: parseFloat(application.monthly_deduction),
     purpose: application.purpose || 'Not specified',
-    date: new Date(application.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+    date: new Date(application.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }),
+    // Use the figures already calculated by the backend (which applies the
+    // employer's configured interest method - flat or reducing balance)
+    // rather than re-deriving them, so HR always sees the correct terms.
+    totalRepayment: parseFloat(application.total_repayment),
+    interestRate: parseFloat(application.interest_rate),
   };
+  const loanInterestAmount = loan.totalRepayment - loan.amount;
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
@@ -373,22 +438,37 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
                     key={doc.id}
                     className="border border-slate-200 rounded-lg p-4 flex flex-col items-center text-center hover:bg-slate-50 transition-colors">
                     <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-500">
-                      <FileText className="h-5 w-5" />
+                      {isImageDocument(doc) ? (
+                        <Image className="h-5 w-5" />
+                      ) : (
+                        <FileText className="h-5 w-5" />
+                      )}
                     </div>
                     <p className="text-sm font-medium text-slate-900 mb-1">
-                      {doc.document_type.replace('_', ' ').toUpperCase()}
+                      {getDocumentTypeLabel(doc.document_type)}
                     </p>
                     <p className="text-xs text-slate-500 mb-2 truncate w-full px-2">
                       {doc.original_filename}
                     </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      leftIcon={downloadingDoc === doc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                      onClick={() => handleDownloadDocument(doc.id, doc.original_filename)}
-                      disabled={downloadingDoc === doc.id}>
-                      {downloadingDoc === doc.id ? 'Downloading...' : 'Download'}
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {isViewableDocument(doc) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          leftIcon={<Eye className="h-3 w-3" />}
+                          onClick={() => handlePreviewDocument(doc)}>
+                          Preview
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={downloadingDoc === doc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                        onClick={() => handleDownloadDocument(doc.id, doc.original_filename)}
+                        disabled={downloadingDoc === doc.id}>
+                        {downloadingDoc === doc.id ? 'Downloading...' : 'Download'}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -441,12 +521,15 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
                 <span>KES {loan.amount.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Interest (5%)</span>
-                <span>KES {(loan.amount * 0.05).toLocaleString()}</span>
+                <span className="text-slate-500">
+                  Interest ({(loan.interestRate * 100).toFixed(0)}%
+                  {(application as any).employer?.interest_method === 'reducing_balance' ? ', reducing balance' : ', flat'})
+                </span>
+                <span>KES {loanInterestAmount.toLocaleString()}</span>
               </div>
               <div className="flex justify-between font-bold pt-2 border-t border-slate-100">
                 <span>Total Repayment</span>
-                <span>KES {(loan.amount * 1.05).toLocaleString()}</span>
+                <span>KES {loan.totalRepayment.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-[#008080] font-medium pt-2">
                 <span>Monthly Deduction</span>
@@ -540,6 +623,57 @@ export function ApplicationReview({ onBack }: ApplicationReviewProps) {
           value={comment}
           onChange={(e) => setComment(e.target.value)} />
 
+      </Modal>
+
+      {/* Document Preview Modal */}
+      <Modal
+        isOpen={previewDocument !== null}
+        onClose={handleClosePreview}
+        title={previewDocument ? getDocumentTypeLabel(previewDocument.document_type) : 'Document Preview'}
+        size="xl">
+        {previewDocument && (
+          <div className="space-y-4">
+            {previewLoading ? (
+              <div className="flex items-center justify-center h-[60vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+              </div>
+            ) : previewError ? (
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-3" />
+                <p className="text-slate-600">{previewError}</p>
+              </div>
+            ) : previewUrl && isImageDocument(previewDocument) ? (
+              <div className="flex justify-center">
+                <img
+                  src={previewUrl}
+                  alt={previewDocument.original_filename}
+                  className="max-w-full max-h-[60vh] object-contain rounded-lg border border-slate-200" />
+              </div>
+            ) : previewUrl && isPdfDocument(previewDocument) ? (
+              <div className="w-full h-[60vh]">
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full rounded-lg border border-slate-200"
+                  title={previewDocument.original_filename} />
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+                <p className="text-slate-600">Preview not available for this file type</p>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+              <p className="text-sm text-slate-500">{previewDocument.original_filename}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadDocument(previewDocument.id, previewDocument.original_filename)}
+                leftIcon={<Download className="h-4 w-4" />}>
+                Download
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>);
 

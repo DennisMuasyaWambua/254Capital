@@ -8,6 +8,14 @@ import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Checkbox } from '@/components/salary-checkoff/ui/Checkbox';
 import { loanService, LoanApplication, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
 import {
+  documentService,
+  Document,
+  isImageDocument,
+  isPdfDocument,
+  isViewableDocument,
+} from '@/services/salary-checkoff/document.service';
+import { hrNotificationService } from '@/services/salary-checkoff/hrNotification.service';
+import {
   ArrowLeft,
   Check,
   X,
@@ -18,6 +26,8 @@ import {
   DollarSign,
   Calendar,
   CheckSquare,
+  Eye,
+  Image,
 } from 'lucide-react';
 
 interface AdminLoanQueueProps {
@@ -41,6 +51,15 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
   // Selection state
   const [selectedApplications, setSelectedApplications] = useState<Set<string>>(new Set());
   const [showHistoricalApprovals, setShowHistoricalApprovals] = useState(false);
+
+  // Document state for viewing uploaded documents
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Disbursement fields
   const [disbursementDate, setDisbursementDate] = useState(
@@ -70,15 +89,105 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
   const handleViewApplication = async (application: LoanApplication) => {
     try {
       setIsLoading(true);
+      setDocuments([]);
       const detail = await loanService.getApplication(application.id);
       setSelectedApplication(detail);
       setIsViewModalOpen(true);
+
+      // Load documents for this application
+      loadApplicationDocuments(application.id);
     } catch (err: any) {
       console.error('Error loading application detail:', err);
       setError(err.message || 'Failed to load application details');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadApplicationDocuments = async (applicationId: string) => {
+    try {
+      setLoadingDocuments(true);
+      const docs = await documentService.listApplicationDocuments(applicationId);
+      setDocuments(Array.isArray(docs) ? docs : []);
+    } catch (err: any) {
+      console.error('Error loading documents:', err);
+      // Don't show error to user, just log it - documents are optional
+      setDocuments([]);
+    } finally {
+      setLoadingDocuments(false);
+    }
+  };
+
+  const handleDownloadDocument = async (docId: string, filename: string) => {
+    try {
+      setDownloadingDoc(docId);
+      const blob = await documentService.downloadDocument(docId);
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      console.error('Error downloading document:', err);
+      setError('Failed to download document');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setDownloadingDoc(null);
+    }
+  };
+
+  const handlePreviewDocument = async (doc: Document) => {
+    // Non-previewable types fall back to a download.
+    if (!isViewableDocument(doc)) {
+      handleDownloadDocument(doc.id, doc.original_filename);
+      return;
+    }
+
+    setPreviewDocument(doc);
+    setPreviewError(null);
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+
+    try {
+      // Fetch the file through the authenticated path and render it as a blob
+      // object URL, so preview works regardless of storage backend (local/S3).
+      const objectUrl = await documentService.getDocumentObjectUrl(doc.id);
+      setPreviewUrl(objectUrl);
+    } catch (err) {
+      console.error('Error loading document preview:', err);
+      setPreviewError('Unable to load preview. Try downloading the file instead.');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleClosePreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setPreviewDocument(null);
+    setPreviewError(null);
+  };
+
+  const getDocumentTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      'national_id_front': 'National ID (Front)',
+      'national_id_back': 'National ID (Back)',
+      'payslip_1': 'Payslip 1',
+      'payslip_2': 'Payslip 2',
+      'payslip_3': 'Payslip 3',
+      'check_off_agreement': 'Check-off Agreement',
+      'disbursement_receipt': 'Disbursement Receipt',
+      'remittance_proof': 'Remittance Proof',
+      'other': 'Other Document',
+    };
+    return labels[type] || type.replace(/_/g, ' ').toUpperCase();
   };
 
   const handleApprove = async () => {
@@ -101,7 +210,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
       await loadApplications();
     } catch (err: any) {
       console.error('Error approving application:', err);
-      setError(err.message || 'Failed to approve application');
+      setError(err.data?.comment || err.data?.detail || err.message || 'Failed to approve application');
       setIsSubmitting(false);
     }
   };
@@ -156,6 +265,21 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
         disbursement_reference: disbursementReference,
       });
 
+      // Send HR notification about disbursement
+      try {
+        await hrNotificationService.sendDisbursementNotificationToHR({
+          employeeFullName: `${selectedApplication.employee.first_name} ${selectedApplication.employee.last_name}`,
+          loanAmount: parseFloat(selectedApplication.principal_amount),
+          disbursementDate: disbursementDate,
+          monthlyInstallment: parseFloat(selectedApplication.monthly_deduction),
+          loanTenure: selectedApplication.repayment_months,
+          applicationNumber: selectedApplication.application_number,
+          employerId: selectedApplication.employer.id,
+        });
+      } catch (notificationError) {
+        console.warn('Failed to send HR notification (non-critical):', notificationError);
+      }
+
       setIsDisbursementModalOpen(false);
       setIsViewModalOpen(false);
       setDisbursementReference('');
@@ -198,6 +322,21 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
         disbursement_method: disbursementMethod,
         disbursement_reference: disbursementReference,
       });
+
+      // Send HR notification about disbursement
+      try {
+        await hrNotificationService.sendDisbursementNotificationToHR({
+          employeeFullName: `${selectedApplication.employee.first_name} ${selectedApplication.employee.last_name}`,
+          loanAmount: parseFloat(selectedApplication.principal_amount),
+          disbursementDate: disbursementDate,
+          monthlyInstallment: parseFloat(selectedApplication.monthly_deduction),
+          loanTenure: selectedApplication.repayment_months,
+          applicationNumber: selectedApplication.application_number,
+          employerId: selectedApplication.employer.id,
+        });
+      } catch (notificationError) {
+        console.warn('Failed to send HR notification (non-critical):', notificationError);
+      }
 
       setIsDisbursementModalOpen(false);
       setIsViewModalOpen(false);
@@ -277,6 +416,17 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
             disbursement_method: disbursementMethod,
             disbursement_reference: `${disbursementReference}-${app.application_number}`,
           });
+
+          // Send HR notification about disbursement (non-blocking)
+          hrNotificationService.sendDisbursementNotificationToHR({
+            employeeFullName: `${app.employee?.first_name || ''} ${app.employee?.last_name || ''}`,
+            loanAmount: parseFloat(app.principal_amount),
+            disbursementDate: disbursementDate,
+            monthlyInstallment: parseFloat(app.monthly_deduction),
+            loanTenure: app.repayment_months,
+            applicationNumber: app.application_number,
+            employerId: app.employer?.id || '',
+          }).catch(err => console.warn('Failed to send HR notification:', err));
 
           successfulDisbursements.push(app.application_number);
         } catch (err: any) {
@@ -745,6 +895,102 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
               </div>
             )}
 
+            {/* Uploaded Documents Section */}
+            <div className="border-t border-slate-200 pt-4">
+              <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Uploaded Documents
+                {documents.length > 0 && (
+                  <span className="ml-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">
+                    {documents.length}
+                  </span>
+                )}
+              </h4>
+              {loadingDocuments ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                  <span className="ml-2 text-sm text-slate-500">Loading documents...</span>
+                </div>
+              ) : documents.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {documents.map((doc) => {
+                    const isImage = isImageDocument(doc);
+                    const isPdf = isPdfDocument(doc);
+                    return (
+                      <div
+                        key={doc.id}
+                        className="border border-slate-200 rounded-lg overflow-hidden hover:border-slate-300 transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        {isImage ? (
+                          <div
+                            className="h-28 bg-slate-100 overflow-hidden cursor-pointer"
+                            onClick={() => handlePreviewDocument(doc)}
+                            title="Click to preview"
+                          >
+                            <img
+                              src={doc.file_url || doc.file}
+                              alt={doc.original_filename}
+                              className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                            />
+                          </div>
+                        ) : isPdf ? (
+                          <div
+                            className="h-28 bg-red-50 flex flex-col items-center justify-center cursor-pointer hover:bg-red-100 transition-colors"
+                            onClick={() => handlePreviewDocument(doc)}
+                            title="Click to preview"
+                          >
+                            <FileText className="h-10 w-10 text-red-400" />
+                            <span className="text-xs text-red-500 mt-1.5 font-semibold uppercase tracking-wide">PDF</span>
+                          </div>
+                        ) : (
+                          <div className="h-28 bg-slate-50 flex flex-col items-center justify-center">
+                            <FileText className="h-10 w-10 text-slate-300" />
+                          </div>
+                        )}
+                        {/* Info + actions */}
+                        <div className="p-2.5">
+                          <p className="text-xs font-medium text-slate-900 leading-snug">
+                            {getDocumentTypeLabel(doc.document_type)}
+                          </p>
+                          <p className="text-xs text-slate-400 truncate mt-0.5">{doc.original_filename}</p>
+                          <div className="flex items-center gap-1 mt-2">
+                            {(isImage || isPdf) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handlePreviewDocument(doc)}
+                                leftIcon={<Eye className="h-3.5 w-3.5" />}
+                              >
+                                View
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDownloadDocument(doc.id, doc.original_filename)}
+                              disabled={downloadingDoc === doc.id}
+                            >
+                              {downloadingDoc === doc.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Download className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                  <FileText className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">No documents uploaded for this application</p>
+                </div>
+              )}
+            </div>
+
             {/* Purpose */}
             <div>
               <h4 className="text-sm font-semibold text-slate-900 mb-2">
@@ -753,6 +999,61 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
               <p className="text-sm text-slate-600 p-3 bg-slate-50 rounded-lg">
                 {selectedApplication.purpose || 'Not specified'}
               </p>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Document Preview Modal */}
+      <Modal
+        isOpen={previewDocument !== null}
+        onClose={handleClosePreview}
+        title={previewDocument ? getDocumentTypeLabel(previewDocument.document_type) : 'Document Preview'}
+        size="xl"
+      >
+        {previewDocument && (
+          <div className="space-y-4">
+            {previewLoading ? (
+              <div className="flex items-center justify-center h-[60vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+              </div>
+            ) : previewError ? (
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-3" />
+                <p className="text-slate-600">{previewError}</p>
+              </div>
+            ) : previewUrl && isImageDocument(previewDocument) ? (
+              <div className="flex justify-center">
+                <img
+                  src={previewUrl}
+                  alt={previewDocument.original_filename}
+                  className="max-w-full max-h-[60vh] object-contain rounded-lg border border-slate-200"
+                />
+              </div>
+            ) : previewUrl && isPdfDocument(previewDocument) ? (
+              <div className="w-full h-[60vh]">
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full rounded-lg border border-slate-200"
+                  title={previewDocument.original_filename}
+                />
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+                <p className="text-slate-600">Preview not available for this file type</p>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+              <p className="text-sm text-slate-500">{previewDocument.original_filename}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadDocument(previewDocument.id, previewDocument.original_filename)}
+                leftIcon={<Download className="h-4 w-4" />}
+              >
+                Download
+              </Button>
             </div>
           </div>
         )}

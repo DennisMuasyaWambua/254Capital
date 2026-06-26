@@ -85,9 +85,37 @@ export const clientService = {
       search?: string;
       status?: string;
       page?: number;
+      employer_id?: string;
     }
   ): Promise<PaginatedResponse<ExistingClient>> => {
     const params = new URLSearchParams();
+
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.employer_id) params.append('employer', filters.employer_id);
+
+    const url = `${API_ENDPOINTS.CLIENTS.LIST}?${params.toString()}`;
+
+    return apiRequest<PaginatedResponse<ExistingClient>>(url, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * List clients for a specific employer (for HR dashboard)
+   * This includes bulk-uploaded clients
+   */
+  listClientsByEmployer: async (
+    employerId: string,
+    filters?: {
+      search?: string;
+      status?: string;
+      page?: number;
+    }
+  ): Promise<PaginatedResponse<ExistingClient>> => {
+    const params = new URLSearchParams();
+    params.append('employer', employerId);
 
     if (filters?.search) params.append('search', filters.search);
     if (filters?.status) params.append('status', filters.status);

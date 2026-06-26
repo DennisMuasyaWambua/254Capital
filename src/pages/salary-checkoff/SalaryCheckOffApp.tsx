@@ -8,6 +8,7 @@ import { EmployeeDashboard } from './employee/EmployeeDashboard';
 import { LoanApplication } from './employee/LoanApplication';
 import { RepaymentSchedule } from './employee/RepaymentSchedule';
 import { HelpPage } from './employee/HelpPage';
+import { MyDocuments } from './employee/MyDocuments';
 import { HRDashboard } from './hr/HRDashboard';
 import { ApplicationReview } from './hr/ApplicationReview';
 import { HRActiveLoans } from './hr/HRActiveLoans';
@@ -39,6 +40,7 @@ type Page =
   | 'dashboard'
   | 'apply-loan'
   | 'repayment'
+  | 'my-documents'
   | 'notifications'
   | 'help'
   | 'pending-applications'
@@ -69,6 +71,7 @@ export function SalaryCheckOffApp() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRestoring, setIsRestoring] = useState(true);
   const [userName, setUserName] = useState<string | undefined>(undefined);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | undefined>(undefined);
 
   // Restore session from localStorage on mount
   useEffect(() => {
@@ -195,6 +198,8 @@ export function SalaryCheckOffApp() {
             );
           case 'repayment':
             return <RepaymentSchedule />;
+          case 'my-documents':
+            return <MyDocuments />;
           case 'help':
             return <HelpPage />;
           case 'change-password':
@@ -213,10 +218,21 @@ export function SalaryCheckOffApp() {
             return <HRDashboard onNavigate={handleNavigate} userName={userName} />;
           case 'application-review':
             return (
-              <ApplicationReview onBack={() => handleNavigate('dashboard')} />
+              <ApplicationReview
+                onBack={() => handleNavigate('pending-applications')}
+                applicationId={selectedApplicationId}
+              />
             );
           case 'pending-applications':
-            return <PendingApplications onNavigate={handleNavigate} />;
+            return (
+              <PendingApplications
+                onNavigate={handleNavigate}
+                onReviewApplication={(id) => {
+                  setSelectedApplicationId(id);
+                  handleNavigate('application-review');
+                }}
+              />
+            );
           case 'active-loans':
             return <HRActiveLoans onNavigate={handleNavigate} />;
           case 'payroll':

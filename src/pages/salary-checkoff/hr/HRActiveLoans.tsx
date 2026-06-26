@@ -3,6 +3,7 @@ import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Badge } from '@/components/salary-checkoff/ui/Badge';
+import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import {
   Search,
   Loader2,
@@ -14,64 +15,173 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  Upload,
+  Eye,
 } from 'lucide-react';
-import { loanService, LoanApplication, PaginatedResponse } from '@/services/salary-checkoff/loan.service';
-import { clientService, CollectionReportData } from '@/services/salary-checkoff/client.service';
+import { loanService, LoanApplication, PaginatedResponse, Repayment } from '@/services/salary-checkoff/loan.service';
+import { clientService, ExistingClient, CollectionReportData } from '@/services/salary-checkoff/client.service';
+import { authService } from '@/services/salary-checkoff/auth.service';
 
 interface HRActiveLoansProps {
   onNavigate: (page: string) => void;
 }
 
+// Combined loan type for display
+interface CombinedLoan {
+  id: string;
+  type: 'application' | 'bulk_upload';
+  employeeName: string;
+  phoneNumber: string;
+  applicationNumber: string;
+  principalAmount: number;
+  monthlyDeduction: number;
+  repaymentMonths: number;
+  disbursementDate: string | null;
+  firstDeductionDate: string | null;
+  outstandingBalance: number;
+  loanStatus: string;
+  originalData: LoanApplication | ExistingClient;
+}
+
 export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
   const [loans, setLoans] = useState<LoanApplication[]>([]);
+  const [bulkUploadedClients, setBulkUploadedClients] = useState<ExistingClient[]>([]);
+  const [combinedLoans, setCombinedLoans] = useState<CombinedLoan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [employerId, setEmployerId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'portal' | 'bulk'>('all');
+
+  // Repayment history modal state
+  const [historyLoan, setHistoryLoan] = useState<CombinedLoan | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [repaymentHistory, setRepaymentHistory] = useState<Repayment[]>([]);
+  const [historyUnavailable, setHistoryUnavailable] = useState(false);
 
   // Summary stats
   const [stats, setStats] = useState({
     totalLoans: 0,
     totalDisbursed: 0,
     totalMonthlyDeductions: 0,
+    bulkUploadCount: 0,
+    portalLoanCount: 0,
   });
+
+  // Fetch employer ID on mount
+  useEffect(() => {
+    const fetchEmployerId = async () => {
+      try {
+        const profile = await authService.getProfile();
+        if (profile.hr_profile?.employer?.id) {
+          setEmployerId(profile.hr_profile.employer.id);
+        }
+      } catch (err) {
+        console.error('Failed to fetch employer ID:', err);
+      }
+    };
+    fetchEmployerId();
+  }, []);
 
   useEffect(() => {
     fetchActiveLoans();
-  }, [currentPage, searchQuery]);
+  }, [currentPage, searchQuery, employerId]);
 
   const fetchActiveLoans = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Fetch disbursed loans (active)
-      const response = await loanService.hrListAll({
+      // Fetch disbursed loans from portal (active)
+      const loanResponse = await loanService.hrListAll({
         status: 'disbursed',
         search: searchQuery || undefined,
         page: currentPage,
       });
 
-      setLoans(response.results);
-      setTotalCount(response.count);
-      setTotalPages(Math.ceil(response.count / 10)); // Assuming 10 per page
+      setLoans(loanResponse.results);
+
+      // Fetch bulk-uploaded clients for this employer
+      let bulkClients: ExistingClient[] = [];
+      if (employerId) {
+        try {
+          const clientResponse = await clientService.listClientsByEmployer(employerId, {
+            search: searchQuery || undefined,
+            status: 'Active',
+          });
+          bulkClients = clientResponse.results;
+          setBulkUploadedClients(bulkClients);
+        } catch (clientErr) {
+          console.warn('Could not fetch bulk-uploaded clients:', clientErr);
+          setBulkUploadedClients([]);
+        }
+      }
+
+      // Combine both sources into unified list
+      const combined: CombinedLoan[] = [];
+
+      // Add portal loans
+      loanResponse.results.forEach((loan) => {
+        combined.push({
+          id: loan.id,
+          type: 'application',
+          employeeName: `${loan.employee?.first_name || ''} ${loan.employee?.last_name || ''}`.trim() || (loan as any).employee_name || 'N/A',
+          phoneNumber: loan.employee?.phone_number || '',
+          applicationNumber: loan.application_number,
+          principalAmount: parseFloat(loan.principal_amount),
+          monthlyDeduction: parseFloat(loan.monthly_deduction),
+          repaymentMonths: loan.repayment_months,
+          disbursementDate: loan.disbursement_date || null,
+          firstDeductionDate: loan.first_deduction_date || null,
+          outstandingBalance: 0, // Not available in loan application
+          loanStatus: 'Active',
+          originalData: loan,
+        });
+      });
+
+      // Add bulk-uploaded clients
+      bulkClients.forEach((client) => {
+        combined.push({
+          id: client.id,
+          type: 'bulk_upload',
+          employeeName: client.full_name,
+          phoneNumber: client.mobile,
+          applicationNumber: `BULK-${client.id.slice(0, 8).toUpperCase()}`,
+          principalAmount: parseFloat(client.loan_amount),
+          monthlyDeduction: parseFloat(client.monthly_deduction),
+          repaymentMonths: client.repayment_period,
+          disbursementDate: client.disbursement_date,
+          firstDeductionDate: null,
+          outstandingBalance: parseFloat(client.outstanding_balance),
+          loanStatus: client.loan_status,
+          originalData: client,
+        });
+      });
+
+      setCombinedLoans(combined);
+
+      // Calculate total counts
+      const totalPortalLoans = loanResponse.count;
+      const totalBulkClients = bulkClients.length;
+      const totalAll = totalPortalLoans + totalBulkClients;
+
+      setTotalCount(totalAll);
+      setTotalPages(Math.ceil(totalAll / 20)); // Combined pagination
 
       // Calculate stats
-      const totalDisbursed = response.results.reduce(
-        (sum, loan) => sum + parseFloat(loan.principal_amount),
-        0
-      );
-      const totalMonthly = response.results.reduce(
-        (sum, loan) => sum + parseFloat(loan.monthly_deduction),
-        0
-      );
+      const totalDisbursed = combined.reduce((sum, loan) => sum + loan.principalAmount, 0);
+      const totalMonthly = combined.reduce((sum, loan) => sum + loan.monthlyDeduction, 0);
 
       setStats({
-        totalLoans: response.count,
+        totalLoans: totalAll,
         totalDisbursed,
         totalMonthlyDeductions: totalMonthly,
+        bulkUploadCount: totalBulkClients,
+        portalLoanCount: totalPortalLoans,
       });
     } catch (error: any) {
       console.error('Failed to fetch active loans:', error);
@@ -80,6 +190,14 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
       setIsLoading(false);
     }
   };
+
+  // Filter combined loans based on active tab
+  const filteredLoans = combinedLoans.filter((loan) => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'portal') return loan.type === 'application';
+    if (activeTab === 'bulk') return loan.type === 'bulk_upload';
+    return true;
+  });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +228,27 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
     return (loan as any).employee_name || 'N/A';
   };
 
+  // Load repayment history for a loan (portal application or bulk-uploaded client).
+  // Bulk-uploaded clients don't always have a repayment ledger, so this degrades
+  // gracefully rather than showing an error.
+  const handleViewHistory = async (loan: CombinedLoan) => {
+    setHistoryLoan(loan);
+    setIsHistoryModalOpen(true);
+    setRepaymentHistory([]);
+    setHistoryUnavailable(false);
+    setIsLoadingHistory(true);
+
+    try {
+      const response = await loanService.getLoanRepayments(loan.id);
+      setRepaymentHistory(response.repayments || []);
+    } catch (err) {
+      console.warn(`Repayment history not available for ${loan.type} loan ${loan.id}:`, err);
+      setHistoryUnavailable(true);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -130,15 +269,18 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-blue-500 rounded-lg">
               <Users className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-sm text-blue-700">Active Loans</p>
+              <p className="text-sm text-blue-700">Total Active Loans</p>
               <p className="text-2xl font-bold text-blue-900">{stats.totalLoans}</p>
+              <p className="text-xs text-blue-600 mt-1">
+                {stats.portalLoanCount} portal + {stats.bulkUploadCount} bulk
+              </p>
             </div>
           </div>
         </Card>
@@ -166,7 +308,58 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
             </div>
           </div>
         </Card>
+
+        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-amber-500 rounded-lg">
+              <Upload className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm text-amber-700">Bulk Uploaded</p>
+              <p className="text-2xl font-bold text-amber-900">{stats.bulkUploadCount}</p>
+              <p className="text-xs text-amber-600 mt-1">
+                Existing clients
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
+
+      {/* Tabs for filtering */}
+      <Card>
+        <div className="flex border-b border-slate-200">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'all'
+                ? 'border-[#008080] text-[#008080]'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            All Loans ({stats.totalLoans})
+          </button>
+          <button
+            onClick={() => setActiveTab('portal')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'portal'
+                ? 'border-[#008080] text-[#008080]'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Portal Applications ({stats.portalLoanCount})
+          </button>
+          <button
+            onClick={() => setActiveTab('bulk')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'bulk'
+                ? 'border-[#008080] text-[#008080]'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Bulk Uploaded ({stats.bulkUploadCount})
+          </button>
+        </div>
+      </Card>
 
       {/* Error Message */}
       {error && (
@@ -210,7 +403,7 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
           </div>
-        ) : loans.length === 0 ? (
+        ) : filteredLoans.length === 0 ? (
           <div className="text-center py-12">
             <Users className="h-12 w-12 text-slate-300 mx-auto mb-4" />
             <p className="text-slate-600">No active loans found</p>
@@ -227,44 +420,71 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
                 <thead>
                   <tr className="bg-slate-50 border-y border-slate-200">
                     <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Employee</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Application #</th>
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Reference #</th>
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Source</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-slate-700">Principal</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-slate-700">Monthly Deduction</th>
                     <th className="text-center px-4 py-3 text-sm font-semibold text-slate-700">Tenure</th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">Disbursement Date</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-slate-700">First Deduction</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-slate-700">Outstanding</th>
                     <th className="text-center px-4 py-3 text-sm font-semibold text-slate-700">Status</th>
+                    <th className="text-center px-4 py-3 text-sm font-semibold text-slate-700">Repayments</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {loans.map((loan) => (
+                  {filteredLoans.map((loan) => (
                     <tr key={loan.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="px-4 py-3">
                         <div>
-                          <p className="text-sm font-medium text-slate-900">{getEmployeeName(loan)}</p>
-                          <p className="text-xs text-slate-500">{loan.employee.phone_number}</p>
+                          <p className="text-sm font-medium text-slate-900">{loan.employeeName}</p>
+                          <p className="text-xs text-slate-500">{loan.phoneNumber}</p>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 font-mono">
-                        {loan.application_number}
+                        {loan.applicationNumber}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant={loan.type === 'application' ? 'default' : 'pending'}
+                        >
+                          {loan.type === 'application' ? 'Portal' : 'Bulk Upload'}
+                        </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-700 text-right">
-                        {formatCurrency(loan.principal_amount)}
+                        {formatCurrency(loan.principalAmount)}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-slate-900 text-right">
-                        {formatCurrency(loan.monthly_deduction)}
+                        {formatCurrency(loan.monthlyDeduction)}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 text-center">
-                        {loan.repayment_months} months
+                        {loan.repaymentMonths} months
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
-                        {formatDate(loan.disbursement_date)}
+                        {formatDate(loan.disbursementDate)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        {formatDate(loan.first_deduction_date)}
+                      <td className="px-4 py-3 text-sm text-slate-700 text-right">
+                        {loan.outstandingBalance > 0 ? formatCurrency(loan.outstandingBalance) : '-'}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Badge variant="success">Active</Badge>
+                        <Badge
+                          variant={
+                            loan.loanStatus === 'Active' ? 'success' :
+                            loan.loanStatus === 'Fully Paid' ? 'approved' :
+                            loan.loanStatus === 'Defaulted' ? 'declined' : 'default'
+                          }
+                        >
+                          {loan.loanStatus}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewHistory(loan)}
+                          leftIcon={<Eye className="h-4 w-4" />}
+                        >
+                          View
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -276,7 +496,7 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
                 <div className="text-sm text-slate-600">
-                  Showing {(currentPage - 1) * 10 + 1} to {Math.min(currentPage * 10, totalCount)} of {totalCount} loans
+                  Showing {filteredLoans.length} of {totalCount} total loans
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -308,12 +528,17 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
       </Card>
 
       {/* Summary Footer */}
-      {loans.length > 0 && (
+      {combinedLoans.length > 0 && (
         <Card className="bg-slate-50">
           <div className="flex items-center justify-between">
             <div className="text-sm text-slate-600">
               <span className="font-medium text-slate-900">{totalCount}</span> active loans with total monthly deductions of{' '}
               <span className="font-medium text-slate-900">{formatCurrency(stats.totalMonthlyDeductions)}</span>
+              {stats.bulkUploadCount > 0 && (
+                <span className="ml-2 text-xs text-amber-600">
+                  (Includes {stats.bulkUploadCount} bulk-uploaded clients)
+                </span>
+              )}
             </div>
             <Button
               variant="primary"
@@ -325,6 +550,64 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
           </div>
         </Card>
       )}
+
+      {/* Repayment History Modal */}
+      <Modal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        title={historyLoan ? `Repayment History - ${historyLoan.employeeName}` : 'Repayment History'}
+        size="lg"
+      >
+        {isLoadingHistory ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[#008080]" />
+          </div>
+        ) : historyUnavailable || repaymentHistory.length === 0 ? (
+          <div className="text-center py-8">
+            <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-600">
+              {historyLoan?.type === 'bulk_upload'
+                ? 'No repayment history is available for this bulk-uploaded client yet.'
+                : 'No repayment history is available for this loan yet.'}
+            </p>
+            {historyLoan && (
+              <p className="text-sm text-slate-500 mt-2">
+                Outstanding balance:{' '}
+                <span className="font-medium text-slate-700">
+                  {formatCurrency(historyLoan.outstandingBalance)}
+                </span>
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 border-y border-slate-200">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-700">#</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-700">Due Date</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-slate-700">Amount</th>
+                  <th className="text-center px-3 py-2 text-xs font-semibold text-slate-700">Status</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-700">Paid On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repaymentHistory.map((r) => (
+                  <tr key={r.id} className="border-b border-slate-100">
+                    <td className="px-3 py-2 text-sm text-slate-600">{r.installment_number}</td>
+                    <td className="px-3 py-2 text-sm text-slate-600">{formatDate(r.due_date)}</td>
+                    <td className="px-3 py-2 text-sm text-slate-700 text-right">{formatCurrency(r.amount)}</td>
+                    <td className="px-3 py-2 text-center">
+                      <Badge variant={r.paid ? 'success' : 'pending'}>{r.paid ? 'Paid' : 'Pending'}</Badge>
+                    </td>
+                    <td className="px-3 py-2 text-sm text-slate-600">{r.payment_date ? formatDate(r.payment_date) : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
