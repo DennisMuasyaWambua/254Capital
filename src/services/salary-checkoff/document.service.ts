@@ -203,6 +203,39 @@ export const documentService = {
   },
 
   /**
+   * List employer-level documents (e.g. check-off agreements).
+   * Accessible to admins (any employer) and HR managers (their own employer).
+   */
+  listEmployerDocuments: async (employerId: string): Promise<Document[]> => {
+    const token = tokenManager.getAccessToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      API_ENDPOINTS.DOCUMENTS.EMPLOYER_DOCUMENTS(employerId),
+      {
+        method: 'GET',
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw {
+        message: errorData.detail || errorData.message || 'Request failed',
+        status: response.status,
+        data: errorData,
+      };
+    }
+
+    return await response.json();
+  },
+
+  /**
    * Fetch a document's file as a Blob.
    *
    * Resolves the file URL from the detail endpoint (which always returns it),

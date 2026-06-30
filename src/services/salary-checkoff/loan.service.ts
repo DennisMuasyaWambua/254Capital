@@ -2,7 +2,14 @@
  * Loan Service for Salary Check-Off System
  */
 
-import { apiRequest, API_ENDPOINTS } from './api';
+import { apiRequest, API_ENDPOINTS, tokenManager } from './api';
+
+/** Supporting documents submitted together with a loan application. */
+export interface LoanDocumentFiles {
+  national_id_front?: File;
+  national_id_back?: File;
+  payslips?: File[];
+}
 
 export interface LoanApplication {
   id: string;
@@ -274,15 +281,50 @@ export const loanService = {
    * Create new loan application
    */
   createApplication: async (
-    data: CreateLoanRequest
+    data: CreateLoanRequest,
+    files: LoanDocumentFiles
   ): Promise<LoanApplicationDetail> => {
-    return apiRequest<LoanApplicationDetail>(
-      API_ENDPOINTS.LOANS.APPLICATIONS,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
+    // The application and its required documents are submitted together as one
+    // multipart request. The backend creates them atomically — if a document is
+    // missing or fails, the application is not created.
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, String(value));
       }
-    );
+    });
+    if (files.national_id_front) {
+      formData.append('national_id_front', files.national_id_front);
+    }
+    if (files.national_id_back) {
+      formData.append('national_id_back', files.national_id_back);
+    }
+    (files.payslips || []).slice(0, 3).forEach((file, index) => {
+      formData.append(`payslip_${index + 1}`, file);
+    });
+
+    const token = tokenManager.getAccessToken();
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(API_ENDPOINTS.LOANS.APPLICATIONS, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw {
+        message: errorData.detail || errorData.message || 'Failed to submit application',
+        status: response.status,
+        data: errorData,
+      };
+    }
+
+    return await response.json();
   },
 
   /**

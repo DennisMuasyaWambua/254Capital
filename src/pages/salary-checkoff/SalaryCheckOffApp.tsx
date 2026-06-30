@@ -13,6 +13,7 @@ import { HRDashboard } from './hr/HRDashboard';
 import { ApplicationReview } from './hr/ApplicationReview';
 import { HRActiveLoans } from './hr/HRActiveLoans';
 import { PayrollDeductions } from './hr/PayrollDeductions';
+import { CompanyDocuments } from './hr/CompanyDocuments';
 import { PendingApplications } from './hr/PendingApplications';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminLoanQueue } from './admin/AdminLoanQueue';
@@ -47,6 +48,7 @@ type Page =
   | 'application-review'
   | 'active-loans'
   | 'payroll'
+  | 'company-documents'
   | 'applications'
   | 'loan-queue'
   | 'employers'
@@ -237,6 +239,8 @@ export function SalaryCheckOffApp() {
             return <HRActiveLoans onNavigate={handleNavigate} />;
           case 'payroll':
             return <PayrollDeductions />;
+          case 'company-documents':
+            return <CompanyDocuments />;
           case 'disbursements':
             return <DisbursementHistory onBack={() => handleNavigate('dashboard')} role="hr" />;
           case 'company-management-organizations':
