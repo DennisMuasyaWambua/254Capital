@@ -107,6 +107,11 @@ export function Sidebar({
     icon: DollarSign
   },
   {
+    id: 'company-documents',
+    label: 'Company Documents',
+    icon: FolderOpen
+  },
+  {
     id: 'company-management-organizations',
     label: 'Organizations',
     icon: Building2

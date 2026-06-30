@@ -62,6 +62,8 @@ export const API_ENDPOINTS = {
     DETAIL: (id: string) => `${API_BASE_URL}/api/v1/documents/${id}/`,
     APPLICATION_DOCUMENTS: (applicationId: string) =>
       `${API_BASE_URL}/api/v1/documents/application/${applicationId}/`,
+    EMPLOYER_DOCUMENTS: (employerId: string) =>
+      `${API_BASE_URL}/api/v1/documents/employer/${employerId}/`,
   },
 
   // Notification endpoints

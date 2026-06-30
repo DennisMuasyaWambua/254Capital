@@ -9,7 +9,6 @@ import { FileUpload } from '@/components/salary-checkoff/ui/FileUpload';
 import { TermsModal } from './TermsModal';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { loanService, LoanCalculatorResponse } from '@/services/salary-checkoff/loan.service';
-import { documentService, Document } from '@/services/salary-checkoff/document.service';
 import { authService } from '@/services/salary-checkoff/auth.service';
 import { hrNotificationService } from '@/services/salary-checkoff/hrNotification.service';
 import { employerService, loanCalculationUtils, InterestMethod } from '@/services/salary-checkoff/employer.service';
@@ -62,17 +61,16 @@ export function LoanApplication({
   const [bankBranch, setBankBranch] = useState<string>('');
   const [accountNumber, setAccountNumber] = useState<string>('');
 
-  // Document upload state
-  const [uploadedDocuments, setUploadedDocuments] = useState<{
-    nationalIdFront?: Document;
-    nationalIdBack?: Document;
-    payslips?: Document[];
-  }>({});
-  const [uploadingDocs, setUploadingDocs] = useState<{
-    nationalIdFront?: boolean;
-    nationalIdBack?: boolean;
-    payslips?: boolean;
-  }>({});
+  // Document upload state.
+  //
+  // Required documents are submitted together with the loan application in a
+  // single request (the backend creates the application and its documents
+  // atomically). We hold the selected files here until the form is submitted.
+  const [pendingFiles, setPendingFiles] = useState<{
+    nationalIdFront?: File;
+    nationalIdBack?: File;
+    payslips: File[];
+  }>({ payslips: [] });
 
   const calculateLoan = useCallback(async () => {
     const amountNum = parseFloat(amount.replace(/,/g, ''));
@@ -196,11 +194,12 @@ export function LoanApplication({
       setError(null);
     }
 
-    // Step 2: Check if still uploading documents
+    // Step 2: documents are mandatory and are submitted together with the
+    // application. Require them before the user can proceed — an application
+    // cannot go through without its supporting documents.
     if (step === 2) {
-      const isUploading = Object.values(uploadingDocs).some(status => status);
-      if (isUploading) {
-        setError('Please wait for document uploads to complete');
+      if (!pendingFiles.nationalIdFront || !pendingFiles.nationalIdBack || pendingFiles.payslips.length === 0) {
+        setError('Please attach your National ID (front and back) and at least one payslip before continuing.');
         return;
       }
 
@@ -234,7 +233,14 @@ export function LoanApplication({
           applicationData.bank_account_number = accountNumber;
         }
 
-        const createdApplication = await loanService.createApplication(applicationData);
+        // Submit the application together with its required documents. The
+        // backend creates both atomically: if any document fails, the
+        // application is not created, so it never goes through without them.
+        const createdApplication = await loanService.createApplication(applicationData, {
+          national_id_front: pendingFiles.nationalIdFront,
+          national_id_back: pendingFiles.nationalIdBack,
+          payslips: pendingFiles.payslips,
+        });
 
         // Send notification to HR about new application pending approval
         if (employeeProfile?.employee_profile?.employer?.id) {
@@ -280,39 +286,17 @@ export function LoanApplication({
     setStep(3);
   };
 
-  const handleDocumentUpload = async (files: File[], documentType: 'nationalIdFront' | 'nationalIdBack' | 'payslips') => {
-    if (files.length === 0) return;
-
-    try {
-      setUploadingDocs(prev => ({ ...prev, [documentType]: true }));
-      setError(null);
-
-      if (documentType === 'payslips') {
-        // Upload multiple payslips
-        const uploadPromises = files.slice(0, 3).map((file, index) =>
-          documentService.uploadDocument({
-            file,
-            document_type: `payslip_${index + 1}` as any,
-          })
-        );
-        const uploadedPayslips = await Promise.all(uploadPromises);
-        setUploadedDocuments(prev => ({ ...prev, payslips: uploadedPayslips }));
-      } else {
-        // Upload single document
-        const apiDocType = documentType === 'nationalIdFront' ? 'national_id_front' : 'national_id_back';
-        const uploadedDoc = await documentService.uploadDocument({
-          file: files[0],
-          document_type: apiDocType,
-        });
-        setUploadedDocuments(prev => ({ ...prev, [documentType]: uploadedDoc }));
-      }
-    } catch (err: any) {
-      console.error('Error uploading document:', err);
-      setError(err.message || `Failed to upload ${documentType}. Please try again.`);
-    } finally {
-      setUploadingDocs(prev => ({ ...prev, [documentType]: false }));
+  // Stash selected files in state. The actual upload happens at submit time,
+  // once the application exists and we have an application_id to link to.
+  const handleDocumentSelect = (files: File[], documentType: 'nationalIdFront' | 'nationalIdBack' | 'payslips') => {
+    setError(null);
+    if (documentType === 'payslips') {
+      setPendingFiles(prev => ({ ...prev, payslips: files.slice(0, 3) }));
+    } else {
+      setPendingFiles(prev => ({ ...prev, [documentType]: files[0] }));
     }
   };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -461,43 +445,34 @@ export function LoanApplication({
                 <div className="space-y-4">
                   <FileUpload
                     label="National ID (Front)"
-                    onFilesSelected={(files) => handleDocumentUpload(files, 'nationalIdFront')}
+                    onFilesSelected={(files) => handleDocumentSelect(files, 'nationalIdFront')}
                     helperText={
-                      uploadedDocuments.nationalIdFront
-                        ? `✓ Uploaded: ${uploadedDocuments.nationalIdFront.original_filename}`
-                        : uploadingDocs.nationalIdFront
-                        ? "Uploading..."
+                      pendingFiles.nationalIdFront
+                        ? `✓ Selected: ${pendingFiles.nationalIdFront.name}`
                         : "Clear photo or scan of your ID front side"
                     }
-                    isLoading={uploadingDocs.nationalIdFront}
                   />
 
                   <FileUpload
                     label="National ID (Back)"
-                    onFilesSelected={(files) => handleDocumentUpload(files, 'nationalIdBack')}
+                    onFilesSelected={(files) => handleDocumentSelect(files, 'nationalIdBack')}
                     helperText={
-                      uploadedDocuments.nationalIdBack
-                        ? `✓ Uploaded: ${uploadedDocuments.nationalIdBack.original_filename}`
-                        : uploadingDocs.nationalIdBack
-                        ? "Uploading..."
+                      pendingFiles.nationalIdBack
+                        ? `✓ Selected: ${pendingFiles.nationalIdBack.name}`
                         : "Clear photo or scan of your ID back side"
                     }
-                    isLoading={uploadingDocs.nationalIdBack}
                   />
 
                   <FileUpload
                     label="Latest 3 Payslips"
-                    onFilesSelected={(files) => handleDocumentUpload(files, 'payslips')}
+                    onFilesSelected={(files) => handleDocumentSelect(files, 'payslips')}
                     helperText={
-                      uploadedDocuments.payslips && uploadedDocuments.payslips.length > 0
-                        ? `✓ Uploaded ${uploadedDocuments.payslips.length} payslip(s)`
-                        : uploadingDocs.payslips
-                        ? "Uploading..."
+                      pendingFiles.payslips.length > 0
+                        ? `✓ Selected ${pendingFiles.payslips.length} payslip(s)`
                         : "Upload your most recent payslips (PDF preferred)"
                     }
                     accept=".pdf"
                     multiple
-                    isLoading={uploadingDocs.payslips}
                   />
 
                 </div>

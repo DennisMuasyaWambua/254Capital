@@ -11,7 +11,8 @@ import {
   InterestMethod,
 } from '@/services/salary-checkoff/employer.service';
 import { formatDate } from '@/utils/formatters';
-import { Loader2, AlertCircle, X, Building2, Search, Settings, Check } from 'lucide-react';
+import { EmployerDocuments } from '@/components/salary-checkoff/EmployerDocuments';
+import { Loader2, AlertCircle, X, Building2, Search, Settings, Check, FileText } from 'lucide-react';
 
 interface EmployersProps {
   onNavigate: (page: string) => void;
@@ -31,6 +32,9 @@ export function Employers({ onNavigate }: EmployersProps) {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [settingsSuccess, setSettingsSuccess] = useState<string | null>(null);
+
+  // Documents modal state
+  const [documentsEmployer, setDocumentsEmployer] = useState<Employer | null>(null);
 
   useEffect(() => {
     loadEmployers();
@@ -188,6 +192,19 @@ export function Employers({ onNavigate }: EmployersProps) {
       accessor: (item: Employer) => formatDate(item.onboarded_at),
     },
     {
+      header: 'Documents',
+      accessor: (item: Employer) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setDocumentsEmployer(item)}
+          leftIcon={<FileText className="h-4 w-4" />}
+        >
+          View
+        </Button>
+      ),
+    },
+    {
       header: 'Settings',
       accessor: (item: Employer) => (
         <Button
@@ -277,6 +294,18 @@ export function Employers({ onNavigate }: EmployersProps) {
           />
         )}
       </Card>
+
+      {/* Documents Modal */}
+      <Modal
+        isOpen={documentsEmployer !== null}
+        onClose={() => setDocumentsEmployer(null)}
+        title={`Documents: ${documentsEmployer?.name || ''}`}
+        size="xl"
+      >
+        {documentsEmployer && (
+          <EmployerDocuments employerId={documentsEmployer.id} />
+        )}
+      </Modal>
 
       {/* Settings Modal */}
       <Modal
