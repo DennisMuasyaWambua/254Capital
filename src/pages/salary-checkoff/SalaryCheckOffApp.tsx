@@ -129,9 +129,34 @@ export function SalaryCheckOffApp() {
     }
   }, [role, currentPage]);
 
+  // Return to login when the refresh token expires (fired by apiRequest)
+  useEffect(() => {
+    const onSessionExpired = () => {
+      authService.logout();
+      setRole(null);
+      setUserName(undefined);
+      setCurrentPage('login');
+      localStorage.removeItem('salary_checkoff_current_page');
+    };
+    window.addEventListener('salary-checkoff:session-expired', onSessionExpired);
+    return () => window.removeEventListener('salary-checkoff:session-expired', onSessionExpired);
+  }, []);
+
   const handleLogin = (userRole: Role) => {
     setRole(userRole);
     setCurrentPage('dashboard');
+
+    // Fetch the logged-in user's name for the header/sidebar profile section
+    if (authService.isAuthenticated()) {
+      authService.getProfile()
+        .then((profile) => {
+          const fullName = `${profile.first_name} ${profile.last_name}`.trim();
+          setUserName(fullName || undefined);
+        })
+        .catch((error) => {
+          console.error('Failed to fetch user profile:', error);
+        });
+    }
   };
 
   const handleNavigate = (page: string) => {
@@ -142,6 +167,7 @@ export function SalaryCheckOffApp() {
   const handleLogout = () => {
     authService.logout();
     setRole(null);
+    setUserName(undefined);
     setCurrentPage('login');
     localStorage.removeItem('salary_checkoff_current_page');
   };

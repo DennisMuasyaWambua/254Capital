@@ -155,28 +155,48 @@ export interface ApiError {
 }
 
 /**
- * Generic API request wrapper
+ * Generic API request wrapper.
+ * On a 401 (expired access token) it refreshes the token once and retries the
+ * request. If the refresh itself fails the session is over: tokens are cleared
+ * and a 'salary-checkoff:session-expired' event is dispatched so the app can
+ * return the user to the login page.
  */
 export async function apiRequest<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = localStorage.getItem('salary_checkoff_access_token');
+  const doFetch = (token: string | null) => {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  try {
-    const response = await fetch(url, {
+    return fetch(url, {
       ...options,
       headers,
     });
+  };
+
+  try {
+    let response = await doFetch(tokenManager.getAccessToken());
+
+    if (response.status === 401 && tokenManager.getRefreshToken()) {
+      let newToken: string;
+      try {
+        newToken = await tokenManager.refreshAccessToken();
+      } catch {
+        window.dispatchEvent(new Event('salary-checkoff:session-expired'));
+        throw {
+          message: 'Your session has expired. Please log in again.',
+          status: 401,
+        } as ApiError;
+      }
+      response = await doFetch(newToken);
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -253,6 +273,11 @@ export async function publicApiRequest<T>(
 /**
  * Token management
  */
+// Single in-flight refresh shared across concurrent 401s. The backend rotates
+// and blacklists refresh tokens, so two parallel refresh calls with the same
+// token would invalidate the session.
+let refreshPromise: Promise<string> | null = null;
+
 export const tokenManager = {
   getAccessToken: () => localStorage.getItem('salary_checkoff_access_token'),
   getRefreshToken: () => localStorage.getItem('salary_checkoff_refresh_token'),
@@ -267,29 +292,44 @@ export const tokenManager = {
     localStorage.removeItem('salary_checkoff_refresh_token');
   },
 
-  refreshAccessToken: async (): Promise<string> => {
-    const refreshToken = tokenManager.getRefreshToken();
-
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
+  refreshAccessToken: (): Promise<string> => {
+    if (refreshPromise) {
+      return refreshPromise;
     }
 
-    const response = await fetch(API_ENDPOINTS.AUTH.TOKEN_REFRESH, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refresh: refreshToken }),
+    refreshPromise = (async () => {
+      const refreshToken = tokenManager.getRefreshToken();
+
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await fetch(API_ENDPOINTS.AUTH.TOKEN_REFRESH, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+
+      if (!response.ok) {
+        tokenManager.clearTokens();
+        throw new Error('Token refresh failed');
+      }
+
+      const data = await response.json();
+      localStorage.setItem('salary_checkoff_access_token', data.access);
+      // The backend rotates refresh tokens; keep the new one or the next
+      // refresh will fail against the blacklist.
+      if (data.refresh) {
+        localStorage.setItem('salary_checkoff_refresh_token', data.refresh);
+      }
+
+      return data.access;
+    })();
+
+    return refreshPromise.finally(() => {
+      refreshPromise = null;
     });
-
-    if (!response.ok) {
-      tokenManager.clearTokens();
-      throw new Error('Token refresh failed');
-    }
-
-    const data = await response.json();
-    localStorage.setItem('salary_checkoff_access_token', data.access);
-
-    return data.access;
   },
 };

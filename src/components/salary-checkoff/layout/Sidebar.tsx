@@ -270,15 +270,15 @@ export function Sidebar({
           <div className="p-4 border-t border-slate-100">
             <div className="flex items-center px-3 py-2 space-x-3">
               <div className="h-9 w-9 rounded-full bg-[#008080] flex items-center justify-center text-white font-semibold text-sm">
-                {userName ? getInitials(userName) : (role === 'employee' ? 'JK' : role === 'hr' ? 'MW' : 'AD')}
+                {userName ? getInitials(userName) : (role === 'employee' ? 'EM' : role === 'hr' ? 'HR' : 'AD')}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-900 truncate">
                   {userName || (role === 'employee' ?
-                  'John Kamau' :
+                  'Employee' :
                   role === 'hr' ?
-                  'Mary Wanjiku' :
-                  'Admin User')}
+                  'HR Manager' :
+                  'Admin')}
                 </p>
                 <p className="text-xs text-slate-500 truncate capitalize">
                   {role === 'hr' ? 'HR Manager' : role}
