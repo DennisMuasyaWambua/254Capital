@@ -3,6 +3,9 @@ import App from './App.tsx'
 import './index.css'
 import './styles/animations.css'
 import { initializeDefaultAdmin } from './lib/localDb'
+import { initStaleBundleReload } from './utils/versionCheck'
+
+initStaleBundleReload();
 
 // Initialize default admin user before rendering the app
 initializeDefaultAdmin().then(() => {
