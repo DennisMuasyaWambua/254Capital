@@ -22,7 +22,8 @@ import {
   UserCog,
   Shield,
   Building2,
-  FolderOpen } from
+  FolderOpen,
+  History } from
 'lucide-react';
 import { getInitials } from '@/utils/formatters';
 interface SidebarProps {
@@ -90,6 +91,11 @@ export function Sidebar({
     id: 'pending-applications',
     label: 'Pending Applications',
     icon: FileText
+  },
+  {
+    id: 'application-history',
+    label: 'Application History',
+    icon: History
   },
   {
     id: 'active-loans',

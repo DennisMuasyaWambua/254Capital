@@ -15,6 +15,7 @@ import { HRActiveLoans } from './hr/HRActiveLoans';
 import { PayrollDeductions } from './hr/PayrollDeductions';
 import { CompanyDocuments } from './hr/CompanyDocuments';
 import { PendingApplications } from './hr/PendingApplications';
+import { ApplicationHistory } from './hr/ApplicationHistory';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminLoanQueue } from './admin/AdminLoanQueue';
 import { DisbursementHistory } from './admin/DisbursementHistory';
@@ -45,6 +46,7 @@ type Page =
   | 'notifications'
   | 'help'
   | 'pending-applications'
+  | 'application-history'
   | 'application-review'
   | 'active-loans'
   | 'payroll'
@@ -254,6 +256,16 @@ export function SalaryCheckOffApp() {
           case 'pending-applications':
             return (
               <PendingApplications
+                onNavigate={handleNavigate}
+                onReviewApplication={(id) => {
+                  setSelectedApplicationId(id);
+                  handleNavigate('application-review');
+                }}
+              />
+            );
+          case 'application-history':
+            return (
+              <ApplicationHistory
                 onNavigate={handleNavigate}
                 onReviewApplication={(id) => {
                   setSelectedApplicationId(id);

@@ -18,12 +18,30 @@ export interface LoanApplication {
     id: string;
     first_name: string;
     last_name: string;
+    full_name?: string;
     phone_number: string;
+    national_id?: string;
+    email?: string;
+    employee_profile?: {
+      employee_id?: string;
+      department?: string;
+      employment_type?: string;
+      employment_start_date?: string | null;
+      contract_end_date?: string | null;
+      monthly_gross_salary?: string;
+      bank_name?: string;
+      bank_account_number?: string;
+      mpesa_number?: string;
+    };
   };
   employer: {
     id: string;
     name: string;
   };
+  // List endpoints serialize employee/employer as UUID strings and provide
+  // the display names in these separate fields.
+  employee_name?: string;
+  employer_name?: string;
   principal_amount: string;
   interest_rate: string;
   repayment_months: number;
@@ -31,6 +49,7 @@ export interface LoanApplication {
   total_repayment: string;
   monthly_deduction: string;
   status: string;
+  status_display?: string;
   terms_accepted: boolean;
   terms_accepted_at?: string;
   disbursement_method?: 'bank' | 'mpesa';
@@ -100,6 +119,9 @@ export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
   previous: string | null;
+  // Provided by the backend's StandardPagination alongside next/previous.
+  page?: number;
+  total_pages?: number;
   results: T[];
 }
 
