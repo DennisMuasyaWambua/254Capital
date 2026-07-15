@@ -134,7 +134,9 @@ export function EmployeeDashboard({ onNavigate, userName: propUserName }: Employ
   {
     header: 'Status',
     accessor: (item: any) =>
-    <Badge variant={item.status}>{item.status}</Badge>
+    <Badge variant={item.status === 'submitted' ? 'pending' : item.status === 'under_review_admin' ? 'under-review' : item.status}>
+      {item.status === 'under_review_admin' ? 'under review' : item.status}
+    </Badge>
 
   },
   {
@@ -236,13 +238,13 @@ export function EmployeeDashboard({ onNavigate, userName: propUserName }: Employ
               {[
               {
                 label: 'Submitted',
-                status: activeLoan.status === 'submitted' ? 'current' : ['approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
+                status: activeLoan.status === 'submitted' ? 'current' : ['under_review_admin', 'approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
                 date: new Date(activeLoan.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
               },
               {
                 label: '254 Review',
-                status: activeLoan.status === 'submitted' ? 'current' : ['approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
-                date: activeLoan.status === 'submitted' ? 'In Review' : activeLoan.status === 'approved' || activeLoan.status === 'disbursed' ? 'Reviewed' : 'Pending'
+                status: ['submitted', 'under_review_admin'].includes(activeLoan.status) ? 'current' : ['approved', 'disbursed'].includes(activeLoan.status) ? 'completed' : 'upcoming',
+                date: ['submitted', 'under_review_admin'].includes(activeLoan.status) ? 'In Review' : activeLoan.status === 'approved' || activeLoan.status === 'disbursed' ? 'Reviewed' : 'Pending'
               },
               {
                 label: 'Approved',

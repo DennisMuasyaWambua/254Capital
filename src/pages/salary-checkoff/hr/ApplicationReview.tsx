@@ -280,14 +280,22 @@ export function ApplicationReview({ onBack, applicationId }: ApplicationReviewPr
     return null;
   }
 
+  // The detail endpoint nests the employee object (unlike list endpoints,
+  // which flatten it to a UUID plus an employee_name field).
   const employee = {
-    name: (application as any).employee_name || 'N/A',
+    name:
+      application.employee?.full_name ||
+      `${application.employee?.first_name || ''} ${application.employee?.last_name || ''}`.trim() ||
+      (application as any).employee_name ||
+      'N/A',
     id: application.employee.employee_profile?.employee_id || 'N/A',
     department: application.employee.employee_profile?.department || 'N/A',
     salary: application.employee.employee_profile?.monthly_gross_salary
       ? parseFloat(application.employee.employee_profile.monthly_gross_salary)
       : 0,
-    employmentDate: 'N/A', // Not available in API
+    employmentDate: application.employee.employee_profile?.employment_start_date
+      ? new Date(application.employee.employee_profile.employment_start_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'N/A',
     type: application.employee.employee_profile?.employment_type === 'confirmed' ? 'Permanent' : 'Contract'
   };
 
