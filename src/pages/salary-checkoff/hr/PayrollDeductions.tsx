@@ -17,7 +17,7 @@ import {
 import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
 import { exportService } from '@/services/salary-checkoff/export.service';
 import { clientService, ExistingClient } from '@/services/salary-checkoff/client.service';
-import { authService } from '@/services/salary-checkoff/auth.service';
+import { authService, employerRefId } from '@/services/salary-checkoff/auth.service';
 
 // Unified shape covering both portal-originated loan applications and
 // bulk-uploaded existing clients, so HR sees deductions for everyone under
@@ -60,8 +60,9 @@ export function PayrollDeductions() {
     const fetchEmployerId = async () => {
       try {
         const profile = await authService.getProfile();
-        if (profile.hr_profile?.employer?.id) {
-          setEmployerId(profile.hr_profile.employer.id);
+        const id = employerRefId(profile.hr_profile?.employer);
+        if (id) {
+          setEmployerId(id);
         }
       } catch (err) {
         console.error('Failed to fetch employer ID:', err);

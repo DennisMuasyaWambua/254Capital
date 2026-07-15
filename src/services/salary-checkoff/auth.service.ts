@@ -121,6 +121,27 @@ export interface Admin2FARequest {
   totp_code: string;
 }
 
+/**
+ * The backend serializes the profile's employer FK as a bare UUID string with
+ * a separate `employer_name` field — never as a nested object. Accept both
+ * shapes and always resolve through employerRefId()/employerRefName().
+ */
+export type EmployerRef = string | { id: string; name?: string };
+
+export function employerRefId(ref: EmployerRef | null | undefined): string | undefined {
+  if (!ref) return undefined;
+  return typeof ref === 'string' ? ref : ref.id;
+}
+
+export function employerRefName(
+  ref: EmployerRef | null | undefined,
+  employerName?: string | null
+): string {
+  if (employerName) return employerName;
+  if (ref && typeof ref === 'object' && ref.name) return ref.name;
+  return '';
+}
+
 export interface UserProfile {
   id: string;
   phone_number: string;
@@ -129,20 +150,17 @@ export interface UserProfile {
   email: string;
   role: 'employee' | 'hr_manager' | 'admin';
   employee_profile?: {
-    employee_number: string;
-    employer: {
-      id: string;
-      name: string;
-    };
-    national_id: string;
-    monthly_salary: string;
+    employee_id?: string;
+    employer?: EmployerRef | null;
+    employer_name?: string;
+    national_id?: string;
+    monthly_gross_salary?: string;
   };
   hr_profile?: {
-    position: string;
-    employer: {
-      id: string;
-      name: string;
-    };
+    position?: string;
+    department?: string;
+    employer?: EmployerRef | null;
+    employer_name?: string;
   };
 }
 

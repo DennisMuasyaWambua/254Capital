@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { EmployerDocuments } from '@/components/salary-checkoff/EmployerDocuments';
-import { authService } from '@/services/salary-checkoff/auth.service';
+import { authService, employerRefId, employerRefName } from '@/services/salary-checkoff/auth.service';
 import { Loader2, AlertCircle, FileText } from 'lucide-react';
 
 /**
@@ -26,9 +26,10 @@ export function CompanyDocuments() {
         setError(null);
         const profile = await authService.getProfile();
         if (!active) return;
-        if (profile.hr_profile?.employer?.id) {
-          setEmployerId(profile.hr_profile.employer.id);
-          setEmployerName(profile.hr_profile.employer.name || '');
+        const id = employerRefId(profile.hr_profile?.employer);
+        if (id) {
+          setEmployerId(id);
+          setEmployerName(employerRefName(profile.hr_profile?.employer, profile.hr_profile?.employer_name));
         } else {
           setError('Your account is not linked to a company yet. Please contact 254 Capital.');
         }

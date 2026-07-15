@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { loanService, LoanApplication, PaginatedResponse, Repayment } from '@/services/salary-checkoff/loan.service';
 import { clientService, ExistingClient, CollectionReportData } from '@/services/salary-checkoff/client.service';
-import { authService } from '@/services/salary-checkoff/auth.service';
+import { authService, employerRefId } from '@/services/salary-checkoff/auth.service';
 
 interface HRActiveLoansProps {
   onNavigate: (page: string) => void;
@@ -77,8 +77,9 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
     const fetchEmployerId = async () => {
       try {
         const profile = await authService.getProfile();
-        if (profile.hr_profile?.employer?.id) {
-          setEmployerId(profile.hr_profile.employer.id);
+        const id = employerRefId(profile.hr_profile?.employer);
+        if (id) {
+          setEmployerId(id);
         }
       } catch (err) {
         console.error('Failed to fetch employer ID:', err);

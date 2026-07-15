@@ -9,7 +9,7 @@ import { FileUpload } from '@/components/salary-checkoff/ui/FileUpload';
 import { TermsModal } from './TermsModal';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { loanService, LoanCalculatorResponse } from '@/services/salary-checkoff/loan.service';
-import { authService } from '@/services/salary-checkoff/auth.service';
+import { authService, employerRefId } from '@/services/salary-checkoff/auth.service';
 import { hrNotificationService } from '@/services/salary-checkoff/hrNotification.service';
 import { employerService, loanCalculationUtils, InterestMethod } from '@/services/salary-checkoff/employer.service';
 import {
@@ -105,14 +105,15 @@ export function LoanApplication({
       try {
         const profile = await authService.getProfile();
         setEmployeeProfile(profile);
-        if (profile.employee_profile?.monthly_salary) {
-          setEmployeeSalary(parseFloat(profile.employee_profile.monthly_salary));
+        if (profile.employee_profile?.monthly_gross_salary) {
+          setEmployeeSalary(parseFloat(profile.employee_profile.monthly_gross_salary));
         }
 
         // Fetch employer's interest method and rate
-        if (profile.employee_profile?.employer?.id) {
+        const profileEmployerId = employerRefId(profile.employee_profile?.employer);
+        if (profileEmployerId) {
           try {
-            const employer = await employerService.getEmployer(profile.employee_profile.employer.id);
+            const employer = await employerService.getEmployer(profileEmployerId);
             setEmployerInterestMethod(employer.interest_method || 'flat');
             setEmployerInterestRate(employer.interest_rate ? Number(employer.interest_rate) : 0.05);
           } catch (employerErr) {
@@ -243,14 +244,15 @@ export function LoanApplication({
         });
 
         // Send notification to HR about new application pending approval
-        if (employeeProfile?.employee_profile?.employer?.id) {
+        const notifyEmployerId = employerRefId(employeeProfile?.employee_profile?.employer);
+        if (notifyEmployerId) {
           try {
             await hrNotificationService.sendNewApplicationNotificationToHR({
               employeeFullName: `${employeeProfile.first_name || ''} ${employeeProfile.last_name || ''}`,
               loanAmount: amountNum,
               applicationDate: new Date().toISOString(),
               applicationNumber: createdApplication.application_number || 'N/A',
-              employerId: employeeProfile.employee_profile.employer.id,
+              employerId: notifyEmployerId,
             });
           } catch (notificationError) {
             console.warn('Failed to send HR notification (non-critical):', notificationError);
