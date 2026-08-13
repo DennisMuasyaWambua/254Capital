@@ -12,6 +12,16 @@ import {
 'lucide-react';
 import { authService } from '@/services/salary-checkoff/auth.service';
 import { ApiError } from '@/services/salary-checkoff/api';
+import { toast } from 'sonner';
+
+const otpSentToast = (destination: string) =>
+  toast.success('OTP sent successfully', {
+    description: `A 6-digit verification code has been sent to your ${destination}.`,
+    icon: <Shield className="h-5 w-5 text-[#008080]" />,
+    duration: 5000,
+    className:
+      'border-[#008080]/30 [&_[data-title]]:text-[#11103a] [&_[data-title]]:font-semibold',
+  });
 
 interface LoginPageProps {
   onLogin: (role: 'employee' | 'hr' | 'admin') => void;
@@ -72,6 +82,7 @@ export function LoginPage({ onLogin, onRegisterClick, onForgotPassword }: LoginP
       setOtpStep('otp');
       setCountdown(response.expires_in || 300);
       setMaskedPhone(response.masked_phone);
+      otpSentToast('phone number');
     } catch (error) {
       setIsLoading(false);
       const apiError = error as ApiError;
@@ -145,6 +156,7 @@ export function LoginPage({ onLogin, onRegisterClick, onForgotPassword }: LoginP
       setCountdown(response.expires_in || 300);
       setMaskedPhone(response.masked_phone);
       otpRefs.current[0]?.focus();
+      otpSentToast('phone number');
     } catch (error) {
       const apiError = error as ApiError;
       setOtpError(apiError.message || 'Failed to resend OTP. Please try again.');
@@ -167,6 +179,7 @@ export function LoginPage({ onLogin, onRegisterClick, onForgotPassword }: LoginP
         setOtpStep('staff-otp');
         setCountdown(response.expires_in || 300);
         setOtp(['', '', '', '', '', '']);
+        otpSentToast('email and phone number');
       }
     } catch (error) {
       // If HR login fails, try admin login
@@ -180,6 +193,7 @@ export function LoginPage({ onLogin, onRegisterClick, onForgotPassword }: LoginP
           setOtpStep('staff-otp');
           setCountdown(response.expires_in || 300);
           setOtp(['', '', '', '', '', '']);
+          otpSentToast('email and phone number');
         }
       } catch (adminError) {
         setIsLoading(false);
@@ -566,6 +580,7 @@ export function LoginPage({ onLogin, onRegisterClick, onForgotPassword }: LoginP
                               : await authService.hrLogin(email, password);
                             setCountdown(response.expires_in || 300);
                             otpRefs.current[0]?.focus();
+                            otpSentToast('email and phone number');
                           } catch (error) {
                             const apiError = error as ApiError;
                             setOtpError(apiError.message || 'Failed to resend OTP.');
