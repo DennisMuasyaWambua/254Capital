@@ -15,6 +15,7 @@ import {
   isViewableDocument,
 } from '@/services/salary-checkoff/document.service';
 import { hrNotificationService } from '@/services/salary-checkoff/hrNotification.service';
+import { getEmployerName, getEmployerId, getEmployeeName, getEmployeePhone } from '@/utils/salary-checkoff/loanDisplay';
 import {
   ArrowLeft,
   Check,
@@ -419,13 +420,13 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
 
           // Send HR notification about disbursement (non-blocking)
           hrNotificationService.sendDisbursementNotificationToHR({
-            employeeFullName: `${app.employee?.first_name || ''} ${app.employee?.last_name || ''}`,
+            employeeFullName: getEmployeeName(app),
             loanAmount: parseFloat(app.principal_amount),
             disbursementDate: disbursementDate,
             monthlyInstallment: parseFloat(app.monthly_deduction),
             loanTenure: app.repayment_months,
             applicationNumber: app.application_number,
-            employerId: app.employer?.id || '',
+            employerId: getEmployerId(app),
           }).catch(err => console.warn('Failed to send HR notification:', err));
 
           successfulDisbursements.push(app.application_number);
@@ -498,12 +499,11 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
     },
     {
       header: 'Employer',
-      accessor: (item: LoanApplication) => item.employer?.name || 'N/A',
+      accessor: (item: LoanApplication) => getEmployerName(item),
     },
     {
       header: 'Employee',
-      accessor: (item: LoanApplication) =>
-        `${item.employee?.first_name} ${item.employee?.last_name}`,
+      accessor: (item: LoanApplication) => getEmployeeName(item),
     },
     {
       header: 'Amount',
@@ -656,10 +656,10 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                           {app.application_number}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-900">
-                          {app.employer?.name || 'N/A'}
+                          {getEmployerName(app)}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-900">
-                          {app.employee?.first_name} {app.employee?.last_name}
+                          {getEmployeeName(app)}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-900">
                           KES {parseFloat(app.principal_amount).toLocaleString()}
@@ -1273,7 +1273,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                         {app.application_number}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-900">
-                        {app.employee?.first_name} {app.employee?.last_name}
+                        {getEmployeeName(app)}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-900">
                         KES {parseFloat(app.principal_amount).toLocaleString()}
@@ -1296,7 +1296,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                         ) : (
                           <div>
                             <div className="text-xs text-green-700 font-medium">M-Pesa Number:</div>
-                            <div className="font-semibold text-slate-900">{app.employee?.phone_number || 'Not provided'}</div>
+                            <div className="font-semibold text-slate-900">{getEmployeePhone(app) || 'Not provided'}</div>
                           </div>
                         )}
                       </td>

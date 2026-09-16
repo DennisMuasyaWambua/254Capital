@@ -5,6 +5,7 @@ import { Badge } from '@/components/salary-checkoff/ui/Badge';
 import { Table } from '@/components/salary-checkoff/ui/Table';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { loanService, LoanApplication } from '@/services/salary-checkoff/loan.service';
+import { getEmployerName, getEmployeeName, getEmployeePhone } from '@/utils/salary-checkoff/loanDisplay';
 import {
   ArrowLeft,
   Download,
@@ -105,13 +106,11 @@ export function DisbursementHistory({ onBack, role = 'admin' }: DisbursementHist
     const matchesSearch =
       searchQuery === '' ||
       item.application_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      `${item.employee?.first_name} ${item.employee?.last_name}`
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
+      getEmployeeName(item).toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesEmployer =
       filterEmployer === '' ||
-      item.employer?.name.toLowerCase().includes(filterEmployer.toLowerCase());
+      getEmployerName(item).toLowerCase().includes(filterEmployer.toLowerCase());
 
     return matchesSearch && matchesEmployer;
   });
@@ -136,18 +135,13 @@ export function DisbursementHistory({ onBack, role = 'admin' }: DisbursementHist
       ? [
           {
             header: 'Employer',
-            accessor: (item: LoanApplication) => item.employer?.name || 'N/A',
+            accessor: (item: LoanApplication) => getEmployerName(item),
           },
         ]
       : []),
     {
       header: 'Employee',
-      accessor: (item: LoanApplication) => {
-        if (!item.employee || (!item.employee.first_name && !item.employee.last_name)) {
-          return 'N/A';
-        }
-        return `${item.employee.first_name || ''} ${item.employee.last_name || ''}`.trim();
-      },
+      accessor: (item: LoanApplication) => getEmployeeName(item),
     },
     {
       header: 'Amount',
@@ -411,22 +405,20 @@ export function DisbursementHistory({ onBack, role = 'admin' }: DisbursementHist
                   <div>
                     <span className="text-slate-500">Name:</span>{' '}
                     <span className="font-medium">
-                      {selectedDisbursement.employee?.first_name || selectedDisbursement.employee?.last_name
-                        ? `${selectedDisbursement.employee?.first_name || ''} ${selectedDisbursement.employee?.last_name || ''}`.trim()
-                        : 'N/A'}
+                      {getEmployeeName(selectedDisbursement)}
                     </span>
                   </div>
                   <div>
                     <span className="text-slate-500">Phone:</span>{' '}
                     <span className="font-medium">
-                      {selectedDisbursement.employee?.phone_number || 'N/A'}
+                      {getEmployeePhone(selectedDisbursement) || 'N/A'}
                     </span>
                   </div>
                   {role === 'admin' && (
                     <div>
                       <span className="text-slate-500">Employer:</span>{' '}
                       <span className="font-medium">
-                        {selectedDisbursement.employer?.name}
+                        {getEmployerName(selectedDisbursement)}
                       </span>
                     </div>
                   )}
