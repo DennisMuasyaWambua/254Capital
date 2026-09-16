@@ -26,8 +26,8 @@ import {
   Loader2 } from
 'lucide-react';
 // Allowed repayment terms must match the backend (settings.LOAN_REPAYMENT_TERMS).
-// Submitting any other term (e.g. 5 months) is rejected with a validation error.
-const REPAYMENT_TERMS = [3, 6, 9, 12];
+// Submitting any other term is rejected with a validation error.
+const REPAYMENT_TERMS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 interface LoanApplicationProps {
   onCancel: () => void;
@@ -359,7 +359,7 @@ export function LoanApplication({
                 label="Repayment Period (Months)"
                 value={String(period)}
                 onChange={(e) => setPeriod(Number(e.target.value))}
-                options={REPAYMENT_TERMS.map((m) => ({ value: String(m), label: `${m} Months` }))}
+                options={REPAYMENT_TERMS.map((m) => ({ value: String(m), label: `${m} Month${m === 1 ? '' : 's'}` }))}
                 helperText="Choose an available repayment period" />
 
                 <div>
