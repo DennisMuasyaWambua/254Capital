@@ -262,13 +262,17 @@ export function LoanApplication({
         onSubmitSuccess();
       } catch (err: any) {
         console.error('Error submitting loan application:', err);
-        // Surface the specific field/validation messages from the backend
-        // instead of the generic "Validation error" wrapper.
-        const fieldErrors = err.data?.errors;
+        // DRF returns validation errors as the flat {field: [msgs]} (or
+        // {non_field_errors: [...]}) dict directly as the response body -
+        // not nested under an `errors` key. Surface those specific messages
+        // instead of the generic "Failed to submit application" fallback.
         let message = err.message || 'Failed to submit loan application. Please try again.';
-        if (fieldErrors && typeof fieldErrors === 'object') {
-          const details = Object.values(fieldErrors)
-            .flat()
+        const data = err.data;
+        if (data && typeof data === 'object') {
+          const fieldErrors = data.errors && typeof data.errors === 'object' ? data.errors : data;
+          const details = Object.entries(fieldErrors)
+            .filter(([key]) => key !== 'detail' && key !== 'missing_documents')
+            .flatMap(([, value]) => (Array.isArray(value) ? value : [value]))
             .filter(Boolean)
             .join(' ');
           if (details) message = details;
