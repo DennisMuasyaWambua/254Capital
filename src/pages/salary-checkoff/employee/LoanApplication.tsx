@@ -715,7 +715,10 @@ export function LoanApplication({
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/80">Interest (5%) per month</span>
+                  <span className="text-white/80">
+                    Interest ({(employerInterestRate * 100).toFixed(0)}%{' '}
+                    {employerInterestMethod === 'reducing_balance' ? 'reducing balance' : 'flat per month'})
+                  </span>
                   <span className="font-medium">
                     {isCalculating ? (
                       <span className="flex items-center gap-1">
