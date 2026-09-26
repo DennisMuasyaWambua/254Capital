@@ -27,6 +27,7 @@ export function RepaymentSchedule() {
     disbursedDate: '',
     firstDeduction: ''
   });
+  const [interestMethodLabel, setInterestMethodLabel] = useState('Flat Rate');
   const [scheduleData, setScheduleData] = useState<any[]>([]);
 
   useEffect(() => {
@@ -90,6 +91,7 @@ export function RepaymentSchedule() {
           console.warn('Could not fetch employer interest method, defaulting to flat:', employerErr);
         }
       }
+      setInterestMethodLabel(interestMethod === 'reducing_balance' ? 'Reducing Balance' : 'Flat Rate');
 
       // Locally-derived amortisation breakdown (principal/interest split and
       // running balance) using the employer's configured interest method.
@@ -302,6 +304,7 @@ export function RepaymentSchedule() {
             <p className="text-2xl font-bold">
               KES {loanDetails.monthly.toLocaleString()}
             </p>
+            <p className="text-white/80 text-xs mt-1">{interestMethodLabel}</p>
           </div>
           <div>
             <p className="text-white/80 text-sm mb-1">Disbursement Date</p>
