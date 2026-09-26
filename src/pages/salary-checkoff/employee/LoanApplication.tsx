@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/salary-checkoff/ui/Card';
 import { Input } from '@/components/salary-checkoff/ui/Input';
-import { Select } from '@/components/salary-checkoff/ui/Select';
 import { MoneyInput } from '@/components/salary-checkoff/ui/MoneyInput';
 import { Button } from '@/components/salary-checkoff/ui/Button';
 import { ProgressSteps } from '@/components/salary-checkoff/ui/ProgressSteps';
@@ -23,11 +22,14 @@ import {
   Check,
   Calendar,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
   Loader2 } from
 'lucide-react';
 // Allowed repayment terms must match the backend (settings.LOAN_REPAYMENT_TERMS).
 // Submitting any other term is rejected with a validation error.
-const REPAYMENT_TERMS = Array.from({ length: 12 }, (_, i) => i + 1);
+const MIN_REPAYMENT_MONTHS = 1;
+const MAX_REPAYMENT_MONTHS = 12;
 
 interface LoanApplicationProps {
   onCancel: () => void;
@@ -39,7 +41,9 @@ export function LoanApplication({
 }: LoanApplicationProps) {
   const [step, setStep] = useState(1);
   const [amount, setAmount] = useState<string>('50000');
-  const [period, setPeriod] = useState<number>(6);
+  // Held as a string so the field can be typed into freely (including briefly
+  // empty) without coercing to NaN; `period` below is the validated number.
+  const [periodInput, setPeriodInput] = useState<string>('6');
   const [purpose, setPurpose] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -55,6 +59,7 @@ export function LoanApplication({
   const [employerInterestMethod, setEmployerInterestMethod] = useState<InterestMethod>('flat');
   const [employerInterestRate, setEmployerInterestRate] = useState<number>(0.05); // Default 5%
   const [employerId, setEmployerId] = useState<string | undefined>(undefined);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   // Disbursement details state
   const [disbursementMethod, setDisbursementMethod] = useState<'bank' | 'mpesa'>('mpesa');
@@ -73,9 +78,20 @@ export function LoanApplication({
     payslips: File[];
   }>({ payslips: [] });
 
+  // Only whole numbers are a valid term; anything else leaves `period` at 0 so
+  // the calculator stays idle rather than sending a request the backend rejects.
+  const trimmedPeriodInput = periodInput.trim();
+  const period = /^\d+$/.test(trimmedPeriodInput) ? parseInt(trimmedPeriodInput, 10) : 0;
+  const periodError =
+    trimmedPeriodInput === ''
+      ? 'Enter a repayment period.'
+      : period < MIN_REPAYMENT_MONTHS || period > MAX_REPAYMENT_MONTHS
+        ? `Repayment period must be a whole number between ${MIN_REPAYMENT_MONTHS} and ${MAX_REPAYMENT_MONTHS} months.`
+        : undefined;
+
   const calculateLoan = useCallback(async () => {
     const amountNum = parseFloat(amount.replace(/,/g, ''));
-    if (amountNum < 1000 || period < 1) {
+    if (amountNum < 1000 || period < MIN_REPAYMENT_MONTHS || period > MAX_REPAYMENT_MONTHS) {
       setCalculationResult(null);
       return;
     }
@@ -181,6 +197,28 @@ export function LoanApplication({
   const monthlyDeduction = calculationResult
     ? parseFloat(calculationResult.monthly_deduction)
     : localCalculation ? parseFloat(localCalculation.monthly_deduction) : 0;
+  // Per-installment breakdown, so the employee can actually see how a reducing
+  // balance loan is worked out (interest falls as the balance is paid down).
+  // The API schedule wins; it only carries the principal/interest split for
+  // reducing balance, so flat falls back to its even split.
+  const breakdownRows = React.useMemo(() => {
+    const source = calculationResult?.schedule?.length
+      ? calculationResult.schedule
+      : localCalculation?.schedule;
+    if (!source?.length) return [];
+
+    const evenPrincipal = period > 0 ? amountNum / period : 0;
+    const evenInterest = period > 0 ? totalInterest / period : 0;
+
+    return source.map((row: any) => ({
+      month: row.installment_number,
+      amount: parseFloat(row.amount),
+      principal: row.principal_portion != null ? parseFloat(row.principal_portion) : evenPrincipal,
+      interest: row.interest_portion != null ? parseFloat(row.interest_portion) : evenInterest,
+      balance: Math.max(0, parseFloat(row.running_balance)),
+    }));
+  }, [calculationResult, localCalculation, period, amountNum, totalInterest]);
+
   // Deduction date logic — assume disbursement today for projection
   const today = new Date();
   const firstDeductionDate = getFirstDeductionDate(today);
@@ -189,6 +227,11 @@ export function LoanApplication({
   const handleNext = async () => {
     // Step 1: Validate disbursement details and check salary eligibility
     if (step === 1) {
+      if (periodError) {
+        setError(periodError);
+        return;
+      }
+
       if (disbursementMethod === 'bank') {
         if (!bankName.trim() || !bankBranch.trim() || !accountNumber.trim()) {
           setError('Please fill in all bank account details');
@@ -372,12 +415,18 @@ export function LoanApplication({
                 placeholder="50,000"
                 helperText="Minimum amount: KES 1,000" />
 
-                <Select
+                <Input
                 label="Repayment Period (Months)"
-                value={String(period)}
-                onChange={(e) => setPeriod(Number(e.target.value))}
-                options={REPAYMENT_TERMS.map((m) => ({ value: String(m), label: `${m} Month${m === 1 ? '' : 's'}` }))}
-                helperText="Choose an available repayment period" />
+                type="number"
+                inputMode="numeric"
+                min={MIN_REPAYMENT_MONTHS}
+                max={MAX_REPAYMENT_MONTHS}
+                step={1}
+                value={periodInput}
+                onChange={(e) => setPeriodInput(e.target.value)}
+                placeholder="6"
+                error={periodError}
+                helperText={`Enter any period from ${MIN_REPAYMENT_MONTHS} to ${MAX_REPAYMENT_MONTHS} months`} />
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -757,6 +806,59 @@ export function LoanApplication({
                   </span>
                 </div>
               </div>
+
+              {/* Month-by-month breakdown — shows the reducing balance at work */}
+              {breakdownRows.length > 0 &&
+              <div className="pt-4 border-t border-white/20">
+                  <button
+                    type="button"
+                    onClick={() => setShowBreakdown((prev) => !prev)}
+                    className="flex items-center justify-between w-full text-sm font-medium hover:text-white/80 transition-colors">
+                    <span>
+                      {showBreakdown ? 'Hide' : 'Show'} month-by-month breakdown
+                    </span>
+                    {showBreakdown ?
+                    <ChevronUp className="h-4 w-4" /> :
+                    <ChevronDown className="h-4 w-4" />
+                    }
+                  </button>
+
+                  {showBreakdown &&
+                <div className="mt-3">
+                      <p className="text-white/70 text-xs mb-2">
+                        {effectiveInterestMethod === 'reducing_balance' ?
+                    'Interest is charged on your outstanding balance, so the interest portion falls each month while your instalment stays the same.' :
+                    'Interest is charged on the full principal for the whole term, so every instalment splits the same way.'}
+                      </p>
+                      <div className="overflow-x-auto -mx-1">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-white/70 text-left">
+                              <th className="font-medium py-1 pr-1">#</th>
+                              <th className="font-medium py-1 px-1 text-right">Principal</th>
+                              <th className="font-medium py-1 px-1 text-right">Interest</th>
+                              <th className="font-medium py-1 pl-1 text-right">Balance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {breakdownRows.map((row) =>
+                        <tr key={row.month} className="border-t border-white/10">
+                                <td className="py-1 pr-1 text-white/90">{row.month}</td>
+                                <td className="py-1 px-1 text-right">{Math.round(row.principal).toLocaleString()}</td>
+                                <td className="py-1 px-1 text-right">{Math.round(row.interest).toLocaleString()}</td>
+                                <td className="py-1 pl-1 text-right">{Math.round(row.balance).toLocaleString()}</td>
+                              </tr>
+                        )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-white/60 text-xs mt-2">
+                        Amounts in KES, rounded to the nearest shilling.
+                      </p>
+                    </div>
+                }
+                </div>
+              }
 
               {/* First Deduction Date in Calculator */}
               <div className="pt-4 border-t border-white/20">

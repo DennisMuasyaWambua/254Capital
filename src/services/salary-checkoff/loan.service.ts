@@ -115,6 +115,10 @@ export interface LoanCalculatorResponse {
     amount: string;
     running_balance: string;
     is_first_deduction: boolean;
+    // Only returned for reducing_balance, where each installment splits
+    // differently between principal and interest.
+    principal_portion?: string;
+    interest_portion?: string;
   }>;
 }
 
