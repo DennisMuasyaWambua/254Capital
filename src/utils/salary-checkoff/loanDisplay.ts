@@ -36,6 +36,35 @@ export function getEmployeeName(item: LoanApplicationLike): string {
   return item.employee_name || 'N/A';
 }
 
+// Backend status values are raw snake_case (e.g. 'under_review_admin'), which
+// is not what staff should be reading in a table. 'under_review_admin' in
+// particular means HR has signed off and 254 Capital now owns the decision.
+const LOAN_STATUS_LABELS: Record<string, string> = {
+  submitted: 'Submitted',
+  under_review_admin: 'Approved by HR',
+  approved: 'Approved',
+  declined: 'Declined',
+  disbursed: 'Disbursed',
+};
+
+const LOAN_STATUS_VARIANTS: Record<string, string> = {
+  submitted: 'pending',
+  under_review_admin: 'under-review',
+  approved: 'approved',
+  declined: 'declined',
+  disbursed: 'disbursed',
+};
+
+export function getLoanStatusLabel(status: string | undefined | null): string {
+  if (!status) return 'Unknown';
+  return LOAN_STATUS_LABELS[status] || status.replace(/_/g, ' ');
+}
+
+export function getLoanStatusVariant(status: string | undefined | null): string {
+  if (!status) return 'default';
+  return LOAN_STATUS_VARIANTS[status] || 'default';
+}
+
 export function getEmployeePhone(item: LoanApplicationLike): string {
   const employee = item.employee;
   if (employee && typeof employee === 'object' && employee.phone_number) {

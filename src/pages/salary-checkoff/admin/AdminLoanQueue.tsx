@@ -15,7 +15,7 @@ import {
   isViewableDocument,
 } from '@/services/salary-checkoff/document.service';
 import { hrNotificationService } from '@/services/salary-checkoff/hrNotification.service';
-import { getEmployerName, getEmployerId, getEmployeeName, getEmployeePhone } from '@/utils/salary-checkoff/loanDisplay';
+import { getEmployerName, getEmployerId, getEmployeeName, getEmployeePhone, getLoanStatusLabel, getLoanStatusVariant } from '@/utils/salary-checkoff/loanDisplay';
 import {
   ArrowLeft,
   Check,
@@ -517,7 +517,9 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
     {
       header: 'Status',
       accessor: (item: LoanApplication) => (
-        <Badge variant={item.status}>{item.status.replace('_', ' ')}</Badge>
+        <Badge variant={getLoanStatusVariant(item.status) as any}>
+          {getLoanStatusLabel(item.status)}
+        </Badge>
       ),
     },
     {
@@ -714,8 +716,8 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
               <div>
                 <p className="text-sm text-slate-500">Status</p>
-                <Badge variant={selectedApplication.status}>
-                  {selectedApplication.status.replace('_', ' ').toUpperCase()}
+                <Badge variant={getLoanStatusVariant(selectedApplication.status) as any}>
+                  {getLoanStatusLabel(selectedApplication.status)}
                 </Badge>
               </div>
               <div className="flex space-x-3">

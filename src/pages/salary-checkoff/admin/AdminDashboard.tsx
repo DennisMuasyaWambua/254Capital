@@ -23,6 +23,10 @@ import {
   formatDeductionDate,
   getDeductionTag } from
 '@/utils/salary-checkoff/deductionDate';
+import {
+  getLoanStatusLabel,
+  getLoanStatusVariant } from
+'@/utils/salary-checkoff/loanDisplay';
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
   userName?: string;
@@ -463,7 +467,9 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
   {
     header: 'Status',
     accessor: (item: any) =>
-    <Badge variant={item.status}>{item.status}</Badge>
+    <Badge variant={getLoanStatusVariant(item.status) as any}>
+          {getLoanStatusLabel(item.status)}
+        </Badge>
 
   },
   {
@@ -789,7 +795,9 @@ export function AdminDashboard({ onNavigate, userName }: AdminDashboardProps) {
                       {app.disbursedDate ? formatDeductionDate(app.disbursedDate) : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      <Badge variant={app.status}>{app.status}</Badge>
+                      <Badge variant={getLoanStatusVariant(app.status) as any}>
+                        {getLoanStatusLabel(app.status)}
+                      </Badge>
                     </td>
                   </tr>
                 ))}

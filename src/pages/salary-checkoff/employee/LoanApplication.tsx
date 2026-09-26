@@ -26,10 +26,10 @@ import {
   ChevronUp,
   Loader2 } from
 'lucide-react';
-// Allowed repayment terms must match the backend (settings.LOAN_REPAYMENT_TERMS).
-// Submitting any other term is rejected with a validation error.
+// There is no upper bound on the repayment term. The floor matches the backend
+// (settings.LOAN_MIN_REPAYMENT_MONTHS): a zero-month term divides by zero in
+// both interest calculations.
 const MIN_REPAYMENT_MONTHS = 1;
-const MAX_REPAYMENT_MONTHS = 12;
 
 interface LoanApplicationProps {
   onCancel: () => void;
@@ -85,13 +85,13 @@ export function LoanApplication({
   const periodError =
     trimmedPeriodInput === ''
       ? 'Enter a repayment period.'
-      : period < MIN_REPAYMENT_MONTHS || period > MAX_REPAYMENT_MONTHS
-        ? `Repayment period must be a whole number between ${MIN_REPAYMENT_MONTHS} and ${MAX_REPAYMENT_MONTHS} months.`
+      : period < MIN_REPAYMENT_MONTHS
+        ? `Repayment period must be a whole number of ${MIN_REPAYMENT_MONTHS} month or more.`
         : undefined;
 
   const calculateLoan = useCallback(async () => {
     const amountNum = parseFloat(amount.replace(/,/g, ''));
-    if (amountNum < 1000 || period < MIN_REPAYMENT_MONTHS || period > MAX_REPAYMENT_MONTHS) {
+    if (amountNum < 1000 || period < MIN_REPAYMENT_MONTHS) {
       setCalculationResult(null);
       return;
     }
@@ -420,13 +420,12 @@ export function LoanApplication({
                 type="number"
                 inputMode="numeric"
                 min={MIN_REPAYMENT_MONTHS}
-                max={MAX_REPAYMENT_MONTHS}
                 step={1}
                 value={periodInput}
                 onChange={(e) => setPeriodInput(e.target.value)}
                 placeholder="6"
                 error={periodError}
-                helperText={`Enter any period from ${MIN_REPAYMENT_MONTHS} to ${MAX_REPAYMENT_MONTHS} months`} />
+                helperText="Enter any number of months" />
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
