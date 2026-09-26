@@ -93,8 +93,11 @@ export interface CreateLoanRequest {
 export interface LoanCalculatorRequest {
   principal: number;
   months: number;
-  calculation_type: 'flat' | 'amortized';
+  calculation_type: 'flat' | 'reducing_balance' | 'amortized';
   annual_rate?: number;
+  // When supplied, the backend resolves the employer's configured interest
+  // method and rate, overriding calculation_type/annual_rate.
+  employer_id?: string;
 }
 
 export interface LoanCalculatorResponse {

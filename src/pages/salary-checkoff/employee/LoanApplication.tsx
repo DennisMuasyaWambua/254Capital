@@ -54,6 +54,7 @@ export function LoanApplication({
   const [employeeProfile, setEmployeeProfile] = useState<any>(null);
   const [employerInterestMethod, setEmployerInterestMethod] = useState<InterestMethod>('flat');
   const [employerInterestRate, setEmployerInterestRate] = useState<number>(0.05); // Default 5%
+  const [employerId, setEmployerId] = useState<string | undefined>(undefined);
 
   // Disbursement details state
   const [disbursementMethod, setDisbursementMethod] = useState<'bank' | 'mpesa'>('mpesa');
@@ -83,10 +84,15 @@ export function LoanApplication({
       setIsCalculating(true);
       setError(null);
 
+      // employer_id makes the backend use the employer's configured interest
+      // method, so this quote matches the loan that gets created on submit.
+      // The method/rate are sent too as a fallback for the employer lookup.
       const result = await loanService.calculateLoan({
         principal: amountNum,
         months: period,
-        calculation_type: 'flat',
+        calculation_type: employerInterestMethod,
+        annual_rate: employerInterestRate,
+        employer_id: employerId,
       });
 
       setCalculationResult(result);
@@ -97,7 +103,7 @@ export function LoanApplication({
     } finally {
       setIsCalculating(false);
     }
-  }, [amount, period]);
+  }, [amount, period, employerInterestMethod, employerInterestRate, employerId]);
 
   // Fetch employee profile to get salary and employer's interest method on mount
   useEffect(() => {
@@ -111,6 +117,7 @@ export function LoanApplication({
 
         // Fetch employer's interest method and rate
         const profileEmployerId = employerRefId(profile.employee_profile?.employer);
+        setEmployerId(profileEmployerId);
         if (profileEmployerId) {
           try {
             const employer = await employerService.getEmployer(profileEmployerId);
@@ -153,6 +160,12 @@ export function LoanApplication({
   const interestRate = calculationResult
     ? parseFloat(calculationResult.interest_rate)
     : localCalculation ? parseFloat(localCalculation.interest_rate) / 100 : 0.05;
+
+  // Label the method that actually produced the figures above. The API result
+  // wins because it resolves the employer's configured method server-side.
+  const effectiveInterestMethod: InterestMethod = calculationResult
+    ? (calculationResult.calculation_type === 'reducing_balance' ? 'reducing_balance' : 'flat')
+    : employerInterestMethod;
 
   // Total interest based on calculation method
   const totalInterest = calculationResult
@@ -535,8 +548,8 @@ export function LoanApplication({
                   <div className="flex justify-between">
                     <span className="text-slate-500">Interest Rate</span>
                     <span className="font-medium">
-                      {(employerInterestRate * 100).toFixed(0)}%{' '}
-                      {employerInterestMethod === 'reducing_balance' ? 'Reducing Balance' : 'Flat'}
+                      {(interestRate * 100).toFixed(0)}%{' '}
+                      {effectiveInterestMethod === 'reducing_balance' ? 'Reducing Balance' : 'Flat'}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -716,8 +729,8 @@ export function LoanApplication({
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-white/80">
-                    Interest ({(employerInterestRate * 100).toFixed(0)}%{' '}
-                    {employerInterestMethod === 'reducing_balance' ? 'reducing balance' : 'flat per month'})
+                    Interest ({(interestRate * 100).toFixed(0)}%{' '}
+                    {effectiveInterestMethod === 'reducing_balance' ? 'reducing balance' : 'flat per month'})
                   </span>
                   <span className="font-medium">
                     {isCalculating ? (
