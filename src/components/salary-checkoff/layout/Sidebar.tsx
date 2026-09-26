@@ -186,7 +186,7 @@ export function Sidebar({
   },
   {
     id: 'collection-report',
-    label: 'Collection Report',
+    label: 'Sales Report',
     icon: BarChart
   },
   {

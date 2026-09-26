@@ -265,7 +265,7 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
           onClick={() => onNavigate('collection-report')}
           leftIcon={<FileText className="h-4 w-4" />}
         >
-          Collection Report
+          Sales Report
         </Button>
       </div>
 
@@ -546,7 +546,7 @@ export function HRActiveLoans({ onNavigate }: HRActiveLoansProps) {
               onClick={() => onNavigate('collection-report')}
               leftIcon={<FileText className="h-4 w-4" />}
             >
-              Generate Collection Report
+              Generate Sales Report
             </Button>
           </div>
         </Card>

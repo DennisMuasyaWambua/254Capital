@@ -256,7 +256,7 @@ export function CollectionReport({ role }: CollectionReportProps) {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Collection Report</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Sales Report</h1>
           <p className="text-slate-600 mt-1">
             {role === 'hr'
               ? 'View and download monthly deduction schedule for your employees'
