@@ -659,7 +659,7 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
         </div>
       </div>
 
-      {error && !isViewModalOpen && (
+      {error && !isViewModalOpen && !isEditModalOpen && (
         <div className="flex items-start space-x-3 p-4 bg-red-50 border border-red-200 rounded-lg">
           <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div>
