@@ -115,7 +115,7 @@ export interface LoanCalculatorResponse {
     amount: string;
     running_balance: string;
     is_first_deduction: boolean;
-    // Only returned for reducing_balance, where each installment splits
+      // Only returned for reducing_balance, where each installment splits
     // differently between principal and interest.
     principal_portion?: string;
     interest_portion?: string;
@@ -155,16 +155,14 @@ export interface AdminDisbursementRequest {
   disbursement_reference: string;
 }
 
+// Fields the backend accepts. Total repayment and monthly deduction are
+// recalculated server-side, and a disbursed loan's schedule is regenerated.
 export interface UpdateLoanRequest {
   principal_amount?: number;
-  interest_rate?: number;
+  interest_rate?: number; // monthly rate as a fraction, e.g. 0.05 = 5%
   repayment_months?: number;
-  total_repayment?: number;
-  monthly_deduction?: number;
   disbursement_date?: string;
   disbursement_method?: 'mpesa' | 'bank';
-  reason?: string;
-  admin_notes?: string;
 }
 
 export interface DeleteLoanCheckResponse {

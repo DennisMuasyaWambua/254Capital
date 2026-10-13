@@ -6,7 +6,8 @@ import { Table } from '@/components/salary-checkoff/ui/Table';
 import { Modal } from '@/components/salary-checkoff/ui/Modal';
 import { Input } from '@/components/salary-checkoff/ui/Input';
 import { Checkbox } from '@/components/salary-checkoff/ui/Checkbox';
-import { loanService, LoanApplication, LoanApplicationDetail } from '@/services/salary-checkoff/loan.service';
+import { MoneyInput } from '@/components/salary-checkoff/ui/MoneyInput';
+import { loanService, LoanApplication, LoanApplicationDetail, UpdateLoanRequest } from '@/services/salary-checkoff/loan.service';
 import {
   documentService,
   Document,
@@ -29,6 +30,7 @@ import {
   CheckSquare,
   Eye,
   Image,
+  Edit2,
 } from 'lucide-react';
 
 interface AdminLoanQueueProps {
@@ -67,6 +69,13 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
     new Date().toISOString().split('T')[0]
   );
   const [disbursementReference, setDisbursementReference] = useState('');
+
+  // Edit loan fields (interest rate is edited as a monthly percentage)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editPrincipal, setEditPrincipal] = useState('');
+  const [editRatePercent, setEditRatePercent] = useState('');
+  const [editMonths, setEditMonths] = useState('');
+  const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     loadApplications();
@@ -189,6 +198,75 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
       'other': 'Other Document',
     };
     return labels[type] || type.replace(/_/g, ' ').toUpperCase();
+  };
+
+  const handleOpenEdit = () => {
+    if (!selectedApplication) return;
+
+    setEditPrincipal(String(parseFloat(selectedApplication.principal_amount)));
+    // Backend stores the monthly rate as a fraction (0.05 = 5%)
+    setEditRatePercent(String(parseFloat((parseFloat(selectedApplication.interest_rate) * 100).toFixed(4))));
+    setEditMonths(String(selectedApplication.repayment_months));
+    setError(null);
+    setEditSuccess(null);
+    setIsViewModalOpen(false);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateLoan = async () => {
+    if (!selectedApplication) return;
+
+    const principal = parseFloat(editPrincipal);
+    const ratePercent = parseFloat(editRatePercent);
+    const months = Number(editMonths);
+
+    if (!principal || principal <= 0) {
+      setError('Enter a valid loan amount');
+      return;
+    }
+    if (isNaN(ratePercent) || ratePercent < 0) {
+      setError('Enter a valid interest rate');
+      return;
+    }
+    if (!Number.isInteger(months) || months < 1) {
+      setError('Repayment period must be a whole number of months (at least 1)');
+      return;
+    }
+
+    // Only send fields that actually changed, so the audit log reflects the edit
+    const rate = parseFloat((ratePercent / 100).toFixed(4));
+    const changes: UpdateLoanRequest = {};
+    if (principal !== parseFloat(selectedApplication.principal_amount)) changes.principal_amount = principal;
+    if (rate !== parseFloat(selectedApplication.interest_rate)) changes.interest_rate = rate;
+    if (months !== selectedApplication.repayment_months) changes.repayment_months = months;
+
+    if (Object.keys(changes).length === 0) {
+      setError('No changes to save');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      const response = await loanService.adminUpdateLoan(selectedApplication.id, changes);
+      const detail = await loanService.getApplication(selectedApplication.id);
+      setSelectedApplication(detail);
+
+      setEditSuccess(
+        response.repayment_schedule_updated
+          ? 'Loan updated and repayment schedule regenerated.'
+          : 'Loan updated successfully.'
+      );
+      setIsEditModalOpen(false);
+      setIsViewModalOpen(true);
+      await loadApplications();
+    } catch (err: any) {
+      console.error('Error updating loan:', err);
+      setError(err.data?.error || err.data?.detail || err.message || 'Failed to update loan');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleApprove = async () => {
@@ -706,12 +784,20 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
           setIsViewModalOpen(false);
           setSelectedApplication(null);
           setError(null);
+          setEditSuccess(null);
         }}
         title={`Application #${selectedApplication?.application_number}`}
         size="xl"
       >
         {selectedApplication && (
           <div className="space-y-6">
+            {editSuccess && (
+              <div className="flex items-start space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-green-700">{editSuccess}</p>
+              </div>
+            )}
+
             {/* Application Status */}
             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
               <div>
@@ -721,6 +807,16 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
                 </Badge>
               </div>
               <div className="flex space-x-3">
+                {selectedApplication.status !== 'declined' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleOpenEdit}
+                    leftIcon={<Edit2 className="h-4 w-4" />}
+                  >
+                    Edit Loan
+                  </Button>
+                )}
                 {selectedApplication.status === 'submitted' && (
                   <>
                     <Button
@@ -1059,6 +1155,73 @@ export function AdminLoanQueue({ onBack }: AdminLoanQueueProps) {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Edit Loan Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setIsViewModalOpen(true);
+          setError(null);
+        }}
+        title="Edit Loan"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setIsViewModalOpen(true);
+                setError(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateLoan} isLoading={isSubmitting}>
+              Save Changes
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-slate-600">
+            Total repayment and monthly deduction are recalculated automatically.
+            {selectedApplication?.status === 'disbursed' &&
+              ' The repayment schedule will be regenerated; this is not allowed once any installment has been paid.'}
+          </p>
+
+          {error && (
+            <div className="flex items-start space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          <MoneyInput
+            label="Loan Amount (KES)"
+            value={editPrincipal}
+            onChange={(e) => setEditPrincipal(e.target.value)}
+          />
+
+          <Input
+            label="Interest Rate (% per month)"
+            type="number"
+            min="0"
+            step="0.01"
+            value={editRatePercent}
+            onChange={(e) => setEditRatePercent(e.target.value)}
+          />
+
+          <Input
+            label="Repayment Period (months)"
+            type="number"
+            min="1"
+            step="1"
+            value={editMonths}
+            onChange={(e) => setEditMonths(e.target.value)}
+          />
+        </div>
       </Modal>
 
       {/* Approve Modal */}
